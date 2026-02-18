@@ -446,7 +446,7 @@ class MoeConfig(StrictBaseModel):
     """
     backend: Literal[
         "AUTO", "CUTLASS", "CUTEDSL", "WIDEEP", "TRTLLM", "DEEPGEMM", "VANILLA",
-        "TRITON"] = Field(
+        "TRITON", "HETER"] = Field(
             default='AUTO',
             description="MoE backend to use. "
             "AUTO selects default backend based on model. It currently doesn\'t always give the best choice for all scenarios. The capabilities of auto selection will be improved in future releases."
@@ -474,6 +474,19 @@ class MoeConfig(StrictBaseModel):
         description=
         "Use low precision combine in MoE operations (only for NVFP4 quantization). When enabled, uses lower precision for combining expert outputs to improve performance."
     )
+
+    heter_config: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description=
+        "Configuration for heterogeneous precision MoE (HETER backend). "
+        "Dict with a 'groups' list where each group specifies: "
+        "'name' (str), 'quant_algo' ('NVFP4' or null for BF16), "
+        "'size_ratio' (float, all must sum to 1.0), and optional "
+        "'checkpoint' (path to weights for this precision). "
+        "Example: {'groups': [{'name': 'cold', 'quant_algo': 'NVFP4', "
+        "'size_ratio': 0.8, 'checkpoint': '/path/to/nvfp4'}, "
+        "{'name': 'hot', 'quant_algo': null, 'size_ratio': 0.2, "
+        "'checkpoint': '/path/to/bf16'}]}")
 
     @classmethod
     def from_dict(cls, data: dict):

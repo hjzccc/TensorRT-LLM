@@ -381,6 +381,11 @@ class ModelLoader:
         config.extra_attrs[
             'nvfp4_gemm_allowed_backends'] = config.nvfp4_gemm_allowed_backends
 
+        # Store heterogeneous MoE config in extra_attrs for HeterCutlassFusedMoE
+        if self.llm_args.moe_config.heter_config is not None:
+            config.extra_attrs[
+                'heter_moe_config'] = self.llm_args.moe_config.heter_config
+
         validate_and_set_kv_cache_quant(config,
                                         self.llm_args.kv_cache_config.dtype)
         validate_and_set_mamba_ssm_cache_dtype(
