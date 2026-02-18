@@ -55,7 +55,7 @@ Usage::
 
 import math
 import os
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import torch
 
@@ -63,6 +63,7 @@ from tensorrt_llm.logger import logger
 from tensorrt_llm.models.modeling_utils import QuantAlgo
 
 from ...model_config import ModelConfig
+from ...utils import Fp4QuantizedTensor
 from .fused_moe_cutlass import CutlassFusedMoE
 from .policy.dispatch_plan import DispatchPlan
 from .policy.strategies import BaseDispatchPolicy, RandomDispatchPolicy
@@ -240,6 +241,14 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         # Cache key for O(1) change detection
         self._current_assignment_key: Optional[tuple] = None
 
+        # Router logits stashed by forward_chunk() for run_moe() to consume.
+        # This is set immediately before super().forward_chunk() which
+        # synchronously calls self.run_moe(), so the lifecycle is a single
+        # call-stack frame.  Safe under torch.compile (moe_custom_op body
+        # executes eagerly) and CUDA graphs (assignment is captured once;
+        # the stashed tensor shares memory with the graph input).
+        self._pending_router_logits: Optional[torch.Tensor] = None
+
         # Caches (built in post_load_weights / _build_group_caches)
         self._remap_tables: Optional[List[torch.Tensor]] = None
         self._group_w3_w1: Optional[List[torch.Tensor]] = None
@@ -376,18 +385,36 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         self,
         token_selected_experts: Optional[torch.Tensor] = None,
         token_final_scales: Optional[torch.Tensor] = None,
+        router_logits: Optional[torch.Tensor] = None,
     ) -> bool:
         """Run the dispatch policy and rebuild caches if assignment changed.
+
+        Args:
+            token_selected_experts: Expert IDs selected by the router.
+                Shape ``[num_tokens, top_k]``.
+            token_final_scales: Routing weights per token.
+                Shape ``[num_tokens, top_k]``.
+            router_logits: Raw logits from the router gate.
+                Shape ``[num_tokens, num_experts]``.  ``None`` when
+                ``run_moe()`` is called directly (without
+                ``forward_chunk``).
 
         Returns:
             ``True`` if caches were rebuilt, ``False`` if unchanged.
         """
         group_ratios = [d.size_ratio for d in self._group_descs]
         plan = self._dispatch_policy.assign(
-            self.num_experts, group_ratios,
-            token_selected_experts, token_final_scales,
+            num_experts=self.num_experts,
+            group_size_ratios=group_ratios,
+            token_selected_experts=token_selected_experts,
+            token_final_scales=token_final_scales,
+            router_logits=router_logits,
         )
-        plan.validate(self.num_experts)
+        # Validation is debug-only — pure Python overhead (set ops)
+        # that should not be on the critical path in production.
+        # Runs with `python` but optimised away with `python -O`.
+        if __debug__:
+            plan.validate(self.num_experts)
 
         key = tuple(tuple(ids) for ids in plan.group_assignments)
         if key == self._current_assignment_key:
@@ -558,6 +585,85 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         self._group_quant_scales = group_quant_scales
 
     # ==============================================================
+    # forward_chunk — capture router_logits for dispatch policy
+    # ==============================================================
+
+    def forward_chunk(
+            self,
+            x: torch.Tensor,
+            router_logits: torch.Tensor,
+            output_dtype: Optional[torch.dtype] = None,
+            all_rank_num_tokens: Optional[List[int]] = None,
+            use_dp_padding: Optional[bool] = None,
+            repeating_info: tuple = (True, True),
+    ) -> torch.Tensor:
+        """Override parent to capture ``router_logits`` for the dispatch
+        policy.
+
+        HETER MoE always receives **BF16 input** from attention.
+        Per-group input quantization (e.g. FP4) is handled inside
+        ``run_moe()`` on a per-group basis — never before this point.
+
+        The stashed ``router_logits`` tensor is consumed by
+        :meth:`run_moe` (our override) within the same synchronous call
+        stack, then cleared in a ``finally`` block.
+
+        **torch.compile safety**:
+
+        ``MoE.forward()`` routes through ``moe_custom_op``
+        (``@torch.library.custom_op``) when ``is_torch_compiling()`` is
+        ``True``.  Dynamo treats custom ops as opaque — it uses
+        ``register_fake`` for shape inference but never traces the real
+        body.  At execution time the body runs as **plain eager Python**.
+        Therefore:
+
+        * ``self._pending_router_logits = router_logits`` — module
+          attribute write inside eager code, invisible to Dynamo.
+        * ``self._pending_router_logits`` read in ``run_moe()`` — same
+          eager scope.
+        * ``mutates_args=()`` on the custom op constrains tensor argument
+          mutations only.  We never mutate ``router_logits`` itself.
+
+        **CUDA graph safety**:
+
+        During graph **capture** the full Python call stack executes
+        normally, including stash / dispatch-policy / clear.  During
+        **replay** only the recorded CUDA ops execute — no Python code
+        re-runs.  Consequences:
+
+        * The dispatch assignment from the capture batch is **baked**.
+          Signal-based policies (e.g. ``ConfidenceThresholdPolicy``) will
+          not re-evaluate until the graph is invalidated and recaptured.
+        * ``_pending_router_logits`` remains ``None`` after capture
+          (cleared by ``finally``).  This is harmless because ``run_moe``
+          does not re-execute on replay.
+
+        **Multi-chunk / aux-stream**:
+
+        HETER MoE targets the **decoding** path where batch sizes are
+        well below ``moe_max_num_tokens`` (always single chunk).  The
+        parent alternates even/odd chunks between main and aux CUDA
+        streams, but Python code runs sequentially on one thread — no
+        race condition on ``_pending_router_logits``.
+        """
+        assert not isinstance(x, Fp4QuantizedTensor), (
+            "HeterCutlassFusedMoE expects BF16 input from attention. "
+            "Per-group quantization is handled inside run_moe()."
+        )
+        self._pending_router_logits = router_logits
+        try:
+            return super().forward_chunk(
+                x,
+                router_logits,
+                output_dtype=output_dtype,
+                all_rank_num_tokens=all_rank_num_tokens,
+                use_dp_padding=use_dp_padding,
+                repeating_info=repeating_info,
+            )
+        finally:
+            self._pending_router_logits = None
+
+    # ==============================================================
     # run_moe — per-group dispatch
     # ==============================================================
 
@@ -584,6 +690,10 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         3. For each active group: remap, zero scales, call fused_moe,
            accumulate output.
 
+        Router logits are obtained from :meth:`forward_chunk` (stashed
+        in ``_pending_router_logits``) or ``None`` when ``run_moe`` is
+        called directly (e.g. in tests).
+
         TODO(phase2): the quantized group paths must additionally
         quantise the input and pass per-group quant flags.  Currently
         all groups share the parent's quant flags (same-precision
@@ -593,8 +703,13 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             "post_load_weights() must be called before run_moe()"
         )
 
+        # Retrieve router_logits stashed by forward_chunk(), if available.
+        router_logits = self._pending_router_logits  # may be None
+
         # --- (Re)compute dispatch assignment via policy ---
-        self._recompute_dispatch(token_selected_experts, token_final_scales)
+        self._recompute_dispatch(
+            token_selected_experts, token_final_scales, router_logits,
+        )
 
         # --- Fast path: single active group covering all experts ---
         active = [

@@ -30,6 +30,8 @@ from tensorrt_llm._torch.modules.fused_moe.fused_moe_heter import HeterCutlassFu
 from tensorrt_llm._torch.modules.fused_moe.policy.dispatch_plan import DispatchPlan
 from tensorrt_llm._torch.modules.fused_moe.policy.strategies import (
     BaseDispatchPolicy,
+    ConfidenceThresholdPolicy,
+    ExpertLoadPolicy,
     RandomDispatchPolicy,
 )
 from tensorrt_llm._utils import mpi_rank
@@ -567,10 +569,10 @@ class TestDispatchPolicy:
                 device="cuda",
             )
             token_selected_experts, token_final_scales = routing_method.apply(router_logits)
-        return backend, x, token_selected_experts, token_final_scales
+        return backend, x, router_logits, token_selected_experts, token_final_scales
 
     def test_random_policy_deterministic(self):
-        backend, x, token_selected_experts, token_final_scales = (
+        backend, x, router_logits, token_selected_experts, token_final_scales = (
             self._create_backend_with_weights(_single_group_config())
         )
 
@@ -599,7 +601,7 @@ class TestDispatchPolicy:
 
     @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
     def test_set_dispatch_policy(self):
-        backend, x, token_selected_experts, token_final_scales = (
+        backend, x, router_logits, token_selected_experts, token_final_scales = (
             self._create_backend_with_weights(_two_group_config())
         )
 
@@ -643,13 +645,14 @@ class TestDispatchPolicy:
                 group_size_ratios,
                 token_selected_experts=None,
                 token_final_scales=None,
+                router_logits=None,
             ):
                 return DispatchPlan(
                     group_assignments=[list(range(num_experts))]
                     + [[] for _ in range(len(group_size_ratios) - 1)]
                 )
 
-        backend, x, token_selected_experts, token_final_scales = (
+        backend, x, router_logits, token_selected_experts, token_final_scales = (
             self._create_backend_with_weights(_two_group_config())
         )
         backend.set_dispatch_policy(AllExpertsInGroup0Policy())
@@ -665,3 +668,120 @@ class TestDispatchPolicy:
         assert backend._current_expert_ids[0] == list(range(self.NUM_EXPERTS))
         for group_ids in backend._current_expert_ids[1:]:
             assert group_ids == []
+
+    @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
+    def test_confidence_threshold_policy(self):
+        """ConfidenceThresholdPolicy assigns experts by mean routing weight."""
+        backend, x, router_logits, token_selected_experts, token_final_scales = (
+            self._create_backend_with_weights(_two_group_config())
+        )
+        backend.set_dispatch_policy(
+            ConfidenceThresholdPolicy(confidence_threshold=0.5)
+        )
+
+        with torch.inference_mode():
+            backend.run_moe(
+                x=x,
+                token_selected_experts=token_selected_experts,
+                token_final_scales=token_final_scales,
+                output_dtype=self.DTYPE,
+            )
+
+        # Assignment should cover all experts.
+        all_assigned = []
+        for group_ids in backend._current_expert_ids:
+            all_assigned.extend(group_ids)
+        assert sorted(all_assigned) == list(range(self.NUM_EXPERTS))
+
+    @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
+    def test_expert_load_policy(self):
+        """ExpertLoadPolicy assigns experts by activation frequency."""
+        backend, x, router_logits, token_selected_experts, token_final_scales = (
+            self._create_backend_with_weights(_two_group_config())
+        )
+        backend.set_dispatch_policy(ExpertLoadPolicy())
+
+        with torch.inference_mode():
+            backend.run_moe(
+                x=x,
+                token_selected_experts=token_selected_experts,
+                token_final_scales=token_final_scales,
+                output_dtype=self.DTYPE,
+            )
+
+        all_assigned = []
+        for group_ids in backend._current_expert_ids:
+            all_assigned.extend(group_ids)
+        assert sorted(all_assigned) == list(range(self.NUM_EXPERTS))
+
+    def test_confidence_policy_fallback_without_signals(self):
+        """ConfidenceThresholdPolicy falls back to random when no signals."""
+        policy = ConfidenceThresholdPolicy(fallback_seed=42)
+        plan = policy.assign(
+            num_experts=8,
+            group_size_ratios=[0.75, 0.25],
+            token_selected_experts=None,
+            token_final_scales=None,
+        )
+        plan.validate(num_experts=8)
+        assert len(plan.group_assignments) == 2
+        total = sum(len(g) for g in plan.group_assignments)
+        assert total == 8
+
+    def test_expert_load_policy_fallback_without_signals(self):
+        """ExpertLoadPolicy falls back to random when no signals."""
+        policy = ExpertLoadPolicy(fallback_seed=42)
+        plan = policy.assign(
+            num_experts=8,
+            group_size_ratios=[0.75, 0.25],
+            token_selected_experts=None,
+            token_final_scales=None,
+        )
+        plan.validate(num_experts=8)
+        assert len(plan.group_assignments) == 2
+
+    def test_confidence_policy_ranks_by_weight(self):
+        """ConfidenceThresholdPolicy puts high-weight experts in last group."""
+        policy = ConfidenceThresholdPolicy()
+        # Simulate 4 experts.  Experts 2 and 3 receive much higher weights.
+        token_selected_experts = torch.tensor(
+            [[0, 2], [1, 3], [2, 3], [0, 2]], dtype=torch.int32
+        )
+        token_final_scales = torch.tensor(
+            [[0.1, 0.9], [0.1, 0.9], [0.8, 0.9], [0.1, 0.8]],
+            dtype=torch.float32,
+        )
+        plan = policy.assign(
+            num_experts=4,
+            group_size_ratios=[0.5, 0.5],
+            token_selected_experts=token_selected_experts,
+            token_final_scales=token_final_scales,
+        )
+        plan.validate(num_experts=4)
+        # Last group (high-precision) should get the highest-weight experts.
+        # Experts 2 and 3 have much higher mean weights.
+        assert 2 in plan.group_assignments[-1]
+        assert 3 in plan.group_assignments[-1]
+
+    def test_expert_load_policy_ranks_by_frequency(self):
+        """ExpertLoadPolicy puts frequently-activated experts in last group."""
+        policy = ExpertLoadPolicy()
+        # Expert 0 selected 4 times, expert 1 selected 3 times,
+        # expert 2 once, expert 3 once.
+        token_selected_experts = torch.tensor(
+            [[0, 1], [0, 1], [0, 1], [0, 2], [3, 2]],
+            dtype=torch.int32,
+        )
+        token_final_scales = torch.ones_like(
+            token_selected_experts, dtype=torch.float32,
+        )
+        plan = policy.assign(
+            num_experts=4,
+            group_size_ratios=[0.5, 0.5],
+            token_selected_experts=token_selected_experts,
+            token_final_scales=token_final_scales,
+        )
+        plan.validate(num_experts=4)
+        # Last group (high-precision) should contain most-active experts.
+        assert 0 in plan.group_assignments[-1]
+        assert 1 in plan.group_assignments[-1]

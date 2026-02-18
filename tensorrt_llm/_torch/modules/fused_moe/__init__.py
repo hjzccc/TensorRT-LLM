@@ -2,7 +2,8 @@ from .create_moe import create_moe, get_moe_cls
 from .fused_moe_cute_dsl import CuteDslFusedMoE
 from .fused_moe_cutlass import CutlassFusedMoE
 from .fused_moe_heter import HeterCutlassFusedMoE
-from .policy import (BaseDispatchPolicy, DispatchPlan, RandomDispatchPolicy)
+from .policy import (BaseDispatchPolicy, ConfidenceThresholdPolicy,
+                     DispatchPlan, ExpertLoadPolicy, RandomDispatchPolicy)
 from .fused_moe_triton import TritonFusedMoE
 from .fused_moe_trtllm_gen import TRTLLMGenFusedMoE
 from .fused_moe_vanilla import VanillaMoE
@@ -31,7 +32,9 @@ __all__ = [
     "FusedMoEQuantScalesFP8",
     "get_moe_cls",
     "BaseDispatchPolicy",
+    "ConfidenceThresholdPolicy",
     "DispatchPlan",
+    "ExpertLoadPolicy",
     "HeterCutlassFusedMoE",
     "RandomDispatchPolicy",
     "Llama4RenormalizeMoeRoutingMethod",
