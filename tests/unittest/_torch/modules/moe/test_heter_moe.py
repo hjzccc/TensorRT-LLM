@@ -30,12 +30,14 @@ from tensorrt_llm._torch.modules.fused_moe import RenormalizeMoeRoutingMethod
 from tensorrt_llm._torch.modules.fused_moe.create_moe import create_moe_backend
 from tensorrt_llm._torch.modules.fused_moe.fused_moe_cutlass import CutlassFusedMoE
 from tensorrt_llm._torch.modules.fused_moe.fused_moe_heter import HeterCutlassFusedMoE
-from tensorrt_llm._torch.modules.fused_moe.policy.dispatch_plan import DispatchPlan
-from tensorrt_llm._torch.modules.fused_moe.policy.strategies import (
-    BaseDispatchPolicy,
-    ConfidenceThresholdPolicy,
-    ExpertLoadPolicy,
-    RandomDispatchPolicy,
+from tensorrt_llm._torch.modules.fused_moe.policy import (
+    ConfidenceThresholdHeterDispatch,
+    ExpertLoadHeterDispatch,
+    HeterDispatchPolicy,
+    RandomHeterDispatch,
+)
+from tensorrt_llm._torch.modules.fused_moe.policy.heter_dispatch import (
+    _validate_assignment,
 )
 from tensorrt_llm._utils import mpi_rank
 from tensorrt_llm.mapping import Mapping
@@ -100,6 +102,26 @@ def _two_group_config():
             {
                 "name": "cold_nvfp4",
                 "quant_algo": QuantAlgo.NVFP4,
+                "size_ratio": 0.5,
+                "checkpoint": None,
+            },
+        ],
+    }
+
+
+def _two_bf16_group_config():
+    """Two BF16-only groups — for testing multi-group dispatch without NVFP4."""
+    return {
+        "groups": [
+            {
+                "name": "group_a_bf16",
+                "quant_algo": None,
+                "size_ratio": 0.5,
+                "checkpoint": None,
+            },
+            {
+                "name": "group_b_bf16",
+                "quant_algo": None,
                 "size_ratio": 0.5,
                 "checkpoint": None,
             },
@@ -429,7 +451,6 @@ def test_heter_single_group_matches_cutlass(dtype):
         torch.testing.assert_close(heter_out, cutlass_out, rtol=1e-5, atol=1e-5)
 
 
-@pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
 @pytest.mark.parametrize("dtype", [torch.bfloat16], ids=lambda val: f"dtype={val}")
 def test_heter_two_groups_matches_cutlass(dtype):
     seq_len = 8
@@ -465,7 +486,7 @@ def test_heter_two_groups_matches_cutlass(dtype):
             intermediate_size=intermediate_size,
             dtype=dtype,
             weights=weights,
-            heter_config=_two_group_config(),
+            heter_config=_two_bf16_group_config(),
         )
 
         cutlass_out = _run_forward(cutlass_backend, x, router_logits, all_rank_num_tokens)
@@ -678,6 +699,7 @@ class TestDispatchPolicy:
     TOP_K = 2
 
     def _create_backend_with_weights(self, heter_config):
+        """Create a HeterCutlassFusedMoE backend with BF16 weights."""
         mapping = Mapping()
         mapping.rank = mpi_rank()
         routing_method = RenormalizeMoeRoutingMethod(top_k=self.TOP_K)
@@ -711,233 +733,263 @@ class TestDispatchPolicy:
             backend.load_weights([copy.deepcopy(weights)])
             backend.post_load_weights()
             backend.cuda()
-            x = torch.randn((self.SEQ_LEN, self.HIDDEN_SIZE), dtype=self.DTYPE, device="cuda")
+            x = torch.randn(
+                (self.SEQ_LEN, self.HIDDEN_SIZE),
+                dtype=self.DTYPE, device="cuda",
+            )
             router_logits = torch.randn(
                 (self.SEQ_LEN, self.NUM_EXPERTS),
-                dtype=self.DTYPE,
-                device="cuda",
+                dtype=self.DTYPE, device="cuda",
             )
-            token_selected_experts, token_final_scales = routing_method.apply(router_logits)
+            token_selected_experts, token_final_scales = routing_method.apply(
+                router_logits
+            )
         return backend, x, router_logits, token_selected_experts, token_final_scales
 
+    # ------------------------------------------------------------------
+    # Policy determinism
+    # ------------------------------------------------------------------
+
     def test_random_policy_deterministic(self):
-        backend, x, router_logits, token_selected_experts, token_final_scales = (
-            self._create_backend_with_weights(_single_group_config())
-        )
-
-        assert backend._current_expert_ids
-        assert backend._current_expert_ids[0]
-
-        with torch.inference_mode():
-            backend.run_moe(
-                x=x,
-                token_selected_experts=token_selected_experts,
-                token_final_scales=token_final_scales,
-                output_dtype=self.DTYPE,
-            )
-            first_key = backend._current_assignment_key
-            first_remap_id = id(backend._remap_tables)
-
-            backend.run_moe(
-                x=x,
-                token_selected_experts=token_selected_experts,
-                token_final_scales=token_final_scales,
-                output_dtype=self.DTYPE,
-            )
-
-        assert backend._current_assignment_key == first_key
-        assert id(backend._remap_tables) == first_remap_id
-
-    @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
-    def test_set_dispatch_policy(self):
-        backend, x, router_logits, token_selected_experts, token_final_scales = (
-            self._create_backend_with_weights(_two_group_config())
-        )
-
-        before_key = backend._current_assignment_key
-        before_assignment = copy.deepcopy(backend._current_expert_ids)
-
-        backend.set_dispatch_policy(RandomDispatchPolicy(seed=99))
-        assert backend._current_assignment_key is None
-
-        with torch.inference_mode():
-            backend.run_moe(
-                x=x,
-                token_selected_experts=token_selected_experts,
-                token_final_scales=token_final_scales,
-                output_dtype=self.DTYPE,
-            )
-
-        assert backend._current_assignment_key is not None
-        assert backend._current_assignment_key != before_key
-        assert backend._current_expert_ids != before_assignment
-
-    def test_dispatch_plan_validate_coverage(self):
-        DispatchPlan(group_assignments=[[0, 1], [2, 3]]).validate(num_experts=4)
-
-        with pytest.raises(ValueError, match="coverage mismatch"):
-            DispatchPlan(group_assignments=[[0, 1], [2]]).validate(num_experts=4)
-
-        with pytest.raises(ValueError, match="duplicate expert IDs"):
-            DispatchPlan(group_assignments=[[0, 1], [1, 2, 3]]).validate(
-                num_experts=4
-            )
-
-    @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
-    def test_custom_policy(self):
-
-        class AllExpertsInGroup0Policy(BaseDispatchPolicy):
-
-            def assign(
-                self,
-                num_experts,
-                group_size_ratios,
-                token_selected_experts=None,
-                token_final_scales=None,
-                router_logits=None,
-            ):
-                return DispatchPlan(
-                    group_assignments=[list(range(num_experts))]
-                    + [[] for _ in range(len(group_size_ratios) - 1)]
-                )
-
-        backend, x, router_logits, token_selected_experts, token_final_scales = (
-            self._create_backend_with_weights(_two_group_config())
-        )
-        backend.set_dispatch_policy(AllExpertsInGroup0Policy())
-
-        with torch.inference_mode():
-            backend.run_moe(
-                x=x,
-                token_selected_experts=token_selected_experts,
-                token_final_scales=token_final_scales,
-                output_dtype=self.DTYPE,
-            )
-
-        assert backend._current_expert_ids[0] == list(range(self.NUM_EXPERTS))
-        for group_ids in backend._current_expert_ids[1:]:
-            assert group_ids == []
-
-    @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
-    def test_confidence_threshold_policy(self):
-        """ConfidenceThresholdPolicy assigns experts by mean routing weight."""
-        backend, x, router_logits, token_selected_experts, token_final_scales = (
-            self._create_backend_with_weights(_two_group_config())
-        )
-        backend.set_dispatch_policy(
-            ConfidenceThresholdPolicy(confidence_threshold=0.5)
-        )
-
-        with torch.inference_mode():
-            backend.run_moe(
-                x=x,
-                token_selected_experts=token_selected_experts,
-                token_final_scales=token_final_scales,
-                output_dtype=self.DTYPE,
-            )
-
-        # Assignment should cover all experts.
-        all_assigned = []
-        for group_ids in backend._current_expert_ids:
-            all_assigned.extend(group_ids)
-        assert sorted(all_assigned) == list(range(self.NUM_EXPERTS))
-
-    @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
-    def test_expert_load_policy(self):
-        """ExpertLoadPolicy assigns experts by activation frequency."""
-        backend, x, router_logits, token_selected_experts, token_final_scales = (
-            self._create_backend_with_weights(_two_group_config())
-        )
-        backend.set_dispatch_policy(ExpertLoadPolicy())
-
-        with torch.inference_mode():
-            backend.run_moe(
-                x=x,
-                token_selected_experts=token_selected_experts,
-                token_final_scales=token_final_scales,
-                output_dtype=self.DTYPE,
-            )
-
-        all_assigned = []
-        for group_ids in backend._current_expert_ids:
-            all_assigned.extend(group_ids)
-        assert sorted(all_assigned) == list(range(self.NUM_EXPERTS))
-
-    def test_confidence_policy_fallback_without_signals(self):
-        """ConfidenceThresholdPolicy falls back to random when no signals."""
-        policy = ConfidenceThresholdPolicy(fallback_seed=42)
-        plan = policy.assign(
-            num_experts=8,
-            group_size_ratios=[0.75, 0.25],
-            token_selected_experts=None,
-            token_final_scales=None,
-        )
-        plan.validate(num_experts=8)
-        assert len(plan.group_assignments) == 2
-        total = sum(len(g) for g in plan.group_assignments)
-        assert total == 8
-
-    def test_expert_load_policy_fallback_without_signals(self):
-        """ExpertLoadPolicy falls back to random when no signals."""
-        policy = ExpertLoadPolicy(fallback_seed=42)
-        plan = policy.assign(
-            num_experts=8,
-            group_size_ratios=[0.75, 0.25],
-            token_selected_experts=None,
-            token_final_scales=None,
-        )
-        plan.validate(num_experts=8)
-        assert len(plan.group_assignments) == 2
-
-    def test_confidence_policy_ranks_by_weight(self):
-        """ConfidenceThresholdPolicy puts high-weight experts in last group."""
-        policy = ConfidenceThresholdPolicy()
-        # Simulate 4 experts.  Experts 2 and 3 receive much higher weights.
-        token_selected_experts = torch.tensor(
-            [[0, 2], [1, 3], [2, 3], [0, 2]], dtype=torch.int32
-        )
-        token_final_scales = torch.tensor(
-            [[0.1, 0.9], [0.1, 0.9], [0.8, 0.9], [0.1, 0.8]],
-            dtype=torch.float32,
-        )
-        plan = policy.assign(
-            num_experts=4,
+        """RandomHeterDispatch.dispatch() is deterministic for same seed+input."""
+        policy = RandomHeterDispatch(
+            num_experts=self.NUM_EXPERTS,
             group_size_ratios=[0.5, 0.5],
-            token_selected_experts=token_selected_experts,
-            token_final_scales=token_final_scales,
+            seed=42,
         )
-        plan.validate(num_experts=4)
-        # Last group (high-precision) should get the highest-weight experts.
-        # Experts 2 and 3 have much higher mean weights.
-        assert 2 in plan.group_assignments[-1]
-        assert 3 in plan.group_assignments[-1]
-
-    def test_expert_load_policy_ranks_by_frequency(self):
-        """ExpertLoadPolicy puts frequently-activated experts in last group."""
-        policy = ExpertLoadPolicy()
-        # Expert 0 selected 4 times, expert 1 selected 3 times,
-        # expert 2 once, expert 3 once.
         token_selected_experts = torch.tensor(
-            [[0, 1], [0, 1], [0, 1], [0, 2], [3, 2]],
-            dtype=torch.int32,
+            [[0, 2], [1, 3], [2, 5], [4, 7]],
+            dtype=torch.int32, device="cuda",
         )
         token_final_scales = torch.ones_like(
             token_selected_experts, dtype=torch.float32,
         )
-        plan = policy.assign(
+
+        dispatches_1 = policy.dispatch(token_selected_experts, token_final_scales)
+        dispatches_2 = policy.dispatch(token_selected_experts, token_final_scales)
+
+        for (t1, e1, s1), (t2, e2, s2) in zip(dispatches_1, dispatches_2):
+            if t1 is None:
+                assert t2 is None
+            else:
+                torch.testing.assert_close(t1, t2)
+                torch.testing.assert_close(e1, e2)
+                torch.testing.assert_close(s1, s2)
+
+    # ------------------------------------------------------------------
+    # Policy property setter
+    # ------------------------------------------------------------------
+
+    def test_policy_property_setter(self):
+        """backend.policy = new_policy replaces the dispatch policy."""
+        backend, x, _, tse, tfs = self._create_backend_with_weights(
+            _single_group_config()
+        )
+        old_policy = backend.policy
+        new_policy = RandomHeterDispatch(
+            num_experts=self.NUM_EXPERTS,
+            group_size_ratios=[1.0],
+            seed=99,
+        )
+        backend.policy = new_policy
+        assert backend.policy is new_policy
+        assert backend.policy is not old_policy
+
+    # ------------------------------------------------------------------
+    # Assignment validation
+    # ------------------------------------------------------------------
+
+    def test_validate_assignment_coverage(self):
+        """_validate_assignment rejects incomplete or duplicate assignments."""
+        _validate_assignment([[0, 1], [2, 3]], num_experts=4)
+
+        with pytest.raises(ValueError, match="coverage mismatch"):
+            _validate_assignment([[0, 1], [2]], num_experts=4)
+
+        with pytest.raises(ValueError, match="duplicate expert IDs"):
+            _validate_assignment([[0, 1], [1, 2, 3]], num_experts=4)
+
+    # ------------------------------------------------------------------
+    # Custom policy via subclass
+    # ------------------------------------------------------------------
+
+    def test_custom_policy(self):
+        """A custom HeterDispatchPolicy routes all experts to group 0."""
+
+        class AllGroup0Policy(HeterDispatchPolicy):
+
+            def _assign(self, token_selected_experts, token_final_scales,
+                        router_logits):
+                return [list(range(self._num_experts))] + [
+                    [] for _ in range(self.num_groups - 1)
+                ]
+
+        backend, x, _, tse, tfs = self._create_backend_with_weights(
+            _two_bf16_group_config()
+        )
+        backend.policy = AllGroup0Policy(
+            num_experts=self.NUM_EXPERTS,
+            group_size_ratios=[0.5, 0.5],
+        )
+
+        with torch.inference_mode():
+            out = backend.run_moe(
+                x=x,
+                token_selected_experts=tse,
+                token_final_scales=tfs,
+                output_dtype=self.DTYPE,
+            )
+        assert out.shape == x.shape
+
+    # ------------------------------------------------------------------
+    # Confidence threshold dispatch
+    # ------------------------------------------------------------------
+
+    def test_confidence_threshold_dispatch(self):
+        """ConfidenceThresholdHeterDispatch produces valid dispatch tuples."""
+        backend, x, _, tse, tfs = self._create_backend_with_weights(
+            _two_bf16_group_config()
+        )
+        backend.policy = ConfidenceThresholdHeterDispatch(
+            num_experts=self.NUM_EXPERTS,
+            group_size_ratios=[0.5, 0.5],
+            confidence_threshold=0.5,
+        )
+
+        dispatches = backend.policy.dispatch(tse, tfs)
+        assert len(dispatches) == 2
+
+        active_count = sum(
+            1 for tok_idx, _, _ in dispatches if tok_idx is not None
+        )
+        assert active_count >= 1
+
+        for tok_idx, experts, scales in dispatches:
+            if tok_idx is not None:
+                assert experts is not None
+                assert scales is not None
+                assert experts.shape[1] == self.TOP_K
+                assert scales.shape == experts.shape
+
+    # ------------------------------------------------------------------
+    # Expert load dispatch
+    # ------------------------------------------------------------------
+
+    def test_expert_load_dispatch(self):
+        """ExpertLoadHeterDispatch produces valid dispatch tuples."""
+        backend, x, _, tse, tfs = self._create_backend_with_weights(
+            _two_bf16_group_config()
+        )
+        backend.policy = ExpertLoadHeterDispatch(
+            num_experts=self.NUM_EXPERTS,
+            group_size_ratios=[0.5, 0.5],
+        )
+
+        dispatches = backend.policy.dispatch(tse, tfs)
+        assert len(dispatches) == 2
+
+        active_count = sum(
+            1 for tok_idx, _, _ in dispatches if tok_idx is not None
+        )
+        assert active_count >= 1
+
+    # ------------------------------------------------------------------
+    # Fallback without signals
+    # ------------------------------------------------------------------
+
+    def test_confidence_dispatch_fallback_without_signals(self):
+        """ConfidenceThresholdHeterDispatch._assign() falls back to random
+        when signals are ``None``."""
+        policy = ConfidenceThresholdHeterDispatch(
+            num_experts=8,
+            group_size_ratios=[0.75, 0.25],
+            fallback_seed=42,
+        )
+        assignment = policy._assign(
+            token_selected_experts=None,
+            token_final_scales=None,
+            router_logits=None,
+        )
+        assert len(assignment) == 2
+        total = sum(len(g) for g in assignment)
+        assert total == 8
+
+    def test_expert_load_dispatch_fallback_without_signals(self):
+        """ExpertLoadHeterDispatch._assign() falls back to random when
+        signals are ``None``."""
+        policy = ExpertLoadHeterDispatch(
+            num_experts=8,
+            group_size_ratios=[0.75, 0.25],
+            fallback_seed=42,
+        )
+        assignment = policy._assign(
+            token_selected_experts=None,
+            token_final_scales=None,
+            router_logits=None,
+        )
+        assert len(assignment) == 2
+        total = sum(len(g) for g in assignment)
+        assert total == 8
+
+    # ------------------------------------------------------------------
+    # Score-based ranking
+    # ------------------------------------------------------------------
+
+    def test_confidence_dispatch_ranks_by_weight(self):
+        """ConfidenceThresholdHeterDispatch puts high-weight experts in
+        last group."""
+        policy = ConfidenceThresholdHeterDispatch(
             num_experts=4,
             group_size_ratios=[0.5, 0.5],
-            token_selected_experts=token_selected_experts,
-            token_final_scales=token_final_scales,
         )
-        plan.validate(num_experts=4)
-        # Last group (high-precision) should contain most-active experts.
-        assert 0 in plan.group_assignments[-1]
-        assert 1 in plan.group_assignments[-1]
+        # Simulate 4 experts.  Experts 2 and 3 receive much higher weights.
+        token_selected_experts = torch.tensor(
+            [[0, 2], [1, 3], [2, 3], [0, 2]],
+            dtype=torch.int32, device="cuda",
+        )
+        token_final_scales = torch.tensor(
+            [[0.1, 0.9], [0.1, 0.9], [0.8, 0.9], [0.1, 0.8]],
+            dtype=torch.float32, device="cuda",
+        )
+        assignment = policy._assign(
+            token_selected_experts, token_final_scales, router_logits=None,
+        )
+        assert len(assignment) == 2
+        total = sum(len(g) for g in assignment)
+        assert total == 4
+        # Last group (high-precision) should get the highest-weight experts.
+        assert 2 in assignment[-1]
+        assert 3 in assignment[-1]
+
+    def test_expert_load_dispatch_ranks_by_frequency(self):
+        """ExpertLoadHeterDispatch puts frequently-activated experts in
+        last group."""
+        policy = ExpertLoadHeterDispatch(
+            num_experts=4,
+            group_size_ratios=[0.5, 0.5],
+        )
+        # Expert 0 selected 4 times, expert 1 selected 3 times,
+        # expert 2 once, expert 3 once.
+        token_selected_experts = torch.tensor(
+            [[0, 1], [0, 1], [0, 1], [0, 2], [3, 2]],
+            dtype=torch.int32, device="cuda",
+        )
+        token_final_scales = torch.ones_like(
+            token_selected_experts, dtype=torch.float32,
+        )
+        assignment = policy._assign(
+            token_selected_experts, token_final_scales, router_logits=None,
+        )
+        assert len(assignment) == 2
+        total = sum(len(g) for g in assignment)
+        assert total == 4
+        # Last group should contain most-active experts.
+        assert 0 in assignment[-1]
+        assert 1 in assignment[-1]
 
 
 # ---------------------------------------------------------------------------
-# Tests: Phase 2 runtime benchmarks (mixed-precision dispatch)
+# Tests: runtime benchmarks (mixed-precision dispatch)
 # ---------------------------------------------------------------------------
 
 
@@ -989,8 +1041,8 @@ def _mixed_heter_config(bf16_ratio=0.5):
     }
 
 
-class TestPhase2RuntimeBenchmark:
-    """Phase 2 runtime benchmarks: verify NVFP4 speedup and mixed ordering.
+class TestRuntimeBenchmark:
+    """Runtime benchmarks: verify NVFP4 speedup and mixed ordering.
 
     These tests measure wall-clock runtime using CUDA events.  They compare
     three configurations:
@@ -998,7 +1050,7 @@ class TestPhase2RuntimeBenchmark:
     1. **All BF16**  — CutlassFusedMoE with unquantized weights (baseline).
     2. **All NVFP4** — CutlassFusedMoE with NVFP4 weights (should be fastest).
     3. **Mixed**     — HeterCutlassFusedMoE with BF16 + NVFP4 groups (in
-       between).  Requires phase 2 per-group precision dispatch.
+       between).  Uses ``register_group_weights()`` for per-group precision.
 
     The global flags ``ENABLE_TORCH_COMPILE`` and ``ENABLE_CUDA_GRAPHS``
     control whether the benchmark exercises those code paths.
@@ -1106,7 +1158,7 @@ class TestPhase2RuntimeBenchmark:
             max_diff = diff.max().item()
             mean_diff = diff.mean().item()
             print(
-                f"\n[Phase2 output deviation] BF16 vs NVFP4: "
+                f"\n[output deviation] BF16 vs NVFP4: "
                 f"max={max_diff:.6f}, mean={mean_diff:.6f}"
             )
 
@@ -1121,7 +1173,7 @@ class TestPhase2RuntimeBenchmark:
             bf16_ms = _benchmark_forward(bf16_fn)
             nvfp4_ms = _benchmark_forward(nvfp4_fn)
             print(
-                f"[Phase2 runtime] BF16={bf16_ms:.3f}ms, "
+                f"[runtime] BF16={bf16_ms:.3f}ms, "
                 f"NVFP4={nvfp4_ms:.3f}ms, "
                 f"speedup={bf16_ms / nvfp4_ms:.2f}x"
             )
@@ -1136,22 +1188,11 @@ class TestPhase2RuntimeBenchmark:
     # ------------------------------------------------------------------
 
     @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
-    @pytest.mark.skip(
-        reason="Requires phase 2 per-group precision dispatch in "
-               "HeterCutlassFusedMoE._build_group_caches / run_moe"
-    )
     def test_heter_mixed_runtime_between_extremes(self):
         """Mixed heter (BF16 + NVFP4) runtime is between the two extremes.
 
-        **Preconditions** (phase 2):
-
-        * ``HeterCutlassFusedMoE._build_group_caches()`` selects from the
-          correct weight set (BF16 or NVFP4) based on each group's
-          ``quant_algo``.
-        * ``run_moe()`` quantises input per-group and passes per-group
-          quant flags to ``fused_moe()``.
-        * The heter backend must be loaded with *dual* weight sets (one
-          per precision) via a phase-2 weight loading API.
+        Uses ``register_group_weights()`` to load NVFP4 weights for the
+        quantized group while the BF16 group falls back to parent weights.
 
         **Test outline**:
 
@@ -1199,8 +1240,9 @@ class TestPhase2RuntimeBenchmark:
             )
 
             # --- Mixed heter backend ---
-            # NOTE: Phase 2 weight loading TBD — this section must be
-            # updated once the dual-weight-set API is available.
+            # _mixed_heter_config: group 0 = NVFP4, group 1 = BF16.
+            # Load BF16 weights as parent (used by group 1 as fallback),
+            # then register NVFP4 weights for group 0.
             heter_model_config = _create_model_config(
                 num_experts=self.NUM_EXPERTS,
                 hidden_size=self.HIDDEN_SIZE,
@@ -1219,13 +1261,23 @@ class TestPhase2RuntimeBenchmark:
                 dtype=self.DTYPE,
                 model_config=heter_model_config,
             )
-            # Phase 2 TODO: load dual weight sets (BF16 + NVFP4) into
-            # heter_backend.  The exact API will be determined by the
-            # phase 2 implementation.  For now we load BF16 weights only
-            # (phase 1 behavior — both groups share the same weights).
             heter_backend.load_weights([copy.deepcopy(bf16_weights)])
             heter_backend.post_load_weights()
             heter_backend.cuda()
+
+            # Register NVFP4 weights for group 0 by extracting processed
+            # tensors from the standalone NVFP4 backend.
+            heter_backend.register_group_weights(
+                group_idx=0,
+                w3_w1_weight=nvfp4_backend.w3_w1_weight.data,
+                w2_weight=nvfp4_backend.w2_weight.data,
+                quant_scales=nvfp4_backend.quant_scales,
+                weight_dtype=nvfp4_backend.w3_w1_weight.dtype,
+                fc31_input_scale=nvfp4_backend.fc31_input_scale,
+                scaling_vector_size=getattr(
+                    nvfp4_backend, "scaling_vector_size", 16
+                ),
+            )
 
             # --- Benchmark all three ---
             bf16_fn = _make_benchmark_fn(
@@ -1243,7 +1295,7 @@ class TestPhase2RuntimeBenchmark:
             mixed_ms = _benchmark_forward(mixed_fn)
 
             print(
-                f"\n[Phase2 runtime] BF16={bf16_ms:.3f}ms, "
+                f"\n[runtime] BF16={bf16_ms:.3f}ms, "
                 f"NVFP4={nvfp4_ms:.3f}ms, "
                 f"Mixed={mixed_ms:.3f}ms"
             )
@@ -1258,7 +1310,7 @@ class TestPhase2RuntimeBenchmark:
                 )
             diff = (bf16_out.float() - mixed_out.float()).abs()
             print(
-                f"[Phase2 output deviation] BF16 vs Mixed: "
+                f"[output deviation] BF16 vs Mixed: "
                 f"max={diff.max().item():.6f}, "
                 f"mean={diff.mean().item():.6f}"
             )
