@@ -2,8 +2,9 @@ from .create_moe import create_moe, get_moe_cls
 from .fused_moe_cute_dsl import CuteDslFusedMoE
 from .fused_moe_cutlass import CutlassFusedMoE
 from .fused_moe_heter import HeterCutlassFusedMoE
-from .policy import (BaseDispatchPolicy, ConfidenceThresholdPolicy,
-                     DispatchPlan, ExpertLoadPolicy, RandomDispatchPolicy)
+from .policy import (ConfidenceThresholdHeterDispatch,
+                     ExpertLoadHeterDispatch, HeterDispatchPolicy,
+                     RandomHeterDispatch)
 from .fused_moe_triton import TritonFusedMoE
 from .fused_moe_trtllm_gen import TRTLLMGenFusedMoE
 from .fused_moe_vanilla import VanillaMoE
@@ -31,12 +32,11 @@ __all__ = [
     "DefaultMoeRoutingMethod",
     "FusedMoEQuantScalesFP8",
     "get_moe_cls",
-    "BaseDispatchPolicy",
-    "ConfidenceThresholdPolicy",
-    "DispatchPlan",
-    "ExpertLoadPolicy",
+    "ConfidenceThresholdHeterDispatch",
+    "ExpertLoadHeterDispatch",
     "HeterCutlassFusedMoE",
-    "RandomDispatchPolicy",
+    "HeterDispatchPolicy",
+    "RandomHeterDispatch",
     "Llama4RenormalizeMoeRoutingMethod",
     "LoadBalancedMoeRoutingMethod",
     "moe_load_balancer_set_repeated_for_next_layer",

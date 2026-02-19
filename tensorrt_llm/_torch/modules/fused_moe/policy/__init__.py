@@ -13,18 +13,88 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .dispatch_plan import DispatchPlan
-from .strategies import (
-    BaseDispatchPolicy,
-    ConfidenceThresholdPolicy,
-    ExpertLoadPolicy,
-    RandomDispatchPolicy,
+from typing import Any, Dict, List
+
+from .heter_dispatch import (
+    ConfidenceThresholdHeterDispatch,
+    ExpertLoadHeterDispatch,
+    GroupDispatchTuple,
+    HeterDispatchPolicy,
+    RandomHeterDispatch,
 )
 
+POLICY_REGISTRY: Dict[str, type] = {
+    "random": RandomHeterDispatch,
+    "confidence_threshold": ConfidenceThresholdHeterDispatch,
+    "expert_load": ExpertLoadHeterDispatch,
+}
+
+
+def resolve_dispatch_policy(
+    heter_config: Dict[str, Any],
+    num_experts: int,
+    group_size_ratios: List[float],
+) -> HeterDispatchPolicy:
+    """Instantiate a dispatch policy from ``heter_config``.
+
+    The ``"policy"`` key can be:
+
+    * A **string** — policy name looked up in :data:`POLICY_REGISTRY`.
+      Uses default constructor kwargs (e.g. ``seed=42``).
+    * A **dict** with a ``"type"`` key (policy name) plus any extra
+      keyword arguments forwarded to the constructor.
+    * **Absent** — defaults to ``"random"``.
+
+    Example config snippets::
+
+        "policy": "expert_load"
+
+        "policy": {
+            "type": "confidence_threshold",
+            "confidence_threshold": 0.7,
+            "fallback_seed": 123,
+        }
+
+    Raises:
+        ValueError: If the policy type is unknown or the value has
+            an unexpected type.
+    """
+    policy_cfg = heter_config.get("policy", "random")
+
+    if isinstance(policy_cfg, str):
+        policy_type = policy_cfg
+        policy_kwargs: Dict[str, Any] = {}
+    elif isinstance(policy_cfg, dict):
+        policy_type = policy_cfg.get("type", "random")
+        policy_kwargs = {
+            k: v for k, v in policy_cfg.items() if k != "type"
+        }
+    else:
+        raise ValueError(
+            f"heter_config['policy'] must be a string or dict, "
+            f"got {type(policy_cfg).__name__}: {policy_cfg!r}"
+        )
+
+    policy_cls = POLICY_REGISTRY.get(policy_type)
+    if policy_cls is None:
+        raise ValueError(
+            f"Unknown dispatch policy type: {policy_type!r}.  "
+            f"Available: {sorted(POLICY_REGISTRY.keys())}"
+        )
+
+    return policy_cls(
+        num_experts=num_experts,
+        group_size_ratios=group_size_ratios,
+        **policy_kwargs,
+    )
+
+
 __all__ = [
-    "BaseDispatchPolicy",
-    "ConfidenceThresholdPolicy",
-    "DispatchPlan",
-    "ExpertLoadPolicy",
-    "RandomDispatchPolicy",
+    "ConfidenceThresholdHeterDispatch",
+    "ExpertLoadHeterDispatch",
+    "GroupDispatchTuple",
+    "HeterDispatchPolicy",
+    "POLICY_REGISTRY",
+    "RandomHeterDispatch",
+    "resolve_dispatch_policy",
 ]

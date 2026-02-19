@@ -14,15 +14,18 @@
 # limitations under the License.
 """Heterogeneous Precision MoE backend.
 
-Stores **N full sets of weights** (one per precision group) for all
-experts and dispatches each precision group through a separate
+Stores **N full sets of weights** (one per precision group) covering
+**all** experts and dispatches each precision group through a separate
 ``torch.ops.trtllm.fused_moe()`` call with the appropriate weights and
 quantization flags, then sums the outputs.
 
-Expert-to-group assignment is determined by a pluggable **dispatch
-policy** (see :mod:`~.policy`).  The policy is invoked every
-``run_moe()`` call with router signals, and the assignment is cached —
-weight subset caches are only rebuilt when the assignment changes.
+Expert-to-group assignment and per-group token dispatch are handled by
+a pluggable :class:`~.policy.heter_dispatch.HeterDispatchPolicy`.  The
+policy's :meth:`dispatch` method transforms standard *N*-expert routing
+into per-group dispatches — conceptually expanding the expert space to
+*N × G* where *G* is the number of precision groups.  Each group's
+call only includes tokens with ≥1 expert in that group; the CUTLASS
+kernel's built-in sparsity skips experts with zero routed tokens.
 
 Usage::
 
@@ -48,14 +51,34 @@ Usage::
                         "checkpoint": "/path/to/bf16/model",
                     },
                 ],
+                "policy": "expert_load",
             },
         ),
     )
+
+Supported dispatch policies (``"policy"`` key):
+
+* ``"random"`` (default) — deterministic random assignment; ignores
+  runtime signals.
+* ``"confidence_threshold"`` — assigns by per-expert mean routing
+  weight; high-weight experts go to the last (high-precision) group.
+* ``"expert_load"`` — assigns by expert activation frequency; hot
+  experts go to the last group.
+
+The ``"policy"`` value can be a string (policy name with defaults) or
+a dict ``{"type": "<name>", ...}`` with extra constructor kwargs::
+
+    "policy": {
+        "type": "confidence_threshold",
+        "confidence_threshold": 0.7,
+        "fallback_seed": 123,
+    }
 """
 
 import math
 import os
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
+import glob
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 import torch
 
@@ -65,18 +88,70 @@ from tensorrt_llm.models.modeling_utils import QuantAlgo
 from ...model_config import ModelConfig
 from ...utils import Fp4QuantizedTensor
 from .fused_moe_cutlass import CutlassFusedMoE
-from .policy.dispatch_plan import DispatchPlan
-from .policy.strategies import BaseDispatchPolicy, RandomDispatchPolicy
+from .quantization import NVFP4CutlassFusedMoEMethod, UnquantizedFusedMoEMethod
+from .policy import HeterDispatchPolicy, resolve_dispatch_policy
 from .routing import BaseMoeRoutingMethod
 
 # Quantization algorithms supported by the HETER backend.
 # None means unquantized (BF16/FP16).
 _SUPPORTED_QUANT_ALGOS = frozenset({None, QuantAlgo.NVFP4})
 
-
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
+
+class _QuantizedInput(NamedTuple):
+    """Result of per-group input quantisation."""
+    x: torch.Tensor
+    x_sf: Optional[torch.Tensor]
+    is_sf_swizzled: bool
+
+
+def _quantize_input_for_group(
+    x: torch.Tensor,
+    quant_algo: Optional[QuantAlgo],
+    weight_set: Optional['_GroupWeightSet'],
+) -> _QuantizedInput:
+    """Quantise *x* according to a precision group's ``quant_algo``.
+
+    This is the single dispatch point for per-group input quantisation
+    inside :meth:`HeterCutlassFusedMoE.run_moe`.  Adding support for a
+    new quantisation algorithm only requires a new ``elif`` branch here
+    (plus registering the algo in ``_SUPPORTED_QUANT_ALGOS``).
+
+    Args:
+        x: BF16 activations from attention.
+        quant_algo: The group's quantisation algorithm (``None`` for
+            BF16 / unquantised).
+        weight_set: The group's :class:`_GroupWeightSet`.  Required for
+            quantised groups (carries input scales, block size, etc.).
+
+    Returns:
+        A :class:`_QuantizedInput` triple ``(x, x_sf, is_sf_swizzled)``.
+    """
+    if quant_algo is None:
+        # BF16 / unquantised — pass through unchanged.
+        return _QuantizedInput(x=x, x_sf=None, is_sf_swizzled=True)
+
+    if quant_algo == QuantAlgo.NVFP4:
+        assert weight_set is not None, (
+            "NVFP4 group requires a registered weight set "
+            "with fc31_input_scale"
+        )
+        qx, qx_sf = torch.ops.trtllm.fp4_quantize(
+            x,
+            weight_set.fc31_input_scale,
+            weight_set.scaling_vector_size,
+            False,   # input sf is not swizzled
+            True,    # output sf swizzled for kernel
+        )
+        return _QuantizedInput(x=qx, x_sf=qx_sf, is_sf_swizzled=True)
+
+    raise ValueError(
+        f"_quantize_input_for_group: unsupported quant_algo={quant_algo!r}. "
+        f"Supported: {_SUPPORTED_QUANT_ALGOS}"
+    )
 
 
 def _resolve_quant_algo(raw: Any) -> Optional[QuantAlgo]:
@@ -106,31 +181,6 @@ def _resolve_quant_algo(raw: Any) -> Optional[QuantAlgo]:
     )
 
 
-def _subset_quant_scales(
-    quant_scales: Optional[NamedTuple],
-    expert_ids: List[int],
-) -> Optional[NamedTuple]:
-    """Subset a quant-scales NamedTuple along the expert (dim-0) axis.
-
-    Every field is expected to have shape ``[num_experts, ...]``.
-    Returns a new NamedTuple of the same type containing only the rows
-    for *expert_ids*, or ``None`` if *quant_scales* is ``None``.
-    """
-    if quant_scales is None:
-        return None
-
-    idx = torch.tensor(expert_ids, dtype=torch.long,
-                        device=quant_scales[0].device)
-    subset_fields: Dict[str, torch.Tensor] = {}
-    for name in quant_scales._fields:
-        tensor = getattr(quant_scales, name)
-        if tensor.dim() >= 1 and tensor.shape[0] > 1:
-            subset_fields[name] = tensor[idx].contiguous()
-        else:
-            subset_fields[name] = tensor
-    return type(quant_scales)(**subset_fields)
-
-
 # ------------------------------------------------------------------
 # Group descriptor (produced by config validation)
 # ------------------------------------------------------------------
@@ -155,7 +205,77 @@ class _GroupDescriptor:
 
     @property
     def quant_label(self) -> str:
-        return self.quant_algo.value if self.quant_algo else "BF16"
+        return str(self.quant_algo.value) if self.quant_algo else "BF16"
+
+
+class _GroupWeightSet:
+    """Full weight set for one precision group covering all experts.
+
+    Each group stores its own copy of model weights in the appropriate
+    dtype/format for its quantization algorithm.  The BF16 group may
+    reference the parent module's weights directly.
+    """
+
+    __slots__ = (
+        "w3_w1_weight", "w2_weight", "w3_w1_bias", "w2_bias",
+        "quant_scales", "weight_dtype", "quant_algo",
+        "fc31_input_scale", "scaling_vector_size",
+    )
+
+    def __init__(
+        self,
+        w3_w1_weight: torch.Tensor,
+        w2_weight: torch.Tensor,
+        quant_scales: Any,
+        weight_dtype: torch.dtype,
+        quant_algo: Optional[QuantAlgo] = None,
+        w3_w1_bias: Optional[torch.Tensor] = None,
+        w2_bias: Optional[torch.Tensor] = None,
+        fc31_input_scale: Optional[torch.Tensor] = None,
+        scaling_vector_size: int = 16,
+    ):
+        self.w3_w1_weight = w3_w1_weight
+        self.w2_weight = w2_weight
+        self.w3_w1_bias = w3_w1_bias
+        self.w2_bias = w2_bias
+        self.quant_scales = quant_scales
+        self.weight_dtype = weight_dtype
+        self.quant_algo = quant_algo
+        self.fc31_input_scale = fc31_input_scale
+        self.scaling_vector_size = scaling_vector_size
+
+
+class _ModuleProxy(torch.nn.Module):
+
+    def __init__(self, module: 'HeterCutlassFusedMoE'):
+        super().__init__()
+        self.num_experts = module.num_experts
+        self.hidden_size = module.hidden_size
+        self.intermediate_size = module.intermediate_size
+        self.intermediate_size_per_partition = module.intermediate_size_per_partition
+        self.intermediate_size_expand_ratio = module.intermediate_size_expand_ratio
+        self.expert_size_per_partition = module.expert_size_per_partition
+        self.tp_size = module.tp_size
+        self.tp_rank = module.tp_rank
+        self.ep_size = module.ep_size
+        self.ep_rank = module.ep_rank
+        self.bias = module.bias
+        self.weight_loading_mode = module.weight_loading_mode
+        self.initial_local_expert_ids = module.initial_local_expert_ids
+        self.dtype = module.dtype
+        self.scaling_vector_size = getattr(module, 'scaling_vector_size', 16)
+        self.layer_load_balancer = None
+        self.rebuild_tensor_metadata = {}
+
+    @property
+    def expand_intermediate_size_per_partition(self) -> int:
+        return (
+            self.intermediate_size_per_partition
+            * self.intermediate_size_expand_ratio
+        )
+
+    def _add_raw_shared_weights_for_unmap(self, weight_tensors):
+        pass
 
 
 # ==================================================================
@@ -166,12 +286,13 @@ class _GroupDescriptor:
 class HeterCutlassFusedMoE(CutlassFusedMoE):
     """CutlassFusedMoE with heterogeneous-precision expert dispatch.
 
-    N full weight sets are stored for every expert (one per precision
-    group).  At runtime a pluggable **dispatch policy** determines
-    which experts use which precision group's weights.  The policy is
-    invoked every ``run_moe()`` call with router signals; the resulting
-    assignment is cached and weight subset caches are only rebuilt when
-    the assignment changes.
+    N full weight sets are stored covering **all** experts (one set per
+    precision group).  At runtime a pluggable **dispatch policy**
+    determines which experts belong to which precision group.  For each
+    group, ``run_moe()`` passes the **full** weight tensor to the
+    CUTLASS kernel with router scales zeroed for non-group experts.
+    The kernel skips experts with zero tokens automatically (built-in
+    sparsity), so no weight subsetting or remapping is needed.
 
     Config schema (``heter_config``)::
 
@@ -199,6 +320,19 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             All ratios must sum to 1.0.
         checkpoint (str | None): Path to the weight checkpoint for this
             precision.  Verified for existence at init time.
+
+    Optional top-level fields:
+        weight_key_prefix (str | None): Key prefix pattern for extracting
+            MoE expert weights from checkpoint files.  Use ``{layer_idx}``
+            as a placeholder for the transformer layer index.  Example:
+            ``"model.layers.{layer_idx}.mlp.experts"``.  If ``None``,
+            checkpoint weights are assumed to be layer-relative (no prefix
+            stripping).
+        policy (str | dict | None): Dispatch policy selection.  A string
+            selects a built-in policy with default kwargs; a dict with a
+            ``"type"`` key passes extra kwargs to the constructor.
+            Supported values: ``"random"`` (default),
+            ``"confidence_threshold"``, ``"expert_load"``.
     """
 
     def __init__(
@@ -208,7 +342,7 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         num_experts: int,
         hidden_size: int,
         intermediate_size: int,
-        model_config: ModelConfig = ModelConfig(),
+        model_config: ModelConfig[Any] = ModelConfig(),
         **kwargs: Any,
     ):
         super().__init__(
@@ -228,34 +362,30 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         self._group_descs: List[_GroupDescriptor] = (
             self._validate_heter_config(heter_config, num_experts, dtype_act)
         )
-
-        # --- Dispatch policy (default: random with fixed seed) ---
-        self._dispatch_policy: BaseDispatchPolicy = (
-            RandomDispatchPolicy(seed=42)
+        self._weight_key_prefix: Optional[str] = heter_config.get(
+            "weight_key_prefix"
         )
 
-        # --- Current assignment (populated by _recompute_dispatch) ---
-        self._current_expert_ids: List[List[int]] = (
-            [[] for _ in self._group_descs]
+        # --- Dispatch policy ---
+        self._policy: HeterDispatchPolicy = resolve_dispatch_policy(
+            heter_config,
+            num_experts,
+            [d.size_ratio for d in self._group_descs],
         )
-        # Cache key for O(1) change detection
-        self._current_assignment_key: Optional[tuple] = None
 
-        # Router logits stashed by forward_chunk() for run_moe() to consume.
-        # This is set immediately before super().forward_chunk() which
-        # synchronously calls self.run_moe(), so the lifecycle is a single
-        # call-stack frame.  Safe under torch.compile (moe_custom_op body
-        # executes eagerly) and CUDA graphs (assignment is captured once;
-        # the stashed tensor shares memory with the graph input).
+        # Router logits stashed by forward_chunk() for run_moe() to
+        # pass to the dispatch policy.  Set immediately before
+        # super().forward_chunk() which synchronously calls
+        # self.run_moe(), so the lifecycle is a single call-stack
+        # frame.  Safe under torch.compile and CUDA graphs (see
+        # forward_chunk docstring for details).
         self._pending_router_logits: Optional[torch.Tensor] = None
 
-        # Caches (built in post_load_weights / _build_group_caches)
-        self._remap_tables: Optional[List[torch.Tensor]] = None
-        self._group_w3_w1: Optional[List[torch.Tensor]] = None
-        self._group_w2: Optional[List[torch.Tensor]] = None
-        self._group_w3_w1_bias: Optional[List[Optional[torch.Tensor]]] = None
-        self._group_w2_bias: Optional[List[Optional[torch.Tensor]]] = None
-        self._group_quant_scales: Optional[List[Any]] = None
+        # Per-group full weight sets (populated by register_group_weights).
+        # ``None`` means "fall back to the parent module's weights".
+        self._heter_weight_sets: List[Optional[_GroupWeightSet]] = [
+            None for _ in self._group_descs
+        ]
 
         self._log_config_summary()
 
@@ -264,7 +394,7 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
     # ==============================================================
 
     @staticmethod
-    def _extract_heter_config(model_config: ModelConfig) -> Dict[str, Any]:
+    def _extract_heter_config(model_config: ModelConfig[Any]) -> Dict[str, Any]:
         extra_attrs = getattr(model_config, "extra_attrs", None) or {}
         heter_config = extra_attrs.get("heter_moe_config")
         if heter_config is None:
@@ -295,6 +425,14 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             raise ValueError(
                 "heter_config['groups'] must be a non-empty list of dicts.  "
                 f"Got: {groups_raw!r}"
+            )
+
+        weight_key_prefix = heter_config.get("weight_key_prefix")
+        if weight_key_prefix is not None and not isinstance(weight_key_prefix,
+                                                             str):
+            raise ValueError(
+                "heter_config['weight_key_prefix'] must be a string or None.  "
+                f"Got: {weight_key_prefix!r}"
             )
 
         descs: List[_GroupDescriptor] = []
@@ -367,73 +505,87 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         return descs
 
     # ==============================================================
-    # Dispatch policy management
+    # Dispatch policy
     # ==============================================================
 
-    def set_dispatch_policy(self, policy: BaseDispatchPolicy) -> None:
-        """Replace the current dispatch policy.
+    @property
+    def policy(self) -> HeterDispatchPolicy:
+        """The current heterogeneous dispatch policy."""
+        return self._policy
 
-        Forces a recompute on the next ``run_moe()`` call.
+    @policy.setter
+    def policy(self, new_policy: HeterDispatchPolicy) -> None:
+        """Replace the dispatch policy."""
+        self._policy = new_policy
 
-        Args:
-            policy: A :class:`BaseDispatchPolicy` implementation.
-        """
-        self._dispatch_policy = policy
-        self._current_assignment_key = None  # Force recompute
-
-    def _recompute_dispatch(
+    def register_group_weights(
         self,
-        token_selected_experts: Optional[torch.Tensor] = None,
-        token_final_scales: Optional[torch.Tensor] = None,
-        router_logits: Optional[torch.Tensor] = None,
-    ) -> bool:
-        """Run the dispatch policy and rebuild caches if assignment changed.
+        group_idx: int,
+        w3_w1_weight: torch.Tensor,
+        w2_weight: torch.Tensor,
+        quant_scales: Any = tuple(),
+        weight_dtype: Optional[torch.dtype] = None,
+        w3_w1_bias: Optional[torch.Tensor] = None,
+        w2_bias: Optional[torch.Tensor] = None,
+        fc31_input_scale: Optional[torch.Tensor] = None,
+        scaling_vector_size: int = 16,
+    ) -> None:
+        """Register a full weight set for one precision group.
+
+        This must be called (once per group) before ``post_load_weights``.
+        Groups that are not registered fall back to the parent module's
+        weights at runtime (valid for BF16 groups whose weights match
+        the parent).
 
         Args:
-            token_selected_experts: Expert IDs selected by the router.
-                Shape ``[num_tokens, top_k]``.
-            token_final_scales: Routing weights per token.
-                Shape ``[num_tokens, top_k]``.
-            router_logits: Raw logits from the router gate.
-                Shape ``[num_tokens, num_experts]``.  ``None`` when
-                ``run_moe()`` is called directly (without
-                ``forward_chunk``).
-
-        Returns:
-            ``True`` if caches were rebuilt, ``False`` if unchanged.
+            group_idx: Index into ``_group_descs``.
+            w3_w1_weight: Fused gate/up-proj weight for **all** experts.
+                Shape ``[num_experts, intermediate, hidden]`` (or packed
+                equivalent for quantized formats).
+            w2_weight: Down-proj weight for all experts.
+            quant_scales: Quantization scales NamedTuple (e.g.
+                ``FusedMoEQuantScalesNVFP4``) or ``tuple()`` for
+                unquantized weights.
+            weight_dtype: Storage dtype for ``.view()`` in fused_moe.
+                Defaults to ``w3_w1_weight.dtype``.
+            w3_w1_bias: Optional bias for gate/up-proj.
+            w2_bias: Optional bias for down-proj.
+            fc31_input_scale: NVFP4 input activation scale (scalar).
+                Required when ``quant_algo == QuantAlgo.NVFP4``.
+            scaling_vector_size: NVFP4 block size for input
+                quantization.  Default 16.
         """
-        group_ratios = [d.size_ratio for d in self._group_descs]
-        plan = self._dispatch_policy.assign(
-            num_experts=self.num_experts,
-            group_size_ratios=group_ratios,
-            token_selected_experts=token_selected_experts,
-            token_final_scales=token_final_scales,
-            router_logits=router_logits,
+        if group_idx < 0 or group_idx >= len(self._group_descs):
+            raise IndexError(
+                f"group_idx={group_idx} out of range "
+                f"[0, {len(self._group_descs)})"
+            )
+        desc = self._group_descs[group_idx]
+        if weight_dtype is None:
+            weight_dtype = w3_w1_weight.dtype
+
+        if desc.quant_algo == QuantAlgo.NVFP4 and fc31_input_scale is None:
+            raise ValueError(
+                f"Group '{desc.name}' uses NVFP4 but no "
+                f"fc31_input_scale was provided."
+            )
+
+        self._heter_weight_sets[group_idx] = _GroupWeightSet(
+            w3_w1_weight=w3_w1_weight,
+            w2_weight=w2_weight,
+            quant_scales=quant_scales,
+            weight_dtype=weight_dtype,
+            quant_algo=desc.quant_algo,
+            w3_w1_bias=w3_w1_bias,
+            w2_bias=w2_bias,
+            fc31_input_scale=fc31_input_scale,
+            scaling_vector_size=scaling_vector_size,
         )
-        # Validation is debug-only — pure Python overhead (set ops)
-        # that should not be on the critical path in production.
-        # Runs with `python` but optimised away with `python -O`.
-        if __debug__:
-            plan.validate(self.num_experts)
-
-        key = tuple(tuple(ids) for ids in plan.group_assignments)
-        if key == self._current_assignment_key:
-            return False
-
-        self._current_expert_ids = plan.group_assignments
-        self._current_assignment_key = key
-        self._build_group_caches()
-
         logger.info(
             f"HeterCutlassFusedMoE layer_idx={self.layer_idx}: "
-            f"dispatch updated — "
-            + ", ".join(
-                f"{d.name}/{d.quant_label}"
-                f"({len(self._current_expert_ids[i])})"
-                for i, d in enumerate(self._group_descs)
-            )
+            f"registered weight set for group '{desc.name}' "
+            f"({desc.quant_label}, dtype={weight_dtype})"
         )
-        return True
 
     # ==============================================================
     # Logging
@@ -445,7 +597,7 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             f"HeterCutlassFusedMoE layer_idx={self.layer_idx}: "
             f"configuration validated — "
             f"{len(self._group_descs)} precision groups, "
-            f"policy={type(self._dispatch_policy).__name__}",
+            f"policy={type(self._policy).__name__}",
         ]
         for i, desc in enumerate(self._group_descs):
             ckpt_str = (
@@ -486,103 +638,123 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
                 )
         return True, None
 
+    @staticmethod
+    def _get_group_quant_method(quant_algo: Optional[QuantAlgo]):
+        if quant_algo is None:
+            return UnquantizedFusedMoEMethod()
+        if quant_algo == QuantAlgo.NVFP4:
+            return NVFP4CutlassFusedMoEMethod()
+        raise ValueError(f"Unsupported quant_algo for group loading: {quant_algo!r}")
+
+    @staticmethod
+    def _load_checkpoint_weights(checkpoint_path: str) -> Dict[str, Any]:
+        weight_files = glob.glob(f"{checkpoint_path}/*.safetensors")
+        filtered_weight_files = [
+            x for x in weight_files if "consolidated" not in os.path.split(x)[1]
+        ]
+        if len(filtered_weight_files) > 0:
+            weight_files = filtered_weight_files
+        if not weight_files:
+            raise RuntimeError(
+                "No .safetensors files found in checkpoint directory: "
+                f"{checkpoint_path}"
+            )
+
+        import importlib
+
+        st = importlib.import_module("safetensors.torch")
+
+        merged: Dict[str, Any] = {}
+        for file in weight_files:
+            merged.update(st.load_file(file))
+        return merged
+
+    @staticmethod
+    def _extract_moe_layer_weights(
+        all_weights: Dict[str, Any],
+        weight_key_prefix: str,
+    ) -> Dict[str, Any]:
+        full_prefix = f"{weight_key_prefix}."
+        return {
+            k[len(full_prefix):]: v
+            for k, v in all_weights.items()
+            if k.startswith(full_prefix)
+        }
+
+    def _load_group_from_checkpoint(
+        self,
+        group_idx: int,
+        layer_weights: Dict[str, Any],
+    ) -> None:
+        desc = self._group_descs[group_idx]
+        proxy = _ModuleProxy(self)
+        quant_method = self._get_group_quant_method(desc.quant_algo)
+        quant_method.create_weights(proxy)
+        quant_method.load_weights(proxy, layer_weights, self.weight_loading_mode)
+        quant_method.post_load_weights(proxy)
+
+        fc31_input_scale = getattr(proxy, 'fc31_input_scale', None)
+        if fc31_input_scale is not None:
+            fc31_input_scale = fc31_input_scale.data
+        scaling_vector_size = getattr(proxy, 'scaling_vector_size', 16)
+
+        quant_scales = getattr(proxy, 'quant_scales', ())
+        self.register_group_weights(
+            group_idx,
+            w3_w1_weight=proxy.w3_w1_weight.data,
+            w2_weight=proxy.w2_weight.data,
+            quant_scales=quant_scales,
+            weight_dtype=proxy.w3_w1_weight.dtype,
+            w3_w1_bias=proxy.w3_w1_bias.data if proxy.w3_w1_bias is not None else None,
+            w2_bias=proxy.w2_bias.data if proxy.w2_bias is not None else None,
+            fc31_input_scale=fc31_input_scale,
+            scaling_vector_size=scaling_vector_size,
+        )
+
+        logger.info(
+            f"HeterCutlassFusedMoE layer_idx={self.layer_idx}: loaded group "
+            f"'{desc.name}' weights from checkpoint"
+        )
+
+    def _load_all_group_checkpoints(
+        self,
+        weight_key_prefix: Optional[str],
+    ) -> None:
+        for group_idx, desc in enumerate(self._group_descs):
+            if desc.checkpoint is None:
+                continue
+
+            logger.info(
+                f"HeterCutlassFusedMoE layer_idx={self.layer_idx}: loading "
+                f"checkpoint for group '{desc.name}' from {desc.checkpoint}"
+            )
+
+            all_weights = self._load_checkpoint_weights(desc.checkpoint)
+            if weight_key_prefix is not None:
+                prefix = weight_key_prefix.format(layer_idx=self.layer_idx)
+                layer_weights = self._extract_moe_layer_weights(
+                    all_weights, prefix)
+            else:
+                layer_weights = all_weights
+
+            self._load_group_from_checkpoint(group_idx, layer_weights)
+            del all_weights
+
+    def load_weights(self,
+                     weights: List[Dict[Any, Any]],
+                     allow_partial_loading: bool = False):
+        """Load parent weights normally, then load per-group checkpoint weights."""
+        super().load_weights(weights, allow_partial_loading=allow_partial_loading)
+        if any(desc.checkpoint is not None for desc in self._group_descs):
+            self._load_all_group_checkpoints(self._weight_key_prefix)
+
     # ==============================================================
-    # post_load_weights / _build_group_caches
+    # post_load_weights
     # ==============================================================
 
     def post_load_weights(self) -> None:
-        """Parent post-processing, then build initial caches via policy."""
+        """Parent post-processing."""
         super().post_load_weights()
-        # Compute initial assignment (no signals available yet)
-        self._recompute_dispatch()
-
-    def _build_group_caches(self) -> None:
-        """(Re)build remap tables and weight/scale subsets for the current
-        dispatch assignment.
-
-        TODO(phase2): when dual weight sets are loaded, select from the
-        appropriate weight set based on each group's ``quant_algo``.
-        Currently all groups subset from the single parent weight set.
-        """
-        device = self.w3_w1_weight.device
-        weight_dtype = self.w3_w1_weight.dtype
-
-        remap_tables: List[torch.Tensor] = []
-        group_w3_w1: List[torch.Tensor] = []
-        group_w2: List[torch.Tensor] = []
-        group_w3_w1_bias: List[Optional[torch.Tensor]] = []
-        group_w2_bias: List[Optional[torch.Tensor]] = []
-        group_quant_scales: List[Any] = []
-
-        for group_idx, expert_ids in enumerate(self._current_expert_ids):
-            num_group = len(expert_ids)
-            desc = self._group_descs[group_idx]
-
-            if num_group == 0:
-                # Empty group — placeholder entries so indices stay aligned
-                remap_tables.append(
-                    torch.full((self.num_experts,), 0,
-                               device=device, dtype=torch.int32)
-                )
-                group_w3_w1.append(torch.empty(0, device=device))
-                group_w2.append(torch.empty(0, device=device))
-                group_w3_w1_bias.append(None)
-                group_w2_bias.append(None)
-                group_quant_scales.append(None)
-                continue
-
-            # -- Remap table: global expert ID → local index --
-            remap = torch.full(
-                (self.num_experts,), num_group,
-                device=device, dtype=torch.int32,
-            )
-            ids_tensor = torch.tensor(
-                expert_ids, device=device, dtype=torch.long,
-            )
-            remap[ids_tensor] = torch.arange(
-                num_group, device=device, dtype=torch.int32,
-            )
-            remap_tables.append(remap)
-
-            # -- Subset weights --
-            group_w3_w1.append(
-                self.w3_w1_weight[ids_tensor].contiguous().view(weight_dtype)
-            )
-            group_w2.append(
-                self.w2_weight[ids_tensor].contiguous().view(weight_dtype)
-            )
-
-            # -- Subset biases --
-            if self.w3_w1_bias is not None:
-                group_w3_w1_bias.append(
-                    self.w3_w1_bias[ids_tensor].contiguous()
-                )
-            else:
-                group_w3_w1_bias.append(None)
-            if self.w2_bias is not None:
-                group_w2_bias.append(
-                    self.w2_bias[ids_tensor].contiguous()
-                )
-            else:
-                group_w2_bias.append(None)
-
-            # -- Subset quant scales --
-            group_quant_scales.append(
-                _subset_quant_scales(self.quant_scales, expert_ids)
-            )
-
-            logger.debug(
-                f"HeterCutlassFusedMoE layer_idx={self.layer_idx}: "
-                f"cache built for '{desc.name}' "
-                f"({desc.quant_label}, {num_group} experts)"
-            )
-
-        self._remap_tables = remap_tables
-        self._group_w3_w1 = group_w3_w1
-        self._group_w2 = group_w2
-        self._group_w3_w1_bias = group_w3_w1_bias
-        self._group_w2_bias = group_w2_bias
-        self._group_quant_scales = group_quant_scales
 
     # ==============================================================
     # forward_chunk — capture router_logits for dispatch policy
@@ -595,7 +767,7 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             output_dtype: Optional[torch.dtype] = None,
             all_rank_num_tokens: Optional[List[int]] = None,
             use_dp_padding: Optional[bool] = None,
-            repeating_info: tuple = (True, True),
+            repeating_info: tuple[bool, bool] = (True, True),
     ) -> torch.Tensor:
         """Override parent to capture ``router_logits`` for the dispatch
         policy.
@@ -680,44 +852,32 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         moe_output: Optional[torch.Tensor] = None,
         enable_alltoall: Optional[bool] = None,
     ) -> torch.Tensor:
-        """Per-group dispatch: call fused_moe once per active group, sum.
+        """Per-group dispatch: call fused_moe once per group, sum outputs.
 
-        1. Call the dispatch policy with router signals to (re)compute
-           expert-to-group assignment.  Weight caches are only rebuilt
-           when the assignment changes (tuple-key comparison).
-        2. **Fast path**: when all experts are in a single group,
-           delegate to ``super().run_moe()`` with zero overhead.
-        3. For each active group: remap, zero scales, call fused_moe,
-           accumulate output.
+        The dispatch policy transforms standard *N*-expert routing into
+        per-group dispatches — conceptually *N × G* virtual experts.
+        Each group's call only includes tokens with ≥1 expert in that
+        group; the kernel skips experts with zero routed tokens.
 
-        Router logits are obtained from :meth:`forward_chunk` (stashed
-        in ``_pending_router_logits``) or ``None`` when ``run_moe`` is
-        called directly (e.g. in tests).
-
-        TODO(phase2): the quantized group paths must additionally
-        quantise the input and pass per-group quant flags.  Currently
-        all groups share the parent's quant flags (same-precision
-        dispatch).
+        See :class:`~.policy.heter_dispatch.HeterDispatchPolicy` for
+        the dispatch transform details.
         """
-        assert self._remap_tables is not None, (
-            "post_load_weights() must be called before run_moe()"
+        # --- Dispatch: split routing by group via policy ---
+        dispatches = self._policy.dispatch(
+            token_selected_experts,
+            token_final_scales,
+            router_logits=self._pending_router_logits,
         )
 
-        # Retrieve router_logits stashed by forward_chunk(), if available.
-        router_logits = self._pending_router_logits  # may be None
-
-        # --- (Re)compute dispatch assignment via policy ---
-        self._recompute_dispatch(
-            token_selected_experts, token_final_scales, router_logits,
-        )
-
-        # --- Fast path: single active group covering all experts ---
+        # --- Fast path: single active group with parent weights ---
         active = [
-            i for i, ids in enumerate(self._current_expert_ids) if ids
+            (i, d) for i, d in enumerate(dispatches) if d[0] is not None
         ]
         if len(active) == 1:
-            gidx = active[0]
-            if len(self._current_expert_ids[gidx]) == self.num_experts:
+            gidx, (tok_idx, _, _) = active[0]
+            assert tok_idx is not None  # guaranteed by filter above
+            if (tok_idx.numel() == x.shape[0]
+                    and self._heter_weight_sets[gidx] is None):
                 return super().run_moe(
                     x=x,
                     token_selected_experts=token_selected_experts,
@@ -734,54 +894,48 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         if enable_alltoall is None:
             enable_alltoall = self.enable_alltoall
 
-        weight_dtype = self.w3_w1_weight.dtype
-        if self.has_any_quant:
-            if self.has_w4afp8:
-                weight_dtype = torch.quint4x2
-            elif self.has_w4a16_mxfp4:
-                weight_dtype = torch.uint8
+        out_dtype = output_dtype if output_dtype is not None else x.dtype
+        accumulated = torch.zeros(
+            x.shape[0], x.shape[1], dtype=out_dtype, device=x.device,
+        )
 
-        accumulated: Optional[torch.Tensor] = None
-
-        for group_idx in active:
-            num_group = len(self._current_expert_ids[group_idx])
+        for group_idx, (tok_idx, grp_experts, grp_scales) in active:
             desc = self._group_descs[group_idx]
 
-            # -- Remap expert IDs to group-local indices --
-            remap = self._remap_tables[group_idx]
-            local_experts = remap[
-                token_selected_experts.long()
-            ].to(torch.int32)
+            # -- Resolve weight source --
+            ws = self._heter_weight_sets[group_idx]
+            if ws is not None:
+                src_w3_w1 = ws.w3_w1_weight
+                src_w2 = ws.w2_weight
+                src_w3_w1_bias = ws.w3_w1_bias
+                src_w2_bias = ws.w2_bias
+                src_quant_scales = ws.quant_scales
+                src_weight_dtype = ws.weight_dtype
+            else:
+                src_w3_w1 = self.w3_w1_weight
+                src_w2 = self.w2_weight
+                src_w3_w1_bias = self.w3_w1_bias
+                src_w2_bias = self.w2_bias
+                src_quant_scales = self.quant_scales
+                src_weight_dtype = self.w3_w1_weight.dtype
 
-            # -- Zero scales for non-group experts --
-            valid_mask = local_experts < num_group
-            group_scales = torch.where(
-                valid_mask,
-                token_final_scales,
-                torch.zeros_like(token_final_scales),
+            # -- Per-group input quantisation --
+            qi = _quantize_input_for_group(
+                x[tok_idx], desc.quant_algo, ws,
             )
 
-            # -- Per-group quant flags --
-            # TODO(phase2): branch on desc.quant_algo to select the
-            # correct weight set and quant flags per group.  For now
-            # all groups use the parent's single-precision flags.
-            group_x = x
-            group_x_sf = x_sf
-            group_is_sf_swizzled = is_sf_swizzled
-            group_weight_dtype = weight_dtype
-
             group_result = torch.ops.trtllm.fused_moe(
-                group_x,
-                local_experts,
-                group_scales,
-                self._group_w3_w1[group_idx].view(group_weight_dtype),
-                self._group_w3_w1_bias[group_idx],
-                self._group_w2[group_idx].view(group_weight_dtype),
-                self._group_w2_bias[group_idx],
+                qi.x,
+                grp_experts,
+                grp_scales,
+                src_w3_w1.view(src_weight_dtype),
+                src_w3_w1_bias,
+                src_w2.view(src_weight_dtype),
+                src_w2_bias,
                 output_dtype,
-                quant_scales=self._group_quant_scales[group_idx],
-                input_sf=group_x_sf,
-                swizzled_input_sf=group_is_sf_swizzled,
+                quant_scales=src_quant_scales,
+                input_sf=qi.x_sf,
+                swizzled_input_sf=qi.is_sf_swizzled,
                 swiglu_alpha=self.swiglu_alpha,
                 swiglu_beta=self.swiglu_beta,
                 swiglu_limit=self.swiglu_limit,
@@ -792,10 +946,10 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
                 cluster_size=self.cluster_size,
                 cluster_rank=self.cluster_rank,
                 enable_alltoall=enable_alltoall,
-                use_deepseek_fp8_block_scale=self.has_deepseek_fp8_block_scales,
-                use_w4_group_scaling=self.has_w4afp8 or self.has_w4a16_mxfp4,
-                use_int8_woq_per_channel=self.has_int8_woq_per_channel,
-                use_mxfp8_act_scaling=self.has_w4a8_mxfp4_mxfp8,
+                use_deepseek_fp8_block_scale=False,
+                use_w4_group_scaling=False,
+                use_int8_woq_per_channel=False,
+                use_mxfp8_act_scaling=False,
                 min_latency_mode=False,
                 use_fused_finalize=self.use_fused_finalize,
                 tune_max_num_tokens=self.tune_max_num_tokens,
@@ -806,10 +960,7 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
                 out_tensor=None,
             )[0]
 
-            if accumulated is None:
-                accumulated = group_result
-            else:
-                accumulated = accumulated + group_result
+            accumulated[tok_idx] += group_result
 
         if moe_output is not None:
             moe_output.copy_(accumulated)

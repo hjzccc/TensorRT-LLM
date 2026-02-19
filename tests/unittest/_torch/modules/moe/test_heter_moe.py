@@ -19,7 +19,10 @@ import os
 
 import pytest
 import torch
-from _torch.modules.moe.quantize_utils import get_test_quant_params
+from _torch.modules.moe.quantize_utils import (
+    NVFP4QuantizeUtil,
+    get_test_quant_params,
+)
 from transformers.configuration_utils import PretrainedConfig
 
 from tensorrt_llm._torch.model_config import ModelConfig
@@ -36,10 +39,24 @@ from tensorrt_llm._torch.modules.fused_moe.policy.strategies import (
 )
 from tensorrt_llm._utils import mpi_rank
 from tensorrt_llm.mapping import Mapping
-from tensorrt_llm.models.modeling_utils import QuantAlgo
+from tensorrt_llm.models.modeling_utils import QuantAlgo, QuantConfig
 
 # Bypass ConfigurableMoE wrapper so create_moe falls through to create_moe_backend.
 os.environ["ENABLE_CONFIGURABLE_MOE"] = "0"
+
+# ---------------------------------------------------------------------------
+# Global flags for torch.compile and CUDA graph testing.
+# These are OFF by default.  Set to True to exercise those code paths.
+# NOTE: Current correctness tests run in eager mode.  The runtime benchmark
+# tests below use these flags to optionally wrap forward with torch.compile
+# and/or measure via CUDA graph replay.
+# ---------------------------------------------------------------------------
+ENABLE_TORCH_COMPILE = False
+ENABLE_CUDA_GRAPHS = False
+
+# Benchmark parameters
+_WARMUP_ITERS = 10
+_BENCH_ITERS = 50
 
 
 def _nvfp4_supported(dtype: torch.dtype = torch.bfloat16) -> bool:
@@ -229,6 +246,138 @@ def _create_cutlass_and_heter_backends(
     heter_backend.cuda()
 
     return cutlass_backend, heter_backend
+
+
+def _create_nvfp4_weights(
+    num_experts: int,
+    hidden_size: int,
+    intermediate_size: int,
+    dtype: torch.dtype,
+    x: torch.Tensor,
+):
+    """Create NVFP4-quantized weights for *num_experts* experts.
+
+    Args:
+        x: Input tensor used to derive the NVFP4 activation scale
+           (``x_sf_global``).
+    """
+    x_sf_global = (448 * 6) / x.abs().max().float()
+    nvfp4_util = NVFP4QuantizeUtil(
+        num_experts=num_experts,
+        dtype=dtype,
+        intermediate_size=intermediate_size,
+        hidden_size=hidden_size,
+        quant_config=QuantConfig(quant_algo=QuantAlgo.NVFP4),
+    )
+    return nvfp4_util.create_weights(x_sf_global=x_sf_global)
+
+
+def _create_cutlass_backend(
+    routing_method,
+    mapping,
+    num_experts,
+    hidden_size,
+    intermediate_size,
+    dtype,
+    weights,
+    quant_config=None,
+):
+    """Create a :class:`CutlassFusedMoE` backend, load *weights*, and move
+    to CUDA."""
+    model_config = _create_model_config(
+        num_experts=num_experts,
+        hidden_size=hidden_size,
+        intermediate_size=intermediate_size,
+        dtype=dtype,
+        moe_backend="CUTLASS",
+        mapping=mapping,
+        quant_config=quant_config,
+    )
+    backend = _create_backend(
+        moe_cls=CutlassFusedMoE,
+        routing_method=routing_method,
+        num_experts=num_experts,
+        hidden_size=hidden_size,
+        intermediate_size=intermediate_size,
+        dtype=dtype,
+        model_config=model_config,
+    )
+    backend.load_weights([copy.deepcopy(weights)])
+    backend.post_load_weights()
+    backend.cuda()
+    return backend
+
+
+# ---------------------------------------------------------------------------
+# Benchmark utilities
+# ---------------------------------------------------------------------------
+
+
+def _make_benchmark_fn(backend, x, router_logits, all_rank_num_tokens):
+    """Create a callable that runs one forward pass on *backend*.
+
+    When ``ENABLE_TORCH_COMPILE`` is ``True`` the forward is wrapped with
+    ``torch.compile(mode="reduce-overhead")``.
+    """
+    forward_fn = backend.forward
+
+    if ENABLE_TORCH_COMPILE:
+        forward_fn = torch.compile(forward_fn, mode="reduce-overhead")
+
+    def fn():
+        with torch.inference_mode():
+            return forward_fn(
+                x, router_logits, all_rank_num_tokens=all_rank_num_tokens,
+            )
+
+    return fn
+
+
+def _benchmark_forward(fn, warmup_iters=_WARMUP_ITERS, bench_iters=_BENCH_ITERS):
+    """Benchmark *fn* using CUDA events.  Returns the **median** time in ms.
+
+    * Warmup for *warmup_iters* iterations first.
+    * If ``ENABLE_CUDA_GRAPHS`` is ``True`` (and ``ENABLE_TORCH_COMPILE``
+      is ``False``), a CUDA graph is captured after warmup and replayed
+      for timing.  When ``ENABLE_TORCH_COMPILE`` is ``True`` the compiler
+      manages graphs internally, so manual capture is skipped.
+    """
+    torch.cuda.synchronize()
+
+    # --- Warmup ---
+    for _ in range(warmup_iters):
+        fn()
+    torch.cuda.synchronize()
+
+    # --- Optionally capture a CUDA graph ---
+    use_manual_graph = ENABLE_CUDA_GRAPHS and not ENABLE_TORCH_COMPILE
+    if use_manual_graph:
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            fn()
+        torch.cuda.synchronize()
+        runner = graph.replay
+    else:
+        runner = fn
+
+    # --- Timed iterations ---
+    start_events = [
+        torch.cuda.Event(enable_timing=True) for _ in range(bench_iters)
+    ]
+    end_events = [
+        torch.cuda.Event(enable_timing=True) for _ in range(bench_iters)
+    ]
+
+    for i in range(bench_iters):
+        start_events[i].record()
+        runner()
+        end_events[i].record()
+
+    torch.cuda.synchronize()
+
+    times = [s.elapsed_time(e) for s, e in zip(start_events, end_events)]
+    times.sort()
+    return times[len(times) // 2]  # median
 
 
 # ---------------------------------------------------------------------------
@@ -785,3 +934,340 @@ class TestDispatchPolicy:
         # Last group (high-precision) should contain most-active experts.
         assert 0 in plan.group_assignments[-1]
         assert 1 in plan.group_assignments[-1]
+
+
+# ---------------------------------------------------------------------------
+# Tests: Phase 2 runtime benchmarks (mixed-precision dispatch)
+# ---------------------------------------------------------------------------
+
+
+def _all_bf16_heter_config():
+    """Single-group heter config: all experts BF16 (fast-path)."""
+    return {
+        "groups": [
+            {
+                "name": "all_bf16",
+                "quant_algo": None,
+                "size_ratio": 1.0,
+                "checkpoint": None,
+            },
+        ],
+    }
+
+
+def _all_nvfp4_heter_config():
+    """Single-group heter config: all experts NVFP4."""
+    return {
+        "groups": [
+            {
+                "name": "all_nvfp4",
+                "quant_algo": QuantAlgo.NVFP4,
+                "size_ratio": 1.0,
+                "checkpoint": None,
+            },
+        ],
+    }
+
+
+def _mixed_heter_config(bf16_ratio=0.5):
+    """Two-group heter config: *bf16_ratio* BF16, remainder NVFP4."""
+    return {
+        "groups": [
+            {
+                "name": "cold_nvfp4",
+                "quant_algo": QuantAlgo.NVFP4,
+                "size_ratio": round(1.0 - bf16_ratio, 4),
+                "checkpoint": None,
+            },
+            {
+                "name": "hot_bf16",
+                "quant_algo": None,
+                "size_ratio": bf16_ratio,
+                "checkpoint": None,
+            },
+        ],
+    }
+
+
+class TestPhase2RuntimeBenchmark:
+    """Phase 2 runtime benchmarks: verify NVFP4 speedup and mixed ordering.
+
+    These tests measure wall-clock runtime using CUDA events.  They compare
+    three configurations:
+
+    1. **All BF16**  — CutlassFusedMoE with unquantized weights (baseline).
+    2. **All NVFP4** — CutlassFusedMoE with NVFP4 weights (should be fastest).
+    3. **Mixed**     — HeterCutlassFusedMoE with BF16 + NVFP4 groups (in
+       between).  Requires phase 2 per-group precision dispatch.
+
+    The global flags ``ENABLE_TORCH_COMPILE`` and ``ENABLE_CUDA_GRAPHS``
+    control whether the benchmark exercises those code paths.
+
+    Use larger model dimensions so that weight memory bandwidth dominates
+    kernel launch overhead and the speedup is measurable.
+    """
+
+    NUM_EXPERTS = 8
+    HIDDEN_SIZE = 4096
+    INTERMEDIATE_SIZE = 4096
+    DTYPE = torch.bfloat16
+    SEQ_LEN = 64
+    TOP_K = 2
+
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
+
+    def _setup_common(self):
+        """Return mapping, routing_method, inputs, and BF16 weights."""
+        mapping = Mapping()
+        mapping.rank = mpi_rank()
+
+        routing_method = RenormalizeMoeRoutingMethod(top_k=self.TOP_K)
+
+        x = torch.randn(
+            (self.SEQ_LEN, self.HIDDEN_SIZE),
+            dtype=self.DTYPE, device="cuda",
+        )
+        router_logits = torch.randn(
+            (self.SEQ_LEN, self.NUM_EXPERTS),
+            dtype=self.DTYPE, device="cuda",
+        )
+        all_rank_num_tokens = [self.SEQ_LEN] * mapping.world_size
+
+        bf16_weights = _create_unquantized_weights(
+            num_experts=self.NUM_EXPERTS,
+            hidden_size=self.HIDDEN_SIZE,
+            intermediate_size=self.INTERMEDIATE_SIZE,
+            dtype=self.DTYPE,
+        )
+
+        return mapping, routing_method, x, router_logits, all_rank_num_tokens, bf16_weights
+
+    # ------------------------------------------------------------------
+    # test: all-NVFP4 should be faster than all-BF16
+    # ------------------------------------------------------------------
+
+    @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
+    def test_all_nvfp4_faster_than_all_bf16(self):
+        """All-NVFP4 CutlassFusedMoE is faster than all-BF16.
+
+        Also logs the output deviation (max / mean absolute difference)
+        between the two precision modes for reference.
+        """
+        with torch.device("cuda"):
+            torch.manual_seed(42)
+            torch.cuda.manual_seed(42)
+
+            mapping, routing_method, x, router_logits, all_rank_num_tokens, bf16_weights = (
+                self._setup_common()
+            )
+
+            # --- BF16 baseline ---
+            bf16_backend = _create_cutlass_backend(
+                routing_method=routing_method,
+                mapping=mapping,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                weights=bf16_weights,
+            )
+
+            # --- NVFP4 ---
+            nvfp4_weights = _create_nvfp4_weights(
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                x=x,
+            )
+            nvfp4_backend = _create_cutlass_backend(
+                routing_method=routing_method,
+                mapping=mapping,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                weights=nvfp4_weights,
+                quant_config=QuantConfig(quant_algo=QuantAlgo.NVFP4),
+            )
+
+            # --- Log output deviation for reference ---
+            with torch.inference_mode():
+                bf16_out = bf16_backend.forward(
+                    x, router_logits, all_rank_num_tokens=all_rank_num_tokens,
+                )
+                nvfp4_out = nvfp4_backend.forward(
+                    x, router_logits, all_rank_num_tokens=all_rank_num_tokens,
+                )
+
+            diff = (bf16_out.float() - nvfp4_out.float()).abs()
+            max_diff = diff.max().item()
+            mean_diff = diff.mean().item()
+            print(
+                f"\n[Phase2 output deviation] BF16 vs NVFP4: "
+                f"max={max_diff:.6f}, mean={mean_diff:.6f}"
+            )
+
+            # --- Benchmark ---
+            bf16_fn = _make_benchmark_fn(
+                bf16_backend, x, router_logits, all_rank_num_tokens,
+            )
+            nvfp4_fn = _make_benchmark_fn(
+                nvfp4_backend, x, router_logits, all_rank_num_tokens,
+            )
+
+            bf16_ms = _benchmark_forward(bf16_fn)
+            nvfp4_ms = _benchmark_forward(nvfp4_fn)
+            print(
+                f"[Phase2 runtime] BF16={bf16_ms:.3f}ms, "
+                f"NVFP4={nvfp4_ms:.3f}ms, "
+                f"speedup={bf16_ms / nvfp4_ms:.2f}x"
+            )
+
+            assert nvfp4_ms < bf16_ms, (
+                f"NVFP4 ({nvfp4_ms:.3f}ms) should be faster than "
+                f"BF16 ({bf16_ms:.3f}ms)"
+            )
+
+    # ------------------------------------------------------------------
+    # test: mixed heter runtime is between all-BF16 and all-NVFP4
+    # ------------------------------------------------------------------
+
+    @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
+    @pytest.mark.skip(
+        reason="Requires phase 2 per-group precision dispatch in "
+               "HeterCutlassFusedMoE._build_group_caches / run_moe"
+    )
+    def test_heter_mixed_runtime_between_extremes(self):
+        """Mixed heter (BF16 + NVFP4) runtime is between the two extremes.
+
+        **Preconditions** (phase 2):
+
+        * ``HeterCutlassFusedMoE._build_group_caches()`` selects from the
+          correct weight set (BF16 or NVFP4) based on each group's
+          ``quant_algo``.
+        * ``run_moe()`` quantises input per-group and passes per-group
+          quant flags to ``fused_moe()``.
+        * The heter backend must be loaded with *dual* weight sets (one
+          per precision) via a phase-2 weight loading API.
+
+        **Test outline**:
+
+        1. Create all-BF16 CutlassFusedMoE → ``bf16_ms``
+        2. Create all-NVFP4 CutlassFusedMoE → ``nvfp4_ms``
+        3. Create HeterCutlassFusedMoE with 50/50 BF16+NVFP4 → ``mixed_ms``
+        4. Assert ``nvfp4_ms <= mixed_ms <= bf16_ms``
+        """
+        with torch.device("cuda"):
+            torch.manual_seed(42)
+            torch.cuda.manual_seed(42)
+
+            mapping, routing_method, x, router_logits, all_rank_num_tokens, bf16_weights = (
+                self._setup_common()
+            )
+
+            # --- BF16 baseline ---
+            bf16_backend = _create_cutlass_backend(
+                routing_method=routing_method,
+                mapping=mapping,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                weights=bf16_weights,
+            )
+
+            # --- NVFP4 baseline ---
+            nvfp4_weights = _create_nvfp4_weights(
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                x=x,
+            )
+            nvfp4_backend = _create_cutlass_backend(
+                routing_method=routing_method,
+                mapping=mapping,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                weights=nvfp4_weights,
+                quant_config=QuantConfig(quant_algo=QuantAlgo.NVFP4),
+            )
+
+            # --- Mixed heter backend ---
+            # NOTE: Phase 2 weight loading TBD — this section must be
+            # updated once the dual-weight-set API is available.
+            heter_model_config = _create_model_config(
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                moe_backend="HETER",
+                mapping=mapping,
+                heter_config=_mixed_heter_config(bf16_ratio=0.5),
+            )
+            heter_backend = _create_backend(
+                moe_cls=HeterCutlassFusedMoE,
+                routing_method=routing_method,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                model_config=heter_model_config,
+            )
+            # Phase 2 TODO: load dual weight sets (BF16 + NVFP4) into
+            # heter_backend.  The exact API will be determined by the
+            # phase 2 implementation.  For now we load BF16 weights only
+            # (phase 1 behavior — both groups share the same weights).
+            heter_backend.load_weights([copy.deepcopy(bf16_weights)])
+            heter_backend.post_load_weights()
+            heter_backend.cuda()
+
+            # --- Benchmark all three ---
+            bf16_fn = _make_benchmark_fn(
+                bf16_backend, x, router_logits, all_rank_num_tokens,
+            )
+            nvfp4_fn = _make_benchmark_fn(
+                nvfp4_backend, x, router_logits, all_rank_num_tokens,
+            )
+            mixed_fn = _make_benchmark_fn(
+                heter_backend, x, router_logits, all_rank_num_tokens,
+            )
+
+            bf16_ms = _benchmark_forward(bf16_fn)
+            nvfp4_ms = _benchmark_forward(nvfp4_fn)
+            mixed_ms = _benchmark_forward(mixed_fn)
+
+            print(
+                f"\n[Phase2 runtime] BF16={bf16_ms:.3f}ms, "
+                f"NVFP4={nvfp4_ms:.3f}ms, "
+                f"Mixed={mixed_ms:.3f}ms"
+            )
+
+            # Output deviation for reference
+            with torch.inference_mode():
+                bf16_out = bf16_backend.forward(
+                    x, router_logits, all_rank_num_tokens=all_rank_num_tokens,
+                )
+                mixed_out = heter_backend.forward(
+                    x, router_logits, all_rank_num_tokens=all_rank_num_tokens,
+                )
+            diff = (bf16_out.float() - mixed_out.float()).abs()
+            print(
+                f"[Phase2 output deviation] BF16 vs Mixed: "
+                f"max={diff.max().item():.6f}, "
+                f"mean={diff.mean().item():.6f}"
+            )
+
+            assert nvfp4_ms <= mixed_ms, (
+                f"Mixed ({mixed_ms:.3f}ms) should not be faster than "
+                f"all-NVFP4 ({nvfp4_ms:.3f}ms)"
+            )
+            assert mixed_ms <= bf16_ms, (
+                f"Mixed ({mixed_ms:.3f}ms) should not be slower than "
+                f"all-BF16 ({bf16_ms:.3f}ms)"
+            )

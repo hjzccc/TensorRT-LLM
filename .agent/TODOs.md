@@ -59,6 +59,14 @@
   - Working install: `/home/huanchen/TensorRT-LLM/` → `/code/tensorrt_llm`
   - Note: API divergence (`swiglu_gptoss_style` vs `gptoss_style`) between repos
 
+- [x] **Phase 2 runtime benchmark tests** — Added `TestPhase2RuntimeBenchmark` class with:
+  - `test_all_nvfp4_faster_than_all_bf16` (active) — CutlassFusedMoE(BF16) vs CutlassFusedMoE(NVFP4) runtime comparison using CUDA events
+  - `test_heter_mixed_runtime_between_extremes` (skipped until phase 2) — asserts mixed heter runtime is between all-BF16 and all-NVFP4
+  - Global flags `ENABLE_TORCH_COMPILE` / `ENABLE_CUDA_GRAPHS` to toggle those code paths
+  - Mixed test has TODO for dual weight set loading once phase 2 weight API lands
+
+- [ ] **Enable mixed runtime test** — Remove `pytest.mark.skip` on `test_heter_mixed_runtime_between_extremes` and update dual weight loading once phase 2 is implemented.
+
 - [ ] **Integration test with real model** — End-to-end test loading a small MoE model (e.g., Mixtral-8x7B) with HETER backend configured with 2 groups.
 
 - [ ] **Benchmark dispatch overhead** — Measure the Python overhead of per-call dispatch (policy + cache check + potential cache rebuild) to confirm it's acceptable.

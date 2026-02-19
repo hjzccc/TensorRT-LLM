@@ -83,7 +83,7 @@ class CutlassFusedMoE(MoE):
         },
         # NVFP4: SM in {100, 103}
         QuantAlgo.NVFP4: {
-            "sm_constraint": ("in", {100, 103}),
+            "sm_constraint": ("in", {100, 103, 120}),
             "dtypes": {torch.float16, torch.bfloat16, torch.float8_e4m3fn},
         },
         # W4A8_AWQ: SM in {89, 90} only
