@@ -34,6 +34,9 @@
 
 ## Policy Improvements
 
+- [x] **Exclusive token-to-group dispatch** — `_dispatch_by_assignment()` in `policy/heter_dispatch.py` was refactored so each token appears in exactly ONE group (argmax of per-group aggregate routing weight), replacing the old mask-based approach where each token appeared in multiple groups with zeroed scales for non-group experts.  This is an architectural correctness fix.
+  - Files: `policy/heter_dispatch.py` (`_dispatch_by_assignment`)
+
 - [ ] **EMA smoothing for ExpertLoadPolicy** — Current `ExpertLoadPolicy` computes frequency per-call from a single batch.  Add exponential moving average (EMA) to smooth frequency estimates across multiple `run_moe()` calls for more stable assignment.
   - Files: `policy/strategies.py` (`ExpertLoadPolicy`)
   - Design: track `_ema_counts` state in policy, update each `assign()` call with configurable decay factor
@@ -64,6 +67,15 @@
   - `test_heter_mixed_runtime_between_extremes` (skipped until phase 2) — asserts mixed heter runtime is between all-BF16 and all-NVFP4
   - Global flags `ENABLE_TORCH_COMPILE` / `ENABLE_CUDA_GRAPHS` to toggle those code paths
   - Mixed test has TODO for dual weight set loading once phase 2 weight API lands
+  - [x] **L2-cache-cold benchmark infrastructure** — Workspace rotation implemented (CUTLASS example 79e pattern):
+    - `_get_l2_cache_size_bytes()` via cuda-python driver bindings
+    - `_prepare_single_runner()`, `_create_rotating_runner()`, `_benchmark_timed()`
+    - `_create_one_workspace()`, `_estimate_workspace_bytes()`, `_create_benchmark_workspaces()`
+    - Workspaces rotate to exceed 3× L2 cache for cold measurements
+  - [x] **Fairer NVFP4 weight comparison** — `_create_nvfp4_weights()` replaced by `_quantize_bf16_to_nvfp4()` which quantizes directly from BF16 weights for fair comparison; `_create_unquantized_weights()` now uses `kaiming_fan_out=True` for variance control
+  - [x] **Scaled-up benchmark parameters** — 128 experts, top_k=8, seq=128, hidden=2048, intermediate=768
+
+- [x] **Enhanced policy ordering invariant tests** — `test_confidence_threshold_dispatch` and `test_expert_load_dispatch` have strengthened ordering assertions to verify policy correctness.
 
 - [ ] **Enable mixed runtime test** — Remove `pytest.mark.skip` on `test_heter_mixed_runtime_between_extremes` and update dual weight loading once phase 2 is implemented.
 
@@ -78,5 +90,8 @@
 - [ ] **Developer guide** — Document how to add new dispatch policies (inherit `BaseDispatchPolicy`, implement `assign()`).
 
 ## Infrastructure
+
+- [x] **L2-cache-cold benchmark infrastructure** — Added cuda-python driver bindings (`cuda.cuda`) to query L2 cache size (`CU_DEVICE_ATTRIBUTE_L2_CACHE_SIZE`) for realistic cold-cache microbenchmarks.  Workspace rotation buffers exceed 3× L2 to ensure cache eviction between timed runs.
+  - Files: `tests/unittest/_torch/modules/moe/test_heter_moe.py`
 
 - [ ] **Reconcile repo divergence** — Our project repo (`/home/huanchen/heter-moe-proj/TensorRT-LLM/`) vs working TRT-LLM install (`/home/huanchen/TensorRT-LLM/`) have minor API differences (`gptoss_style` naming).  Need to either sync or establish a consistent workflow.

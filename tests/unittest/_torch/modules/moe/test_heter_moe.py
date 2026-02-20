@@ -20,7 +20,6 @@ import os
 import pytest
 import torch
 from _torch.modules.moe.quantize_utils import (
-    NVFP4QuantizeUtil,
     get_test_quant_params,
 )
 from transformers.configuration_utils import PretrainedConfig
@@ -53,12 +52,12 @@ os.environ["ENABLE_CONFIGURABLE_MOE"] = "0"
 # tests below use these flags to optionally wrap forward with torch.compile
 # and/or measure via CUDA graph replay.
 # ---------------------------------------------------------------------------
-ENABLE_TORCH_COMPILE = False
-ENABLE_CUDA_GRAPHS = False
+ENABLE_TORCH_COMPILE = True
+ENABLE_CUDA_GRAPHS = True
 
 # Benchmark parameters
 _WARMUP_ITERS = 10
-_BENCH_ITERS = 50
+_BENCH_ITERS = 20
 
 
 def _nvfp4_supported(dtype: torch.dtype = torch.bfloat16) -> bool:
@@ -200,6 +199,7 @@ def _create_unquantized_weights(
     hidden_size: int,
     intermediate_size: int,
     dtype: torch.dtype,
+    kaiming_fan_out: bool = True,
 ):
     quantize_util_cls, quant_config, _ = get_test_quant_params(quant_algo=None, x=None)
     quantize_util_kwargs = {
@@ -210,7 +210,23 @@ def _create_unquantized_weights(
         "quant_config": quant_config,
     }
     quantize_util = quantize_util_cls(**quantize_util_kwargs)
-    return quantize_util.create_weights()
+    weights = quantize_util.create_weights()
+
+    # Apply Kaiming fan-out scaling to keep activations in a sane range.
+    # Without this, two back-to-back matmuls with a multiplicative gate
+    # (SiLU(x@W1) * x@W3) @ W2 cause variance to explode as O(dim^2).
+    #
+    # Weight shapes (Linear convention: [out_features, in_features]):
+    #   W1 [intermediate, hidden] → fan_out = intermediate
+    #   W3 [intermediate, hidden] → fan_out = intermediate
+    #   W2 [hidden, intermediate] → fan_out = hidden
+    if kaiming_fan_out:
+        for key, val in weights.items():
+            if isinstance(val, torch.Tensor) and val.ndim == 2:
+                fan_out = val.shape[0]
+                weights[key] = val * (2.0 / fan_out) ** 0.5
+
+    return weights
 
 
 def _create_cutlass_and_heter_backends(
@@ -270,28 +286,65 @@ def _create_cutlass_and_heter_backends(
     return cutlass_backend, heter_backend
 
 
-def _create_nvfp4_weights(
+def _quantize_bf16_to_nvfp4(
+    bf16_weights: dict,
     num_experts: int,
     hidden_size: int,
     intermediate_size: int,
     dtype: torch.dtype,
     x: torch.Tensor,
+    scaling_vector_size: int = 16,
 ):
-    """Create NVFP4-quantized weights for *num_experts* experts.
+    """Quantize existing BF16 MoE weights to NVFP4 format.
+
+    This compresses *bf16_weights* rather than generating random quantized
+    weights, ensuring BF16-vs-NVFP4 comparisons measure only quantization
+    error, not unrelated weight differences.
 
     Args:
-        x: Input tensor used to derive the NVFP4 activation scale
-           (``x_sf_global``).
+        bf16_weights: Weight dict from :func:`_create_unquantized_weights`.
+        x: Input tensor used to derive the activation scale.
     """
     x_sf_global = (448 * 6) / x.abs().max().float()
-    nvfp4_util = NVFP4QuantizeUtil(
-        num_experts=num_experts,
-        dtype=dtype,
-        intermediate_size=intermediate_size,
-        hidden_size=hidden_size,
-        quant_config=QuantConfig(quant_algo=QuantAlgo.NVFP4),
-    )
-    return nvfp4_util.create_weights(x_sf_global=x_sf_global)
+    weights = {}
+    for expert_id in range(num_experts):
+        w1 = bf16_weights[f"{expert_id}.w1.weight"]
+        w2 = bf16_weights[f"{expert_id}.w2.weight"]
+        w3 = bf16_weights[f"{expert_id}.w3.weight"]
+
+        w1_sf = (448 * 6) / w1.abs().max().float()
+        w2_sf = (448 * 6) / w2.abs().max().float()
+        w3_sf = (448 * 6) / w3.abs().max().float()
+        w3_w1_sf = min(w1_sf, w3_sf)
+
+        w1_q, w1_sb = torch.ops.trtllm.fp4_quantize(
+            w1, w3_w1_sf, scaling_vector_size, False, False)
+        w1_sb = w1_sb.view(intermediate_size, -1)
+
+        w2_q, w2_sb = torch.ops.trtllm.fp4_quantize(
+            w2, w2_sf, scaling_vector_size, False, False)
+        w2_sb = w2_sb.view(hidden_size, -1)
+
+        w3_q, w3_sb = torch.ops.trtllm.fp4_quantize(
+            w3, w3_w1_sf, scaling_vector_size, False, False)
+        w3_sb = w3_sb.view(intermediate_size, -1)
+
+        weights[f"{expert_id}.w1.weight"] = w1_q
+        weights[f"{expert_id}.w2.weight"] = w2_q
+        weights[f"{expert_id}.w3.weight"] = w3_q
+        weights[f"{expert_id}.w1.weight_scale"] = w1_sb.view(
+            torch.float8_e4m3fn).cuda()
+        weights[f"{expert_id}.w2.weight_scale"] = w2_sb.view(
+            torch.float8_e4m3fn).cuda()
+        weights[f"{expert_id}.w3.weight_scale"] = w3_sb.view(
+            torch.float8_e4m3fn).cuda()
+        weights[f"{expert_id}.w1.input_scale"] = 1.0 / x_sf_global.cuda()
+        weights[f"{expert_id}.w2.input_scale"] = 1.0 / x_sf_global.cuda()
+        weights[f"{expert_id}.w3.input_scale"] = 1.0 / x_sf_global.cuda()
+        weights[f"{expert_id}.w1.weight_scale_2"] = 1.0 / w3_w1_sf
+        weights[f"{expert_id}.w2.weight_scale_2"] = 1.0 / w2_sf
+        weights[f"{expert_id}.w3.weight_scale_2"] = 1.0 / w3_w1_sf
+    return weights
 
 
 def _create_cutlass_backend(
@@ -335,16 +388,35 @@ def _create_cutlass_backend(
 # ---------------------------------------------------------------------------
 
 
-def _make_benchmark_fn(backend, x, router_logits, all_rank_num_tokens):
-    """Create a callable that runs one forward pass on *backend*.
+def _get_l2_cache_size_bytes(device_id: int = 0) -> int:
+    """Return L2 cache size in bytes for *device_id*."""
+    from cuda.bindings import driver  # cuda-python
 
-    When ``ENABLE_TORCH_COMPILE`` is ``True`` the forward is wrapped with
-    ``torch.compile(mode="reduce-overhead")``.
+    err, device = driver.cuDeviceGet(device_id)
+    assert err == driver.CUresult.CUDA_SUCCESS, (
+        f"cuDeviceGet failed: {err}")
+    err, size = driver.cuDeviceGetAttribute(
+        driver.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_L2_CACHE_SIZE,
+        device,
+    )
+    assert err == driver.CUresult.CUDA_SUCCESS, (
+        f"cuDeviceGetAttribute(L2_CACHE_SIZE) failed: {err}")
+    return size
+
+
+def _prepare_single_runner(backend, x, router_logits,
+                           all_rank_num_tokens,
+                           warmup_iters=_WARMUP_ITERS):
+    """Prepare a ready-to-time callable for a single workspace.
+
+    Handles torch.compile wrapping, warmup, and optional CUDA graph
+    capture.  Returns a callable that executes one forward pass.
     """
     forward_fn = backend.forward
 
     if ENABLE_TORCH_COMPILE:
-        forward_fn = torch.compile(forward_fn, mode="reduce-overhead")
+        from tensorrt_llm._torch.compilation.backend import Backend as TrtBackend
+        forward_fn = torch.compile(forward_fn, backend=TrtBackend())
 
     def fn():
         with torch.inference_mode():
@@ -352,37 +424,55 @@ def _make_benchmark_fn(backend, x, router_logits, all_rank_num_tokens):
                 x, router_logits, all_rank_num_tokens=all_rank_num_tokens,
             )
 
-    return fn
-
-
-def _benchmark_forward(fn, warmup_iters=_WARMUP_ITERS, bench_iters=_BENCH_ITERS):
-    """Benchmark *fn* using CUDA events.  Returns the **median** time in ms.
-
-    * Warmup for *warmup_iters* iterations first.
-    * If ``ENABLE_CUDA_GRAPHS`` is ``True`` (and ``ENABLE_TORCH_COMPILE``
-      is ``False``), a CUDA graph is captured after warmup and replayed
-      for timing.  When ``ENABLE_TORCH_COMPILE`` is ``True`` the compiler
-      manages graphs internally, so manual capture is skipped.
-    """
-    torch.cuda.synchronize()
-
     # --- Warmup ---
+    torch.cuda.synchronize()
     for _ in range(warmup_iters):
         fn()
     torch.cuda.synchronize()
 
     # --- Optionally capture a CUDA graph ---
-    use_manual_graph = ENABLE_CUDA_GRAPHS and not ENABLE_TORCH_COMPILE
-    if use_manual_graph:
+    if ENABLE_CUDA_GRAPHS and not ENABLE_TORCH_COMPILE:
         graph = torch.cuda.CUDAGraph()
         with torch.cuda.graph(graph):
             fn()
         torch.cuda.synchronize()
-        runner = graph.replay
-    else:
-        runner = fn
+        return graph.replay
 
-    # --- Timed iterations ---
+    return fn
+
+
+def _create_rotating_runner(workspaces, warmup_iters=_WARMUP_ITERS):
+    """Build a rotating runner from *N* independent workspaces.
+
+    Each workspace is a ``(backend, x, router_logits, all_rank_num_tokens)``
+    tuple with **independently allocated** GPU memory.  The returned
+    callable cycles through per-workspace runners on every invocation,
+    ensuring that by the time a workspace is revisited its data has been
+    evicted from L2 cache — no explicit flush buffer needed.
+
+    This mirrors the workspace-rotation strategy from CUTLASS example 79e.
+    """
+    runners = []
+    for backend, x, router_logits, all_rank_num_tokens in workspaces:
+        runner = _prepare_single_runner(
+            backend, x, router_logits, all_rank_num_tokens,
+            warmup_iters=warmup_iters,
+        )
+        runners.append(runner)
+
+    n = len(runners)
+    counter = [0]  # mutable int via list
+
+    def rotating_fn():
+        result = runners[counter[0] % n]()
+        counter[0] += 1
+        return result
+
+    return rotating_fn
+
+
+def _benchmark_timed(runner, bench_iters=_BENCH_ITERS):
+    """Time *runner* using CUDA events.  Returns the **median** time in ms."""
     start_events = [
         torch.cuda.Event(enable_timing=True) for _ in range(bench_iters)
     ]
@@ -448,14 +538,17 @@ def test_heter_single_group_matches_cutlass(dtype):
         cutlass_out = _run_forward(cutlass_backend, x, router_logits, all_rank_num_tokens)
         heter_out = _run_forward(heter_backend, x, router_logits, all_rank_num_tokens)
 
+        print(cutlass_out)
+        print(heter_out)
+
         torch.testing.assert_close(heter_out, cutlass_out, rtol=1e-5, atol=1e-5)
 
 
 @pytest.mark.parametrize("dtype", [torch.bfloat16], ids=lambda val: f"dtype={val}")
 def test_heter_two_groups_matches_cutlass(dtype):
-    seq_len = 8
-    top_k = 2
-    num_experts = 8
+    seq_len = 128
+    top_k = 8
+    num_experts = 128
     hidden_size = 512
     intermediate_size = 512
 
@@ -698,11 +791,14 @@ class TestDispatchPolicy:
     SEQ_LEN = 8
     TOP_K = 2
 
-    def _create_backend_with_weights(self, heter_config):
+    def _create_backend_with_weights(self, heter_config, *, seq_len=None,
+                                     top_k=None):
         """Create a HeterCutlassFusedMoE backend with BF16 weights."""
+        seq_len = seq_len if seq_len is not None else self.SEQ_LEN
+        top_k = top_k if top_k is not None else self.TOP_K
         mapping = Mapping()
         mapping.rank = mpi_rank()
-        routing_method = RenormalizeMoeRoutingMethod(top_k=self.TOP_K)
+        routing_method = RenormalizeMoeRoutingMethod(top_k=top_k)
         weights = _create_unquantized_weights(
             num_experts=self.NUM_EXPERTS,
             hidden_size=self.HIDDEN_SIZE,
@@ -734,11 +830,11 @@ class TestDispatchPolicy:
             backend.post_load_weights()
             backend.cuda()
             x = torch.randn(
-                (self.SEQ_LEN, self.HIDDEN_SIZE),
+                (seq_len, self.HIDDEN_SIZE),
                 dtype=self.DTYPE, device="cuda",
             )
             router_logits = torch.randn(
-                (self.SEQ_LEN, self.NUM_EXPERTS),
+                (seq_len, self.NUM_EXPERTS),
                 dtype=self.DTYPE, device="cuda",
             )
             token_selected_experts, token_final_scales = routing_method.apply(
@@ -846,9 +942,13 @@ class TestDispatchPolicy:
     # ------------------------------------------------------------------
 
     def test_confidence_threshold_dispatch(self):
-        """ConfidenceThresholdHeterDispatch produces valid dispatch tuples."""
+        """ConfidenceThresholdHeterDispatch assigns higher-scoring experts to later groups."""
+        # Use a larger batch and top_k so that per-expert mean routing
+        # weights are spread out enough to produce a clear ordering.
+        seq_len = 256
+        top_k = 4
         backend, x, _, tse, tfs = self._create_backend_with_weights(
-            _two_bf16_group_config()
+            _two_bf16_group_config(), seq_len=seq_len, top_k=top_k,
         )
         backend.policy = ConfidenceThresholdHeterDispatch(
             num_experts=self.NUM_EXPERTS,
@@ -868,17 +968,49 @@ class TestDispatchPolicy:
             if tok_idx is not None:
                 assert experts is not None
                 assert scales is not None
-                assert experts.shape[1] == self.TOP_K
+                assert experts.shape[1] == top_k
                 assert scales.shape == experts.shape
+
+        # Verify that every expert in a later group has a higher mean
+        # routing weight than every expert in the earlier group (the
+        # invariant maintained by _assign_by_score's descending sort).
+        flat_experts = tse.reshape(-1).long()
+        flat_scales = tfs.reshape(-1)
+
+        weight_sum = torch.zeros(
+            self.NUM_EXPERTS, dtype=torch.float32, device=tse.device)
+        weight_sum.scatter_add_(0, flat_experts, flat_scales)
+        expert_count = torch.bincount(
+            flat_experts, minlength=self.NUM_EXPERTS,
+        ).to(dtype=torch.float32).clamp_min_(1.0)
+        mean_score = weight_sum / expert_count
+
+        assignment = backend.policy._assign(tse, tfs, router_logits=None)
+        for i in range(len(assignment) - 1):
+            earlier = assignment[i]
+            later = assignment[i + 1]
+            if not earlier or not later:
+                continue
+            max_score_earlier = mean_score[earlier].max().item()
+            min_score_later = mean_score[later].min().item()
+            assert min_score_later >= max_score_earlier, (
+                f"Group {i + 1} min mean score ({min_score_later:.4f}) < "
+                f"group {i} max mean score ({max_score_earlier:.4f}). "
+                f"Scores: {mean_score.tolist()}"
+            )
 
     # ------------------------------------------------------------------
     # Expert load dispatch
     # ------------------------------------------------------------------
 
     def test_expert_load_dispatch(self):
-        """ExpertLoadHeterDispatch produces valid dispatch tuples."""
+        """ExpertLoadHeterDispatch assigns higher-load experts to later groups."""
+        # Use a larger batch and top_k so that expert activation counts
+        # are spread out enough to produce a clear load-based ordering.
+        seq_len = 256
+        top_k = 4
         backend, x, _, tse, tfs = self._create_backend_with_weights(
-            _two_bf16_group_config()
+            _two_bf16_group_config(), seq_len=seq_len, top_k=top_k,
         )
         backend.policy = ExpertLoadHeterDispatch(
             num_experts=self.NUM_EXPERTS,
@@ -892,6 +1024,26 @@ class TestDispatchPolicy:
             1 for tok_idx, _, _ in dispatches if tok_idx is not None
         )
         assert active_count >= 1
+
+        # Verify that every expert in a later group has activation count
+        # >= every expert in the earlier group (the invariant maintained
+        # by _assign_by_score's descending sort).
+        flat_experts = tse.reshape(-1).long()
+        counts = torch.bincount(flat_experts, minlength=self.NUM_EXPERTS)
+
+        assignment = backend.policy._assign(tse, tfs, router_logits=None)
+        for i in range(len(assignment) - 1):
+            earlier = assignment[i]
+            later = assignment[i + 1]
+            if not earlier or not later:
+                continue
+            max_load_earlier = counts[earlier].max().item()
+            min_load_later = counts[later].min().item()
+            assert min_load_later >= max_load_earlier, (
+                f"Group {i + 1} min load ({min_load_later}) < "
+                f"group {i} max load ({max_load_earlier}). "
+                f"Counts: {counts.tolist()}"
+            )
 
     # ------------------------------------------------------------------
     # Fallback without signals
@@ -1059,12 +1211,14 @@ class TestRuntimeBenchmark:
     kernel launch overhead and the speedup is measurable.
     """
 
-    NUM_EXPERTS = 8
-    HIDDEN_SIZE = 4096
-    INTERMEDIATE_SIZE = 4096
+    NUM_EXPERTS = 128
+    HIDDEN_SIZE = 2048
+    INTERMEDIATE_SIZE = 768
     DTYPE = torch.bfloat16
     SEQ_LEN = 64
-    TOP_K = 2
+    TOP_K = 8
+
+    _MAX_WORKSPACE_COUNT = 16
 
     # ------------------------------------------------------------------
     # helpers
@@ -1096,6 +1250,188 @@ class TestRuntimeBenchmark:
 
         return mapping, routing_method, x, router_logits, all_rank_num_tokens, bf16_weights
 
+    def _estimate_workspace_bytes(self, scheme):
+        """Estimate GPU bytes for one workspace of the given *scheme*.
+
+        Each scheme is benchmarked independently, so the L2 budget is
+        calculated per-scheme (not across all schemes combined).
+
+        Supported schemes: ``"bf16"``, ``"nvfp4"``, ``"mixed"``.
+        """
+        # bpe = torch.finfo(self.DTYPE).bits // 8
+        # weight_elements = (
+        #     self.NUM_EXPERTS * 3 * self.HIDDEN_SIZE * self.INTERMEDIATE_SIZE
+        # )
+
+        # bf16_weight_bytes = weight_elements * bpe
+        # nvfp4_weight_bytes = int(weight_elements * bpe * 0.55)
+
+        bf16_weight_bytes = self.NUM_EXPERTS * 3 * self.HIDDEN_SIZE * self.INTERMEDIATE_SIZE * 2
+        nvfp4_weight_bytes = self.NUM_EXPERTS * 3 * self.HIDDEN_SIZE * self.INTERMEDIATE_SIZE * 0.5
+
+        input_bytes = 0
+        # (
+        #     self.SEQ_LEN * self.HIDDEN_SIZE
+        #     + self.SEQ_LEN * self.NUM_EXPERTS
+        # ) * bpe
+
+        if scheme == "bf16":
+            return bf16_weight_bytes + input_bytes
+        if scheme == "nvfp4":
+            return nvfp4_weight_bytes + input_bytes
+        if scheme == "mixed":
+            # BF16 parent weights + NVFP4 registered group weights
+            return bf16_weight_bytes + nvfp4_weight_bytes + input_bytes
+        raise ValueError(f"Unknown scheme: {scheme!r}")
+
+    def _create_one_workspace(self, scheme, mapping, routing_method,
+                              x, router_logits, all_rank_num_tokens):
+        """Create a single workspace tuple for *scheme*.
+
+        Returns ``(backend, x, router_logits, all_rank_num_tokens)``
+        with freshly allocated tensors at new GPU addresses.
+        """
+        ws_x = torch.randn_like(x)
+        ws_logits = torch.randn_like(router_logits)
+
+        ws_bf16_w = _create_unquantized_weights(
+            num_experts=self.NUM_EXPERTS,
+            hidden_size=self.HIDDEN_SIZE,
+            intermediate_size=self.INTERMEDIATE_SIZE,
+            dtype=self.DTYPE,
+            kaiming_fan_out=True,
+        )
+
+        if scheme == "bf16":
+            backend = _create_cutlass_backend(
+                routing_method=routing_method,
+                mapping=mapping,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                weights=ws_bf16_w,
+            )
+            return (backend, ws_x, ws_logits, all_rank_num_tokens)
+
+        # Both "nvfp4" and "mixed" need quantized weights.
+        ws_nvfp4_w = _quantize_bf16_to_nvfp4(
+            bf16_weights=ws_bf16_w,
+            num_experts=self.NUM_EXPERTS,
+            hidden_size=self.HIDDEN_SIZE,
+            intermediate_size=self.INTERMEDIATE_SIZE,
+            dtype=self.DTYPE,
+            x=ws_x,
+        )
+        ws_nvfp4_backend = _create_cutlass_backend(
+            routing_method=routing_method,
+            mapping=mapping,
+            num_experts=self.NUM_EXPERTS,
+            hidden_size=self.HIDDEN_SIZE,
+            intermediate_size=self.INTERMEDIATE_SIZE,
+            dtype=self.DTYPE,
+            weights=ws_nvfp4_w,
+            quant_config=QuantConfig(quant_algo=QuantAlgo.NVFP4),
+        )
+
+        if scheme == "nvfp4":
+            return (ws_nvfp4_backend, ws_x, ws_logits, all_rank_num_tokens)
+
+        if scheme == "mixed":
+            ws_heter_cfg = _create_model_config(
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                moe_backend="HETER",
+                mapping=mapping,
+                heter_config=_mixed_heter_config(bf16_ratio=0.5),
+            )
+            ws_heter = _create_backend(
+                moe_cls=HeterCutlassFusedMoE,
+                routing_method=routing_method,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                model_config=ws_heter_cfg,
+            )
+            ws_heter.load_weights([copy.deepcopy(ws_bf16_w)])
+            ws_heter.post_load_weights()
+            ws_heter.cuda()
+            ws_heter.register_group_weights(
+                group_idx=0,
+                w3_w1_weight=ws_nvfp4_backend.w3_w1_weight.data,
+                w2_weight=ws_nvfp4_backend.w2_weight.data,
+                quant_scales=ws_nvfp4_backend.quant_scales,
+                weight_dtype=ws_nvfp4_backend.w3_w1_weight.dtype,
+                fc31_input_scale=ws_nvfp4_backend.fc31_input_scale,
+                scaling_vector_size=getattr(
+                    ws_nvfp4_backend, "scaling_vector_size", 16
+                ),
+            )
+            return (ws_heter, ws_x, ws_logits, all_rank_num_tokens)
+
+        raise ValueError(f"Unknown scheme: {scheme!r}")
+
+    def _create_benchmark_workspaces(
+        self,
+        scheme,
+        *,
+        initial_backend,
+        mapping,
+        routing_method,
+        x,
+        router_logits,
+        all_rank_num_tokens,
+    ):
+        """Build rotated workspaces for a single *scheme*.
+
+        Keeps appending independently-allocated workspaces until the
+        cumulative footprint exceeds 3× the L2 cache size, ensuring
+        that by the time a workspace is revisited during rotation its
+        data has been fully evicted from L2.
+
+        Workspace 0 reuses *initial_backend* and the caller's inputs
+        (also used for the correctness check).
+
+        Args:
+            scheme: ``"bf16"``, ``"nvfp4"``, or ``"mixed"``.
+            initial_backend: The already-created backend for workspace 0.
+
+        Returns:
+            List of ``(backend, x, router_logits, all_rank_num_tokens)``
+            tuples.
+        """
+        workspaces = [
+            (initial_backend, x, router_logits, all_rank_num_tokens),
+        ]
+
+        per_ws_bytes = self._estimate_workspace_bytes(scheme)
+        allocated_bytes = per_ws_bytes  # workspace 0
+
+        l2_bytes = _get_l2_cache_size_bytes()
+        target_bytes = 3 * l2_bytes
+
+        while (allocated_bytes < target_bytes
+               and len(workspaces) < self._MAX_WORKSPACE_COUNT):
+            workspaces.append(
+                self._create_one_workspace(
+                    scheme, mapping, routing_method,
+                    x, router_logits, all_rank_num_tokens,
+                )
+            )
+            allocated_bytes += per_ws_bytes
+
+        print(
+            f"[workspace rotation] scheme={scheme}, "
+            f"L2={l2_bytes / (1 << 20):.1f} MB, "
+            f"per_ws={per_ws_bytes / (1 << 20):.1f} MB, "
+            f"count={len(workspaces)}, "
+            f"total={allocated_bytes / (1 << 20):.1f} MB"
+        )
+        return workspaces
+
     # ------------------------------------------------------------------
     # test: all-NVFP4 should be faster than all-BF16
     # ------------------------------------------------------------------
@@ -1126,14 +1462,19 @@ class TestRuntimeBenchmark:
                 weights=bf16_weights,
             )
 
-            # --- NVFP4 ---
-            nvfp4_weights = _create_nvfp4_weights(
+            # --- NVFP4 (quantized from the same BF16 weights) ---
+            nvfp4_weights = _quantize_bf16_to_nvfp4(
+                bf16_weights=bf16_weights,
                 num_experts=self.NUM_EXPERTS,
                 hidden_size=self.HIDDEN_SIZE,
                 intermediate_size=self.INTERMEDIATE_SIZE,
                 dtype=self.DTYPE,
                 x=x,
             )
+
+            # print(bf16_weights)
+            # print(nvfp4_weights)
+
             nvfp4_backend = _create_cutlass_backend(
                 routing_method=routing_method,
                 mapping=mapping,
@@ -1153,7 +1494,10 @@ class TestRuntimeBenchmark:
                 nvfp4_out = nvfp4_backend.forward(
                     x, router_logits, all_rank_num_tokens=all_rank_num_tokens,
                 )
-
+            print("\nOutput deviation between BF16 and NVFP4:")
+            print(bf16_out)
+            print(nvfp4_out)
+            print()
             diff = (bf16_out.float() - nvfp4_out.float()).abs()
             max_diff = diff.max().item()
             mean_diff = diff.mean().item()
@@ -1162,16 +1506,31 @@ class TestRuntimeBenchmark:
                 f"max={max_diff:.6f}, mean={mean_diff:.6f}"
             )
 
-            # --- Benchmark ---
-            bf16_fn = _make_benchmark_fn(
-                bf16_backend, x, router_logits, all_rank_num_tokens,
+            # --- Benchmark (L2-cold via workspace rotation) ---
+            bf16_workspaces = self._create_benchmark_workspaces(
+                "bf16",
+                initial_backend=bf16_backend,
+                mapping=mapping,
+                routing_method=routing_method,
+                x=x,
+                router_logits=router_logits,
+                all_rank_num_tokens=all_rank_num_tokens,
             )
-            nvfp4_fn = _make_benchmark_fn(
-                nvfp4_backend, x, router_logits, all_rank_num_tokens,
+            nvfp4_workspaces = self._create_benchmark_workspaces(
+                "nvfp4",
+                initial_backend=nvfp4_backend,
+                mapping=mapping,
+                routing_method=routing_method,
+                x=x,
+                router_logits=router_logits,
+                all_rank_num_tokens=all_rank_num_tokens,
             )
 
-            bf16_ms = _benchmark_forward(bf16_fn)
-            nvfp4_ms = _benchmark_forward(nvfp4_fn)
+            bf16_runner = _create_rotating_runner(bf16_workspaces)
+            nvfp4_runner = _create_rotating_runner(nvfp4_workspaces)
+
+            bf16_ms = _benchmark_timed(bf16_runner)
+            nvfp4_ms = _benchmark_timed(nvfp4_runner)
             print(
                 f"[runtime] BF16={bf16_ms:.3f}ms, "
                 f"NVFP4={nvfp4_ms:.3f}ms, "
@@ -1210,18 +1569,19 @@ class TestRuntimeBenchmark:
             )
 
             # --- BF16 baseline ---
-            bf16_backend = _create_cutlass_backend(
-                routing_method=routing_method,
-                mapping=mapping,
-                num_experts=self.NUM_EXPERTS,
-                hidden_size=self.HIDDEN_SIZE,
-                intermediate_size=self.INTERMEDIATE_SIZE,
-                dtype=self.DTYPE,
-                weights=bf16_weights,
-            )
+            # bf16_backend = _create_cutlass_backend(
+            #     routing_method=routing_method,
+            #     mapping=mapping,
+            #     num_experts=self.NUM_EXPERTS,
+            #     hidden_size=self.HIDDEN_SIZE,
+            #     intermediate_size=self.INTERMEDIATE_SIZE,
+            #     dtype=self.DTYPE,
+            #     weights=bf16_weights,
+            # )
 
-            # --- NVFP4 baseline ---
-            nvfp4_weights = _create_nvfp4_weights(
+            # --- NVFP4 baseline (quantized from the same BF16 weights) ---
+            nvfp4_weights = _quantize_bf16_to_nvfp4(
+                bf16_weights=bf16_weights,
                 num_experts=self.NUM_EXPERTS,
                 hidden_size=self.HIDDEN_SIZE,
                 intermediate_size=self.INTERMEDIATE_SIZE,
@@ -1279,20 +1639,32 @@ class TestRuntimeBenchmark:
                 ),
             )
 
-            # --- Benchmark all three ---
-            bf16_fn = _make_benchmark_fn(
-                bf16_backend, x, router_logits, all_rank_num_tokens,
+            # --- Benchmark all three (L2-cold via workspace rotation) ---
+            _ws_kwargs = dict(
+                mapping=mapping,
+                routing_method=routing_method,
+                x=x,
+                router_logits=router_logits,
+                all_rank_num_tokens=all_rank_num_tokens,
             )
-            nvfp4_fn = _make_benchmark_fn(
-                nvfp4_backend, x, router_logits, all_rank_num_tokens,
-            )
-            mixed_fn = _make_benchmark_fn(
-                heter_backend, x, router_logits, all_rank_num_tokens,
+            # bf16_workspaces = self._create_benchmark_workspaces(
+            #     "bf16", initial_backend=bf16_backend, **_ws_kwargs,
+            # )
+            # nvfp4_workspaces = self._create_benchmark_workspaces(
+            #     "nvfp4", initial_backend=nvfp4_backend, **_ws_kwargs,
+            # )
+            mixed_workspaces = self._create_benchmark_workspaces(
+                "mixed", initial_backend=heter_backend, **_ws_kwargs,
             )
 
-            bf16_ms = _benchmark_forward(bf16_fn)
-            nvfp4_ms = _benchmark_forward(nvfp4_fn)
-            mixed_ms = _benchmark_forward(mixed_fn)
+            # bf16_runner = _create_rotating_runner(bf16_workspaces)
+            # nvfp4_runner = _create_rotating_runner(nvfp4_workspaces)
+            mixed_runner = _create_rotating_runner(mixed_workspaces)
+
+            # bf16_ms = _benchmark_timed(bf16_runner)
+            # nvfp4_ms = _benchmark_timed(nvfp4_runner)
+            mixed_ms = _benchmark_timed(mixed_runner)
+            return
 
             print(
                 f"\n[runtime] BF16={bf16_ms:.3f}ms, "
@@ -1300,7 +1672,7 @@ class TestRuntimeBenchmark:
                 f"Mixed={mixed_ms:.3f}ms"
             )
 
-            # Output deviation for reference
+            # Output deviation for reference (workspace 0)
             with torch.inference_mode():
                 bf16_out = bf16_backend.forward(
                     x, router_logits, all_rank_num_tokens=all_rank_num_tokens,
@@ -1322,4 +1694,189 @@ class TestRuntimeBenchmark:
             assert mixed_ms <= bf16_ms, (
                 f"Mixed ({mixed_ms:.3f}ms) should not be slower than "
                 f"all-BF16 ({bf16_ms:.3f}ms)"
+            )
+
+    # ------------------------------------------------------------------
+    # test: heter mixed runtime is between heter all-BF16 and heter all-NVFP4
+    # ------------------------------------------------------------------
+
+    @pytest.mark.skipif(not _nvfp4_supported(), reason=NVFP4_UNAVAILABLE_REASON)
+    def test_heter_mixed_runtime_between_heter_extremes(self):
+        """Mixed heter runtime is between heter all-BF16 and heter all-NVFP4.
+
+        All three configurations use HeterCutlassFusedMoE with different
+        group layouts:
+
+        1. Heter all-BF16  — 1 group, all experts BF16 (parent weights).
+        2. Heter all-NVFP4 — 1 group, all experts NVFP4 (registered weights).
+        3. Heter mixed     — 2 groups, 50 % NVFP4 + 50 % BF16.
+
+        **Assertion**: ``heter_nvfp4_ms <= heter_mixed_ms <= heter_bf16_ms``
+        """
+        with torch.device("cuda"):
+            torch.manual_seed(42)
+            torch.cuda.manual_seed(42)
+
+            mapping, routing_method, x, router_logits, all_rank_num_tokens, bf16_weights = (
+                self._setup_common()
+            )
+
+            # --- Quantize BF16 weights to NVFP4 ---
+            nvfp4_weights = _quantize_bf16_to_nvfp4(
+                bf16_weights=bf16_weights,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                x=x,
+            )
+
+            # Standalone NVFP4 CutlassFusedMoE to extract processed tensors
+            # for register_group_weights.
+            nvfp4_cutlass = _create_cutlass_backend(
+                routing_method=routing_method,
+                mapping=mapping,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                weights=nvfp4_weights,
+                quant_config=QuantConfig(quant_algo=QuantAlgo.NVFP4),
+            )
+
+            # --- Heter all-BF16 (1 group, parent weights) -----------------
+            heter_bf16_cfg = _create_model_config(
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                moe_backend="HETER",
+                mapping=mapping,
+                heter_config=_all_bf16_heter_config(),
+            )
+            heter_bf16 = _create_backend(
+                moe_cls=HeterCutlassFusedMoE,
+                routing_method=routing_method,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                model_config=heter_bf16_cfg,
+            )
+            heter_bf16.load_weights([copy.deepcopy(bf16_weights)])
+            heter_bf16.post_load_weights()
+            heter_bf16.cuda()
+
+            # --- Heter all-NVFP4 (1 group, registered NVFP4 weights) ------
+            heter_nvfp4_cfg = _create_model_config(
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                moe_backend="HETER",
+                mapping=mapping,
+                heter_config=_all_nvfp4_heter_config(),
+            )
+            heter_nvfp4 = _create_backend(
+                moe_cls=HeterCutlassFusedMoE,
+                routing_method=routing_method,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                model_config=heter_nvfp4_cfg,
+            )
+            heter_nvfp4.load_weights([copy.deepcopy(bf16_weights)])
+            heter_nvfp4.post_load_weights()
+            heter_nvfp4.cuda()
+            heter_nvfp4.register_group_weights(
+                group_idx=0,
+                w3_w1_weight=nvfp4_cutlass.w3_w1_weight.data,
+                w2_weight=nvfp4_cutlass.w2_weight.data,
+                quant_scales=nvfp4_cutlass.quant_scales,
+                weight_dtype=nvfp4_cutlass.w3_w1_weight.dtype,
+                fc31_input_scale=nvfp4_cutlass.fc31_input_scale,
+                scaling_vector_size=getattr(
+                    nvfp4_cutlass, "scaling_vector_size", 16
+                ),
+            )
+
+            # --- Heter mixed (2 groups: NVFP4 + BF16) ---------------------
+            heter_mixed_cfg = _create_model_config(
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                moe_backend="HETER",
+                mapping=mapping,
+                heter_config=_mixed_heter_config(bf16_ratio=0.5),
+            )
+            heter_mixed = _create_backend(
+                moe_cls=HeterCutlassFusedMoE,
+                routing_method=routing_method,
+                num_experts=self.NUM_EXPERTS,
+                hidden_size=self.HIDDEN_SIZE,
+                intermediate_size=self.INTERMEDIATE_SIZE,
+                dtype=self.DTYPE,
+                model_config=heter_mixed_cfg,
+            )
+            heter_mixed.load_weights([copy.deepcopy(bf16_weights)])
+            heter_mixed.post_load_weights()
+            heter_mixed.cuda()
+            heter_mixed.register_group_weights(
+                group_idx=0,
+                w3_w1_weight=nvfp4_cutlass.w3_w1_weight.data,
+                w2_weight=nvfp4_cutlass.w2_weight.data,
+                quant_scales=nvfp4_cutlass.quant_scales,
+                weight_dtype=nvfp4_cutlass.w3_w1_weight.dtype,
+                fc31_input_scale=nvfp4_cutlass.fc31_input_scale,
+                scaling_vector_size=getattr(
+                    nvfp4_cutlass, "scaling_vector_size", 16
+                ),
+            )
+
+            # --- Benchmark (single-workspace, simple warmup) ---------------
+            runner_bf16 = _prepare_single_runner(
+                heter_bf16, x, router_logits, all_rank_num_tokens,
+            )
+            runner_nvfp4 = _prepare_single_runner(
+                heter_nvfp4, x, router_logits, all_rank_num_tokens,
+            )
+            runner_mixed = _prepare_single_runner(
+                heter_mixed, x, router_logits, all_rank_num_tokens,
+            )
+
+            heter_bf16_ms = _benchmark_timed(runner_bf16)
+            heter_nvfp4_ms = _benchmark_timed(runner_nvfp4)
+            heter_mixed_ms = _benchmark_timed(runner_mixed)
+
+            print(
+                f"\n[runtime] Heter-BF16={heter_bf16_ms:.3f}ms, "
+                f"Heter-NVFP4={heter_nvfp4_ms:.3f}ms, "
+                f"Heter-Mixed={heter_mixed_ms:.3f}ms"
+            )
+            return
+
+            # Output deviation for reference
+            with torch.inference_mode():
+                bf16_out = heter_bf16.forward(
+                    x, router_logits, all_rank_num_tokens=all_rank_num_tokens,
+                )
+                mixed_out = heter_mixed.forward(
+                    x, router_logits, all_rank_num_tokens=all_rank_num_tokens,
+                )
+            diff = (bf16_out.float() - mixed_out.float()).abs()
+            print(
+                f"[output deviation] Heter-BF16 vs Heter-Mixed: "
+                f"max={diff.max().item():.6f}, "
+                f"mean={diff.mean().item():.6f}"
+            )
+
+            assert heter_nvfp4_ms <= heter_mixed_ms, (
+                f"Heter-Mixed ({heter_mixed_ms:.3f}ms) should not be faster "
+                f"than Heter-NVFP4 ({heter_nvfp4_ms:.3f}ms)"
+            )
+            assert heter_mixed_ms <= heter_bf16_ms, (
+                f"Heter-Mixed ({heter_mixed_ms:.3f}ms) should not be slower "
+                f"than Heter-BF16 ({heter_bf16_ms:.3f}ms)"
             )

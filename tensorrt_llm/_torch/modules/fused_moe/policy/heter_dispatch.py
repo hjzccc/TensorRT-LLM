@@ -184,7 +184,6 @@ class HeterDispatchPolicy(abc.ABC):
         self,
         token_selected_experts: Optional[torch.Tensor],
         token_final_scales: Optional[torch.Tensor],
-        router_logits: Optional[torch.Tensor],
     ) -> List[List[int]]:
         """Return ``group_assignments[i]`` = sorted list of expert IDs
         for group *i*.  Union must equal ``range(num_experts)``."""
@@ -198,7 +197,6 @@ class HeterDispatchPolicy(abc.ABC):
         self,
         token_selected_experts: torch.Tensor,
         token_final_scales: torch.Tensor,
-        router_logits: Optional[torch.Tensor] = None,
     ) -> List[GroupDispatchTuple]:
         """Transform N-expert routing into per-group dispatches.
 
@@ -209,7 +207,6 @@ class HeterDispatchPolicy(abc.ABC):
         assignment = self._assign(
             token_selected_experts,
             token_final_scales,
-            router_logits,
         )
         if __debug__:
             _validate_assignment(assignment, self._num_experts)
@@ -228,29 +225,55 @@ class HeterDispatchPolicy(abc.ABC):
         token_final_scales: torch.Tensor,
     ) -> List[GroupDispatchTuple]:
         device = token_selected_experts.device
+        num_groups = len(group_assignments)
         results: List[GroupDispatchTuple] = []
 
-        for expert_ids in group_assignments:
-            mask = torch.zeros(
-                self._num_experts, dtype=torch.bool, device=device)
+        # Build expert → group lookup.
+        expert_to_group = torch.empty(
+            self._num_experts, dtype=torch.long, device=device)
+        for gidx, expert_ids in enumerate(group_assignments):
             if expert_ids:
-                ids = torch.tensor(expert_ids, dtype=torch.long, device=device)
-                mask[ids] = True
+                ids = torch.tensor(
+                    expert_ids, dtype=torch.long, device=device)
+                expert_to_group[ids] = gidx
 
-            valid = mask[token_selected_experts.long()]
-            token_in_group = valid.any(dim=1)
-            indices = token_in_group.nonzero(as_tuple=False).squeeze(1)
+        # For each token-expert slot, find which group that expert
+        # belongs to.  Shape: [num_tokens, top_k].
+        token_expert_groups = expert_to_group[
+            token_selected_experts.long()]
+
+        # Per-expert-slot splitting: each token appears in every group
+        # that has at least one of its routed experts.  Scales for
+        # non-group expert slots are zeroed so the kernel skips them.
+        for gidx in range(num_groups):
+            # slot_mask[i, j] = True if token i's j-th expert is in
+            # this group.
+            slot_mask = (token_expert_groups == gidx)
+
+            # Tokens that have at least one expert in this group.
+            token_has_group = slot_mask.any(dim=1)
+            indices = token_has_group.nonzero(as_tuple=False).squeeze(1)
 
             if indices.numel() == 0:
                 results.append((None, None, None))
                 continue
 
-            sub_experts = token_selected_experts[indices]
-            sub_scales = token_final_scales[indices]
-            masked_scales = torch.where(
-                valid[indices], sub_scales, sub_scales.new_zeros(1))
+            # Invalidate non-group expert slots: set expert ID to
+            # num_experts (out-of-range sentinel) so the CUTLASS kernel
+            # skips them entirely (no GEMM, no memory loads).
+            non_group = ~slot_mask[indices]
+            masked_experts = token_selected_experts[indices].clone()
+            masked_experts[non_group] = self._num_experts
+            masked_scales = token_final_scales[indices].clone()
+            masked_scales[non_group] = 0.0
 
-            results.append((indices, sub_experts, masked_scales))
+            results.append((
+                indices,
+                masked_experts,
+                masked_scales,
+            ))
+        # if len(results) > 1:
+        #     print("*********************************", results)
 
         return results
 
@@ -280,8 +303,7 @@ class RandomHeterDispatch(HeterDispatchPolicy):
         super().__init__(num_experts, group_size_ratios)
         self._seed = seed
 
-    def _assign(self, token_selected_experts, token_final_scales,
-                router_logits):
+    def _assign(self, token_selected_experts, token_final_scales):
         rng = random.Random(self._seed)
         all_ids = list(range(self._num_experts))
         rng.shuffle(all_ids)
@@ -295,7 +317,8 @@ class RandomHeterDispatch(HeterDispatchPolicy):
                 count = round(ratio * self._num_experts)
             assignments.append(sorted(all_ids[offset:offset + count]))
             offset += count
-
+        # if len(assignments) > 1:
+        #     print("$$$$$$$$$$$$$$$$$$$$$$$", assignments)
         return assignments
 
 
@@ -341,11 +364,10 @@ class ConfidenceThresholdHeterDispatch(HeterDispatchPolicy):
             dtype=torch.float32,
         )
 
-    def _assign(self, token_selected_experts, token_final_scales,
-                router_logits):
+    def _assign(self, token_selected_experts, token_final_scales):
         if token_selected_experts is None or token_final_scales is None:
             return self._fallback._assign(
-                token_selected_experts, token_final_scales, router_logits)
+                token_selected_experts, token_final_scales)
 
         self._ensure_buffers(self._num_experts,
                              token_final_scales.device)
@@ -399,11 +421,10 @@ class ExpertLoadHeterDispatch(HeterDispatchPolicy):
             seed=fallback_seed,
         )
 
-    def _assign(self, token_selected_experts, token_final_scales,
-                router_logits):
+    def _assign(self, token_selected_experts, token_final_scales):
         if token_selected_experts is None:
             return self._fallback._assign(
-                token_selected_experts, token_final_scales, router_logits)
+                token_selected_experts, token_final_scales)
 
         flat_experts = token_selected_experts.reshape(-1).long()
         counts = torch.bincount(

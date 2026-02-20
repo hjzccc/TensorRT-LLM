@@ -373,13 +373,10 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             [d.size_ratio for d in self._group_descs],
         )
 
-        # Router logits stashed by forward_chunk() for run_moe() to
-        # pass to the dispatch policy.  Set immediately before
-        # super().forward_chunk() which synchronously calls
-        # self.run_moe(), so the lifecycle is a single call-stack
-        # frame.  Safe under torch.compile and CUDA graphs (see
-        # forward_chunk docstring for details).
-        self._pending_router_logits: Optional[torch.Tensor] = None
+        # # Router logits stashed by forward_chunk() for run_moe() to
+        # # pass to the dispatch policy.  Currently unused by all
+        # # dispatch policies.
+        # self._pending_router_logits: Optional[torch.Tensor] = None
 
         # Per-group full weight sets (populated by register_group_weights).
         # ``None`` means "fall back to the parent module's weights".
@@ -822,18 +819,15 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             "HeterCutlassFusedMoE expects BF16 input from attention. "
             "Per-group quantization is handled inside run_moe()."
         )
-        self._pending_router_logits = router_logits
-        try:
-            return super().forward_chunk(
-                x,
-                router_logits,
-                output_dtype=output_dtype,
-                all_rank_num_tokens=all_rank_num_tokens,
-                use_dp_padding=use_dp_padding,
-                repeating_info=repeating_info,
-            )
-        finally:
-            self._pending_router_logits = None
+        # router_logits not stashed — no dispatch policy currently uses them.
+        return super().forward_chunk(
+            x,
+            router_logits,
+            output_dtype=output_dtype,
+            all_rank_num_tokens=all_rank_num_tokens,
+            use_dp_padding=use_dp_padding,
+            repeating_info=repeating_info,
+        )
 
     # ==============================================================
     # run_moe — per-group dispatch
@@ -866,7 +860,6 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         dispatches = self._policy.dispatch(
             token_selected_experts,
             token_final_scales,
-            router_logits=self._pending_router_logits,
         )
 
         # --- Fast path: single active group with parent weights ---
@@ -900,6 +893,9 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         )
 
         for group_idx, (tok_idx, grp_experts, grp_scales) in active:
+
+            # print("### [group]", group_idx, tok_idx.shape, tok_idx)
+
             desc = self._group_descs[group_idx]
 
             # -- Resolve weight source --
@@ -961,6 +957,8 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             )[0]
 
             accumulated[tok_idx] += group_result
+
+            # break
 
         if moe_output is not None:
             moe_output.copy_(accumulated)
