@@ -36,7 +36,7 @@ from tensorrt_llm._torch.modules.fused_moe.policy import (
     RandomHeterDispatch,
 )
 from tensorrt_llm._torch.modules.fused_moe.policy.heter_dispatch import (
-    _validate_assignment,
+    _validate_expert_to_group,
 )
 from tensorrt_llm._utils import mpi_rank
 from tensorrt_llm.mapping import Mapping
@@ -865,10 +865,9 @@ class TestDispatchPolicy:
         dispatches_2 = policy.dispatch(token_selected_experts, token_final_scales)
 
         for (t1, e1, s1), (t2, e2, s2) in zip(dispatches_1, dispatches_2):
-            if t1 is None:
-                assert t2 is None
+            if e1 is None:
+                assert e2 is None
             else:
-                torch.testing.assert_close(t1, t2)
                 torch.testing.assert_close(e1, e2)
                 torch.testing.assert_close(s1, s2)
 
@@ -895,15 +894,21 @@ class TestDispatchPolicy:
     # Assignment validation
     # ------------------------------------------------------------------
 
-    def test_validate_assignment_coverage(self):
-        """_validate_assignment rejects incomplete or duplicate assignments."""
-        _validate_assignment([[0, 1], [2, 3]], num_experts=4)
+    def test_validate_expert_to_group(self):
+        """_validate_expert_to_group checks shape and value range."""
+        # Valid: 4 experts, 2 groups.
+        e2g = torch.tensor([0, 0, 1, 1], dtype=torch.long, device="cuda")
+        _validate_expert_to_group(e2g, num_experts=4, num_groups=2)
 
-        with pytest.raises(ValueError, match="coverage mismatch"):
-            _validate_assignment([[0, 1], [2]], num_experts=4)
+        # Wrong shape.
+        bad_shape = torch.tensor([0, 0, 1], dtype=torch.long, device="cuda")
+        with pytest.raises(AssertionError, match="shape"):
+            _validate_expert_to_group(bad_shape, num_experts=4, num_groups=2)
 
-        with pytest.raises(ValueError, match="duplicate expert IDs"):
-            _validate_assignment([[0, 1], [1, 2, 3]], num_experts=4)
+        # Group index out of range.
+        bad_val = torch.tensor([0, 0, 2, 1], dtype=torch.long, device="cuda")
+        with pytest.raises(AssertionError, match="num_groups"):
+            _validate_expert_to_group(bad_val, num_experts=4, num_groups=2)
 
     # ------------------------------------------------------------------
     # Custom policy via subclass
@@ -914,11 +919,10 @@ class TestDispatchPolicy:
 
         class AllGroup0Policy(HeterDispatchPolicy):
 
-            def _assign(self, token_selected_experts, token_final_scales,
-                        router_logits):
-                return [list(range(self._num_experts))] + [
-                    [] for _ in range(self.num_groups - 1)
-                ]
+            def _assign(self, token_selected_experts, token_final_scales):
+                device = token_selected_experts.device
+                return torch.zeros(
+                    self._num_experts, dtype=torch.long, device=device)
 
         backend, x, _, tse, tfs = self._create_backend_with_weights(
             _two_bf16_group_config()
@@ -959,21 +963,15 @@ class TestDispatchPolicy:
         dispatches = backend.policy.dispatch(tse, tfs)
         assert len(dispatches) == 2
 
-        active_count = sum(
-            1 for tok_idx, _, _ in dispatches if tok_idx is not None
-        )
-        assert active_count >= 1
-
         for tok_idx, experts, scales in dispatches:
-            if tok_idx is not None:
-                assert experts is not None
-                assert scales is not None
-                assert experts.shape[1] == top_k
-                assert scales.shape == experts.shape
+            assert experts is not None
+            assert scales is not None
+            assert experts.shape[1] == top_k
+            assert scales.shape == experts.shape
 
         # Verify that every expert in a later group has a higher mean
         # routing weight than every expert in the earlier group (the
-        # invariant maintained by _assign_by_score's descending sort).
+        # invariant maintained by _assign_by_score_gpu's topk/argsort).
         flat_experts = tse.reshape(-1).long()
         flat_scales = tfs.reshape(-1)
 
@@ -985,17 +983,17 @@ class TestDispatchPolicy:
         ).to(dtype=torch.float32).clamp_min_(1.0)
         mean_score = weight_sum / expert_count
 
-        assignment = backend.policy._assign(tse, tfs, router_logits=None)
-        for i in range(len(assignment) - 1):
-            earlier = assignment[i]
-            later = assignment[i + 1]
-            if not earlier or not later:
+        e2g = backend.policy._assign(tse, tfs)
+        for gidx in range(1, backend.policy.num_groups):
+            earlier_mask = (e2g == gidx - 1)
+            later_mask = (e2g == gidx)
+            if not earlier_mask.any() or not later_mask.any():
                 continue
-            max_score_earlier = mean_score[earlier].max().item()
-            min_score_later = mean_score[later].min().item()
+            max_score_earlier = mean_score[earlier_mask].max().item()
+            min_score_later = mean_score[later_mask].min().item()
             assert min_score_later >= max_score_earlier, (
-                f"Group {i + 1} min mean score ({min_score_later:.4f}) < "
-                f"group {i} max mean score ({max_score_earlier:.4f}). "
+                f"Group {gidx} min mean score ({min_score_later:.4f}) < "
+                f"group {gidx - 1} max mean score ({max_score_earlier:.4f}). "
                 f"Scores: {mean_score.tolist()}"
             )
 
@@ -1020,28 +1018,27 @@ class TestDispatchPolicy:
         dispatches = backend.policy.dispatch(tse, tfs)
         assert len(dispatches) == 2
 
-        active_count = sum(
-            1 for tok_idx, _, _ in dispatches if tok_idx is not None
-        )
-        assert active_count >= 1
+        for _, experts, scales in dispatches:
+            assert experts is not None
+            assert scales is not None
 
         # Verify that every expert in a later group has activation count
         # >= every expert in the earlier group (the invariant maintained
-        # by _assign_by_score's descending sort).
+        # by _assign_by_score_gpu's topk/argsort).
         flat_experts = tse.reshape(-1).long()
         counts = torch.bincount(flat_experts, minlength=self.NUM_EXPERTS)
 
-        assignment = backend.policy._assign(tse, tfs, router_logits=None)
-        for i in range(len(assignment) - 1):
-            earlier = assignment[i]
-            later = assignment[i + 1]
-            if not earlier or not later:
+        e2g = backend.policy._assign(tse, tfs)
+        for gidx in range(1, backend.policy.num_groups):
+            earlier_mask = (e2g == gidx - 1)
+            later_mask = (e2g == gidx)
+            if not earlier_mask.any() or not later_mask.any():
                 continue
-            max_load_earlier = counts[earlier].max().item()
-            min_load_later = counts[later].min().item()
+            max_load_earlier = counts[earlier_mask].max().item()
+            min_load_later = counts[later_mask].min().item()
             assert min_load_later >= max_load_earlier, (
-                f"Group {i + 1} min load ({min_load_later}) < "
-                f"group {i} max load ({max_load_earlier}). "
+                f"Group {gidx} min load ({min_load_later}) < "
+                f"group {gidx - 1} max load ({max_load_earlier}). "
                 f"Counts: {counts.tolist()}"
             )
 
@@ -1057,14 +1054,13 @@ class TestDispatchPolicy:
             group_size_ratios=[0.75, 0.25],
             fallback_seed=42,
         )
-        assignment = policy._assign(
+        e2g = policy._assign(
             token_selected_experts=None,
             token_final_scales=None,
-            router_logits=None,
         )
-        assert len(assignment) == 2
-        total = sum(len(g) for g in assignment)
-        assert total == 8
+        assert e2g.shape == (8,)
+        assert e2g.min().item() >= 0
+        assert e2g.max().item() <= 1
 
     def test_expert_load_dispatch_fallback_without_signals(self):
         """ExpertLoadHeterDispatch._assign() falls back to random when
@@ -1074,14 +1070,13 @@ class TestDispatchPolicy:
             group_size_ratios=[0.75, 0.25],
             fallback_seed=42,
         )
-        assignment = policy._assign(
+        e2g = policy._assign(
             token_selected_experts=None,
             token_final_scales=None,
-            router_logits=None,
         )
-        assert len(assignment) == 2
-        total = sum(len(g) for g in assignment)
-        assert total == 8
+        assert e2g.shape == (8,)
+        assert e2g.min().item() >= 0
+        assert e2g.max().item() <= 1
 
     # ------------------------------------------------------------------
     # Score-based ranking
@@ -1103,15 +1098,11 @@ class TestDispatchPolicy:
             [[0.1, 0.9], [0.1, 0.9], [0.8, 0.9], [0.1, 0.8]],
             dtype=torch.float32, device="cuda",
         )
-        assignment = policy._assign(
-            token_selected_experts, token_final_scales, router_logits=None,
-        )
-        assert len(assignment) == 2
-        total = sum(len(g) for g in assignment)
-        assert total == 4
-        # Last group (high-precision) should get the highest-weight experts.
-        assert 2 in assignment[-1]
-        assert 3 in assignment[-1]
+        e2g = policy._assign(token_selected_experts, token_final_scales)
+        assert e2g.shape == (4,)
+        # Last group (high-precision, group 1) should get the highest-weight experts.
+        assert e2g[2].item() == 1
+        assert e2g[3].item() == 1
 
     def test_expert_load_dispatch_ranks_by_frequency(self):
         """ExpertLoadHeterDispatch puts frequently-activated experts in
@@ -1129,15 +1120,11 @@ class TestDispatchPolicy:
         token_final_scales = torch.ones_like(
             token_selected_experts, dtype=torch.float32,
         )
-        assignment = policy._assign(
-            token_selected_experts, token_final_scales, router_logits=None,
-        )
-        assert len(assignment) == 2
-        total = sum(len(g) for g in assignment)
-        assert total == 4
-        # Last group should contain most-active experts.
-        assert 0 in assignment[-1]
-        assert 1 in assignment[-1]
+        e2g = policy._assign(token_selected_experts, token_final_scales)
+        assert e2g.shape == (4,)
+        # Last group (group 1) should contain most-active experts.
+        assert e2g[0].item() == 1
+        assert e2g[1].item() == 1
 
 
 # ---------------------------------------------------------------------------

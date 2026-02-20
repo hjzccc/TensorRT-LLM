@@ -21,6 +21,7 @@ from .heter_dispatch import (
     GroupDispatchTuple,
     HeterDispatchPolicy,
     RandomHeterDispatch,
+    _validate_expert_to_group,
 )
 
 POLICY_REGISTRY: Dict[str, type] = {

@@ -863,14 +863,16 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         )
 
         # --- Fast path: single active group with parent weights ---
+        # A group is active if it has experts (d[1] is not None).
+        # tok_idx=None means "all tokens participate" (torch.where dispatch).
         active = [
-            (i, d) for i, d in enumerate(dispatches) if d[0] is not None
+            (i, d) for i, d in enumerate(dispatches) if d[1] is not None
         ]
         if len(active) == 1:
             gidx, (tok_idx, _, _) = active[0]
-            assert tok_idx is not None  # guaranteed by filter above
-            if (tok_idx.numel() == x.shape[0]
-                    and self._heter_weight_sets[gidx] is None):
+            all_tokens = (tok_idx is None
+                          or tok_idx.numel() == x.shape[0])
+            if all_tokens and self._heter_weight_sets[gidx] is None:
                 return super().run_moe(
                     x=x,
                     token_selected_experts=token_selected_experts,
@@ -894,8 +896,6 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
 
         for group_idx, (tok_idx, grp_experts, grp_scales) in active:
 
-            # print("### [group]", group_idx, tok_idx.shape, tok_idx)
-
             desc = self._group_descs[group_idx]
 
             # -- Resolve weight source --
@@ -916,8 +916,10 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
                 src_weight_dtype = self.w3_w1_weight.dtype
 
             # -- Per-group input quantisation --
+            # tok_idx=None means all tokens (torch.where dispatch).
+            x_in = x if tok_idx is None else x[tok_idx]
             qi = _quantize_input_for_group(
-                x[tok_idx], desc.quant_algo, ws,
+                x_in, desc.quant_algo, ws,
             )
 
             group_result = torch.ops.trtllm.fused_moe(
@@ -956,9 +958,11 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
                 out_tensor=None,
             )[0]
 
-            accumulated[tok_idx] += group_result
-
-            # break
+            # tok_idx=None => direct add (no scatter).
+            if tok_idx is None:
+                accumulated += group_result
+            else:
+                accumulated[tok_idx] += group_result
 
         if moe_output is not None:
             moe_output.copy_(accumulated)
