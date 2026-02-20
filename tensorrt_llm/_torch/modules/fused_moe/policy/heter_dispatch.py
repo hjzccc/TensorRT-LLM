@@ -44,16 +44,16 @@ Usage::
 
 Implementation notes — torch.compile & CUDA graph safety:
 
-* ``_assign()`` returns ``expert_to_group: torch.Tensor`` on GPU.
-  No ``.tolist()`` sync, no ``List[List[int]]`` round-trip.
+* ``_assign()`` writes into pre-allocated ``expert_to_group`` buffers
+  on GPU — no per-call allocations, no ``.tolist()`` sync.
 * ``dispatch()`` uses ``torch.where()`` for sentinel masking — all
   ops have fixed shapes, no ``nonzero()``, no dynamic outputs.
 * 2-group fast path uses ``torch.topk()`` (O(E) partial sort).
-* N-group fallback uses ``torch.argsort() + scatter_()`` on GPU.
+* N-group fallback uses ``torch.argsort() + scatter_()`` with
+  pre-computed ``group_labels`` — no CPU→GPU transfer in hot path.
 """
 
 import abc
-import random
 from typing import List, Optional, Tuple
 
 import torch
@@ -89,50 +89,61 @@ def _compute_group_sizes(
     return sizes
 
 
+def _build_group_labels(
+    num_experts: int,
+    group_size_ratios: List[float],
+    device: torch.device,
+) -> torch.Tensor:
+    """Pre-compute position-to-group labels for the N-group argsort path.
+
+    Returns a tensor of shape ``[num_experts]`` mapping sorted positions
+    to group indices.  Built once and cached — the CPU→GPU transfer only
+    happens at buffer init, not in the hot path.
+    """
+    num_groups = len(group_size_ratios)
+    group_sizes = _compute_group_sizes(num_experts, group_size_ratios)
+    group_labels_list: List[int] = []
+    for rev_idx, size in enumerate(reversed(group_sizes)):
+        original_gidx = num_groups - 1 - rev_idx
+        group_labels_list.extend([original_gidx] * size)
+    return torch.tensor(group_labels_list, dtype=torch.long, device=device)
+
+
 def _assign_by_score_gpu(
     scores: torch.Tensor,
     num_experts: int,
     group_size_ratios: List[float],
+    expert_to_group: torch.Tensor,
+    group_labels: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """GPU-only: split experts into groups by descending score.
 
-    Returns ``expert_to_group`` tensor of shape ``[num_experts]`` on the
-    same device as *scores*.  **Zero GPU-CPU synchronisation.**
+    Writes into the pre-allocated *expert_to_group* buffer of shape
+    ``[num_experts]``.  **Zero GPU-CPU synchronisation, no new tensor
+    allocations** — safe for ``torch.compile`` and CUDA graphs.
 
     The **last** group gets the highest-scoring experts (high-precision);
     the **first** group gets the lowest-scoring experts (low-precision).
 
-    For G=2 uses ``torch.topk`` (O(E) partial sort, 2 kernels).
-    For G>2 uses ``torch.argsort + scatter_`` (O(E log E), 3 kernels).
+    For G=2 uses ``torch.topk`` (O(E) partial sort).
+    For G>2 uses ``torch.argsort + scatter_`` (O(E log E)); requires
+    pre-computed *group_labels* from :func:`_build_group_labels`.
     """
     num_groups = len(group_size_ratios)
-    device = scores.device
 
     if num_groups == 2:
         # Fast path: single topk for the high-precision (last) group.
         k_high = round(num_experts * group_size_ratios[1])
-        expert_to_group = torch.zeros(
-            num_experts, dtype=torch.long, device=device)
+        expert_to_group.zero_()
         _, top_indices = torch.topk(scores, k_high)
         expert_to_group[top_indices] = 1
         return expert_to_group
     else:
         # General N-group path: argsort on GPU + scatter.
-        group_sizes = _compute_group_sizes(num_experts, group_size_ratios)
+        assert group_labels is not None, (
+            "group_labels required for N-group path (N>2); "
+            "pre-compute with _build_group_labels()")
         sorted_ids = torch.argsort(scores, descending=True)
-
-        # Build position-to-group mapping.  Last group gets top positions.
-        # This list is O(num_experts) ints built on CPU (no GPU sync).
-        group_labels_list: List[int] = []
-        for rev_idx, size in enumerate(reversed(group_sizes)):
-            original_gidx = num_groups - 1 - rev_idx
-            group_labels_list.extend([original_gidx] * size)
-
-        group_labels = torch.tensor(
-            group_labels_list, dtype=torch.long, device=device)
-
-        expert_to_group = torch.empty(
-            num_experts, dtype=torch.long, device=device)
         expert_to_group.scatter_(0, sorted_ids, group_labels)
         return expert_to_group
 
@@ -176,15 +187,27 @@ class HeterDispatchPolicy(abc.ABC):
         group_size_ratios: Target fraction of experts for each group.
             Must sum to 1.0.  ``len(group_size_ratios)`` determines
             the number of groups.
+        device: Target device for pre-allocated buffers.  Defaults to
+            ``'cuda'``.
     """
 
     def __init__(
         self,
         num_experts: int,
         group_size_ratios: List[float],
+        device: Optional[torch.device] = None,
     ):
         self._num_experts = num_experts
         self._group_size_ratios = group_size_ratios
+        if device is None:
+            device = torch.device('cuda')
+        self._device = device
+        self._expert_to_group_buf = torch.empty(
+            num_experts, dtype=torch.long, device=device)
+        self._group_labels: Optional[torch.Tensor] = None
+        if len(group_size_ratios) > 2:
+            self._group_labels = _build_group_labels(
+                num_experts, group_size_ratios, device)
 
     @property
     def num_experts(self) -> int:
@@ -289,7 +312,7 @@ class RandomHeterDispatch(HeterDispatchPolicy):
     """Random expert-to-group assignment.  Ignores runtime signals.
 
     Deterministic when *seed* is set.  The assignment is computed once
-    and cached — subsequent calls return the same GPU tensor.
+    at construction via :func:`_assign_by_score_gpu` with random scores.
 
     Args:
         num_experts: Total number of experts.
@@ -302,40 +325,18 @@ class RandomHeterDispatch(HeterDispatchPolicy):
         num_experts: int,
         group_size_ratios: List[float],
         seed: int = 42,
+        device: Optional[torch.device] = None,
     ):
-        super().__init__(num_experts, group_size_ratios)
-        self._seed = seed
-        self._cached_e2g: Optional[torch.Tensor] = None
+        super().__init__(num_experts, group_size_ratios, device=device)
+        gen = torch.Generator(device=self._device).manual_seed(seed)
+        scores = torch.rand(
+            num_experts, device=self._device, generator=gen)
+        _assign_by_score_gpu(
+            scores, num_experts, group_size_ratios,
+            self._expert_to_group_buf, self._group_labels)
 
     def _assign(self, token_selected_experts, token_final_scales):
-        # Determine target device.
-        if token_selected_experts is not None:
-            device = token_selected_experts.device
-        else:
-            device = torch.device('cuda:0')
-
-        # Return cached tensor if device matches.
-        if (self._cached_e2g is not None
-                and self._cached_e2g.device == device):
-            return self._cached_e2g
-
-        # Build assignment on CPU (O(num_experts), runs once).
-        rng = random.Random(self._seed)
-        all_ids = list(range(self._num_experts))
-        rng.shuffle(all_ids)
-
-        group_sizes = _compute_group_sizes(
-            self._num_experts, self._group_size_ratios)
-        e2g_list = [0] * self._num_experts
-        offset = 0
-        for gidx, size in enumerate(group_sizes):
-            for j in range(offset, offset + size):
-                e2g_list[all_ids[j]] = gidx
-            offset += size
-
-        self._cached_e2g = torch.tensor(
-            e2g_list, dtype=torch.long, device=device)
-        return self._cached_e2g
+        return self._expert_to_group_buf
 
 
 class ConfidenceThresholdHeterDispatch(HeterDispatchPolicy):
@@ -358,37 +359,25 @@ class ConfidenceThresholdHeterDispatch(HeterDispatchPolicy):
         group_size_ratios: List[float],
         confidence_threshold: float = 0.5,
         fallback_seed: int = 42,
+        device: Optional[torch.device] = None,
     ):
-        super().__init__(num_experts, group_size_ratios)
+        super().__init__(num_experts, group_size_ratios, device=device)
         self._confidence_threshold = confidence_threshold
         self._fallback = RandomHeterDispatch(
             num_experts,
             group_size_ratios,
             seed=fallback_seed,
-        )
-        self._expert_weight_sum: Optional[torch.Tensor] = None
-
-    def _ensure_buffers(self, num_experts: int,
-                        device: torch.device) -> None:
-        if (self._expert_weight_sum is not None
-                and self._expert_weight_sum.shape[0] == num_experts
-                and self._expert_weight_sum.device == device):
-            return
-        self._expert_weight_sum = torch.empty(
-            num_experts,
             device=device,
-            dtype=torch.float32,
         )
+        self._expert_weight_sum = torch.empty(
+            num_experts, device=self._device, dtype=torch.float32)
 
     def _assign(self, token_selected_experts, token_final_scales):
         if token_selected_experts is None or token_final_scales is None:
             return self._fallback._assign(
                 token_selected_experts, token_final_scales)
 
-        self._ensure_buffers(self._num_experts,
-                             token_final_scales.device)
         buf = self._expert_weight_sum
-        assert buf is not None
 
         flat_experts = token_selected_experts.reshape(-1).long()
         flat_scales = token_final_scales.reshape(-1)
@@ -407,6 +396,8 @@ class ConfidenceThresholdHeterDispatch(HeterDispatchPolicy):
             buf,
             self._num_experts,
             self._group_size_ratios,
+            self._expert_to_group_buf,
+            self._group_labels,
         )
 
 
@@ -417,9 +408,6 @@ class ExpertLoadHeterDispatch(HeterDispatchPolicy):
     (high-precision); rarely activated ("cold") experts go to the
     **first** group (low-precision).
     Falls back to random when signals are unavailable.
-
-    Uses ``torch.topk`` for 2-group assignment (O(E) partial sort,
-    2 kernel launches, zero GPU-CPU sync).
 
     Args:
         num_experts: Total number of experts.
@@ -432,12 +420,14 @@ class ExpertLoadHeterDispatch(HeterDispatchPolicy):
         num_experts: int,
         group_size_ratios: List[float],
         fallback_seed: int = 42,
+        device: Optional[torch.device] = None,
     ):
-        super().__init__(num_experts, group_size_ratios)
+        super().__init__(num_experts, group_size_ratios, device=device)
         self._fallback = RandomHeterDispatch(
             num_experts,
             group_size_ratios,
             seed=fallback_seed,
+            device=device,
         )
 
     def _assign(self, token_selected_experts, token_final_scales):
@@ -455,4 +445,6 @@ class ExpertLoadHeterDispatch(HeterDispatchPolicy):
             counts,
             self._num_experts,
             self._group_size_ratios,
+            self._expert_to_group_buf,
+            self._group_labels,
         )

@@ -22,10 +22,9 @@ quantization flags, then sums the outputs.
 Expert-to-group assignment and per-group token dispatch are handled by
 a pluggable :class:`~.policy.heter_dispatch.HeterDispatchPolicy`.  The
 policy's :meth:`dispatch` method transforms standard *N*-expert routing
-into per-group dispatches — conceptually expanding the expert space to
-*N × G* where *G* is the number of precision groups.  Each group's
-call only includes tokens with ≥1 expert in that group; the CUTLASS
-kernel's built-in sparsity skips experts with zero routed tokens.
+into per-group dispatches.  All tokens are sent to every group with
+non-group expert slots sentinel-masked (zero scale); the CUTLASS kernel
+skips zero-scale slots automatically.
 
 Usage::
 
@@ -372,11 +371,6 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             num_experts,
             [d.size_ratio for d in self._group_descs],
         )
-
-        # # Router logits stashed by forward_chunk() for run_moe() to
-        # # pass to the dispatch policy.  Currently unused by all
-        # # dispatch policies.
-        # self._pending_router_logits: Optional[torch.Tensor] = None
 
         # Per-group full weight sets (populated by register_group_weights).
         # ``None`` means "fall back to the parent module's weights".
@@ -754,7 +748,7 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         super().post_load_weights()
 
     # ==============================================================
-    # forward_chunk — capture router_logits for dispatch policy
+    # forward_chunk — BF16 input guard
     # ==============================================================
 
     def forward_chunk(
@@ -766,60 +760,21 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             use_dp_padding: Optional[bool] = None,
             repeating_info: tuple[bool, bool] = (True, True),
     ) -> torch.Tensor:
-        """Override parent to capture ``router_logits`` for the dispatch
-        policy.
+        """Guard that input is BF16, then delegate to parent.
 
         HETER MoE always receives **BF16 input** from attention.
         Per-group input quantization (e.g. FP4) is handled inside
         ``run_moe()`` on a per-group basis — never before this point.
 
-        The stashed ``router_logits`` tensor is consumed by
-        :meth:`run_moe` (our override) within the same synchronous call
-        stack, then cleared in a ``finally`` block.
-
-        **torch.compile safety**:
-
-        ``MoE.forward()`` routes through ``moe_custom_op``
-        (``@torch.library.custom_op``) when ``is_torch_compiling()`` is
-        ``True``.  Dynamo treats custom ops as opaque — it uses
-        ``register_fake`` for shape inference but never traces the real
-        body.  At execution time the body runs as **plain eager Python**.
-        Therefore:
-
-        * ``self._pending_router_logits = router_logits`` — module
-          attribute write inside eager code, invisible to Dynamo.
-        * ``self._pending_router_logits`` read in ``run_moe()`` — same
-          eager scope.
-        * ``mutates_args=()`` on the custom op constrains tensor argument
-          mutations only.  We never mutate ``router_logits`` itself.
-
-        **CUDA graph safety**:
-
-        During graph **capture** the full Python call stack executes
-        normally, including stash / dispatch-policy / clear.  During
-        **replay** only the recorded CUDA ops execute — no Python code
-        re-runs.  Consequences:
-
-        * The dispatch assignment from the capture batch is **baked**.
-          Signal-based policies (e.g. ``ConfidenceThresholdPolicy``) will
-          not re-evaluate until the graph is invalidated and recaptured.
-        * ``_pending_router_logits`` remains ``None`` after capture
-          (cleared by ``finally``).  This is harmless because ``run_moe``
-          does not re-execute on replay.
-
-        **Multi-chunk / aux-stream**:
-
-        HETER MoE targets the **decoding** path where batch sizes are
-        well below ``moe_max_num_tokens`` (always single chunk).  The
-        parent alternates even/odd chunks between main and aux CUDA
-        streams, but Python code runs sequentially on one thread — no
-        race condition on ``_pending_router_logits``.
+        **CUDA graph note**: during graph replay, ``run_moe()`` and the
+        dispatch policy execute as baked CUDA ops.  Signal-based policies
+        (e.g. ``ConfidenceThresholdHeterDispatch``) will not re-evaluate
+        until the graph is invalidated and recaptured.
         """
         assert not isinstance(x, Fp4QuantizedTensor), (
             "HeterCutlassFusedMoE expects BF16 input from attention. "
             "Per-group quantization is handled inside run_moe()."
         )
-        # router_logits not stashed — no dispatch policy currently uses them.
         return super().forward_chunk(
             x,
             router_logits,
@@ -848,13 +803,9 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
     ) -> torch.Tensor:
         """Per-group dispatch: call fused_moe once per group, sum outputs.
 
-        The dispatch policy transforms standard *N*-expert routing into
-        per-group dispatches — conceptually *N × G* virtual experts.
-        Each group's call only includes tokens with ≥1 expert in that
-        group; the kernel skips experts with zero routed tokens.
-
-        See :class:`~.policy.heter_dispatch.HeterDispatchPolicy` for
-        the dispatch transform details.
+        The dispatch policy sentinel-masks non-group expert slots (zero
+        scale) so the kernel skips them automatically.  See
+        :class:`~.policy.heter_dispatch.HeterDispatchPolicy`.
         """
         # --- Dispatch: split routing by group via policy ---
         dispatches = self._policy.dispatch(
