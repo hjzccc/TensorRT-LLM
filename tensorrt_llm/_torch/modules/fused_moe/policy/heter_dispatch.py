@@ -17,11 +17,10 @@
 A :class:`HeterDispatchPolicy` partitions experts into precision groups
 and transforms standard MoE routing into per-group dispatches.
 
-Each group's dispatch is a ``(token_indices, experts, scales)`` tuple.
-When ``token_indices is None``, **all** tokens participate (the experts
-and scales tensors have shape ``[N, K]``).  Non-group expert slots are
-filled with a sentinel expert ID (``num_experts``) and zero scale so
-the CUTLASS kernel skips them.
+Each group's dispatch is an ``(experts, scales)`` tuple with shape
+``[N, K]`` — all tokens participate in every group.  Non-group expert
+slots are filled with a sentinel expert ID (``num_experts``) and zero
+scale so the CUTLASS kernel skips them.
 
 The policy knows nothing about quantization algorithms or weight
 storage — that mapping lives in
@@ -39,16 +38,9 @@ Usage::
         token_selected_experts,   # [num_tokens, top_k]
         token_final_scales,       # [num_tokens, top_k]
     )
-    for group_idx, (tok_idx, experts, scales) in enumerate(dispatches):
-        if experts is None:
-            continue
-        # tok_idx is None => all tokens; use x directly
-        x_in = x if tok_idx is None else x[tok_idx]
-        result = fused_moe(x_in, experts, scales, ...)
-        if tok_idx is None:
-            accumulated += result
-        else:
-            accumulated[tok_idx] += result
+    for group_idx, (experts, scales) in enumerate(dispatches):
+        result = fused_moe(x, experts, scales, ...)
+        accumulated += result
 
 Implementation notes — torch.compile & CUDA graph safety:
 
@@ -66,12 +58,10 @@ from typing import List, Optional, Tuple
 
 import torch
 
-# Type alias for a per-group dispatch result.
-# (token_indices, experts, scales):
-#   - token_indices=None means ALL tokens participate (full [N,K] tensors).
-#   - (None, None, None) means the group is empty (no work).
-GroupDispatchTuple = Tuple[Optional[torch.Tensor], Optional[torch.Tensor],
-                          Optional[torch.Tensor]]
+# Type alias for a per-group dispatch result: (experts, scales).
+# Both tensors have shape [N, K].  Non-group expert slots use a sentinel
+# expert ID (num_experts) and zero scale so the kernel skips them.
+GroupDispatchTuple = Tuple[torch.Tensor, torch.Tensor]
 
 
 # ------------------------------------------------------------------
@@ -115,36 +105,36 @@ def _assign_by_score_gpu(
     For G=2 uses ``torch.topk`` (O(E) partial sort, 2 kernels).
     For G>2 uses ``torch.argsort + scatter_`` (O(E log E), 3 kernels).
     """
-    group_sizes = _compute_group_sizes(num_experts, group_size_ratios)
-    num_groups = len(group_sizes)
+    num_groups = len(group_size_ratios)
     device = scores.device
 
     if num_groups == 2:
         # Fast path: single topk for the high-precision (last) group.
-        k_high = group_sizes[1]
+        k_high = round(num_experts * group_size_ratios[1])
         expert_to_group = torch.zeros(
             num_experts, dtype=torch.long, device=device)
         _, top_indices = torch.topk(scores, k_high)
         expert_to_group[top_indices] = 1
         return expert_to_group
+    else:
+        # General N-group path: argsort on GPU + scatter.
+        group_sizes = _compute_group_sizes(num_experts, group_size_ratios)
+        sorted_ids = torch.argsort(scores, descending=True)
 
-    # General N-group path: argsort on GPU + scatter.
-    sorted_ids = torch.argsort(scores, descending=True)
+        # Build position-to-group mapping.  Last group gets top positions.
+        # This list is O(num_experts) ints built on CPU (no GPU sync).
+        group_labels_list: List[int] = []
+        for rev_idx, size in enumerate(reversed(group_sizes)):
+            original_gidx = num_groups - 1 - rev_idx
+            group_labels_list.extend([original_gidx] * size)
 
-    # Build position-to-group mapping.  Last group gets top positions.
-    # This list is O(num_experts) ints built on CPU (no GPU sync).
-    group_labels_list: List[int] = []
-    for rev_idx, size in enumerate(reversed(group_sizes)):
-        original_gidx = num_groups - 1 - rev_idx
-        group_labels_list.extend([original_gidx] * size)
+        group_labels = torch.tensor(
+            group_labels_list, dtype=torch.long, device=device)
 
-    group_labels = torch.tensor(
-        group_labels_list, dtype=torch.long, device=device)
-
-    expert_to_group = torch.empty(
-        num_experts, dtype=torch.long, device=device)
-    expert_to_group.scatter_(0, sorted_ids, group_labels)
-    return expert_to_group
+        expert_to_group = torch.empty(
+            num_experts, dtype=torch.long, device=device)
+        expert_to_group.scatter_(0, sorted_ids, group_labels)
+        return expert_to_group
 
 
 def _validate_expert_to_group(
@@ -175,8 +165,7 @@ class HeterDispatchPolicy(abc.ABC):
     Subclasses implement :meth:`_assign` — the expert-to-group
     assignment strategy.  The base class provides :meth:`dispatch`
     which calls ``_assign``, then uses ``torch.where`` to build
-    per-group ``(token_indices, experts, scales)`` tuples with
-    sentinel masking.
+    per-group ``(experts, scales)`` tuples with sentinel masking.
 
     All operations use fixed-shape tensors on GPU — no ``nonzero()``,
     no ``.tolist()``, fully compatible with ``torch.compile`` and
@@ -236,8 +225,8 @@ class HeterDispatchPolicy(abc.ABC):
         """Transform N-expert routing into per-group dispatches.
 
         Returns a list of length ``num_groups``.  Each element is
-        ``(None, experts, scales)`` where ``None`` means all N tokens
-        participate, or ``(None, None, None)`` if the group is empty.
+        ``(experts, scales)`` with shape ``[N, K]``.  Non-group expert
+        slots are sentinel-masked (expert ID = ``num_experts``, scale = 0).
 
         Uses ``torch.where`` for sentinel masking — all ops have
         fixed shapes, fully torch.compile and CUDA graph safe.
@@ -286,8 +275,7 @@ class HeterDispatchPolicy(abc.ABC):
             scales_g = torch.where(
                 in_group, token_final_scales, 0.0)
 
-            # tok_idx=None signals "all tokens participate" to run_moe.
-            results.append((None, experts_g, scales_g))
+            results.append((experts_g, scales_g))
 
         return results
 

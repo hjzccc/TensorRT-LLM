@@ -864,12 +864,9 @@ class TestDispatchPolicy:
         dispatches_1 = policy.dispatch(token_selected_experts, token_final_scales)
         dispatches_2 = policy.dispatch(token_selected_experts, token_final_scales)
 
-        for (t1, e1, s1), (t2, e2, s2) in zip(dispatches_1, dispatches_2):
-            if e1 is None:
-                assert e2 is None
-            else:
-                torch.testing.assert_close(e1, e2)
-                torch.testing.assert_close(s1, s2)
+        for (e1, s1), (e2, s2) in zip(dispatches_1, dispatches_2):
+            torch.testing.assert_close(e1, e2)
+            torch.testing.assert_close(s1, s2)
 
     # ------------------------------------------------------------------
     # Policy property setter
@@ -963,7 +960,7 @@ class TestDispatchPolicy:
         dispatches = backend.policy.dispatch(tse, tfs)
         assert len(dispatches) == 2
 
-        for tok_idx, experts, scales in dispatches:
+        for experts, scales in dispatches:
             assert experts is not None
             assert scales is not None
             assert experts.shape[1] == top_k
