@@ -27,6 +27,15 @@ from tensorrt_llm.quantization.mode import QuantAlgo
 TConfig = TypeVar("TConfig", bound=transformers.PretrainedConfig)
 
 
+@dataclass
+class MoeDualTileConfig:
+    threshold: int = 16
+    gemm1_small_tactic: int = 0
+    gemm2_small_tactic: int = 0
+    gemm1_large_tactic: int = 0
+    gemm2_large_tactic: int = 0
+
+
 @contextlib.contextmanager
 def config_file_lock(timeout: int = 10):
     """
@@ -101,6 +110,7 @@ class ModelConfig(Generic[TConfig]):
     moe_disable_finalize_fusion: bool = False
     # If true, use low precision combine in MoE operations (only for NVFP4 quantization)
     use_low_precision_moe_combine: bool = False
+    moe_dual_tile: Optional[MoeDualTileConfig] = None
 
     # NVFP4 GEMM backend configuration - list of backends to consider for auto-selection
     # Default excludes 'cutedsl' for faster build time. Add 'cutedsl' for extreme perf.

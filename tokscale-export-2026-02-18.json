@@ -1,0 +1,51 @@
+{
+  "exportedAt": "2026-02-18T22:40:53.446Z",
+  "totalCost": 5.3083389500000004,
+  "modelCount": 2,
+  "models": [
+    {
+      "source": "opencode",
+      "model": "claude-opus-4-6",
+      "input": 28,
+      "output": 59347,
+      "cacheWrite": 433541,
+      "cacheRead": 1752451,
+      "reasoning": 0,
+      "total": 2245367,
+      "cost": 5.06967175
+    },
+    {
+      "source": "opencode",
+      "model": "claude-haiku-4-5",
+      "input": 62,
+      "output": 3545,
+      "cacheWrite": 155890,
+      "cacheRead": 260177,
+      "reasoning": 0,
+      "total": 419674,
+      "cost": 0.23866720000000002
+    }
+  ],
+  "daily": [
+    {
+      "date": "2026-02-18",
+      "input": 90,
+      "output": 62892,
+      "cacheRead": 2012628,
+      "cacheWrite": 589431,
+      "total": 2665041,
+      "cost": 5.30833895
+    }
+  ],
+  "stats": {
+    "favoriteModel": "claude-opus-4-6",
+    "totalTokens": 2665041,
+    "sessions": 33,
+    "longestSession": "19m",
+    "currentStreak": 1,
+    "longestStreak": 1,
+    "activeDays": 1,
+    "totalDays": 1,
+    "peakHour": "2pm"
+  }
+}

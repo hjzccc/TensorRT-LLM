@@ -354,6 +354,20 @@ class CutlassFusedMoE(MoE):
         # Finalize fusion should be disabled if Lora is used.
         self.use_fused_finalize = not model_config.moe_disable_finalize_fusion and model_config.lora_config is None
 
+        dual_tile_cfg = getattr(model_config, 'moe_dual_tile', None)
+        if dual_tile_cfg is not None and self.cluster_size > 1:
+            logger.warning(
+                "Dual-tile MoE is not supported with cluster_size > 1, disabling."
+            )
+            dual_tile_cfg = None
+        self.use_dual_tile = dual_tile_cfg is not None
+        if self.use_dual_tile:
+            self.dual_tile_threshold = dual_tile_cfg.threshold
+            self.gemm1_small_tactic = dual_tile_cfg.gemm1_small_tactic
+            self.gemm2_small_tactic = dual_tile_cfg.gemm2_small_tactic
+            self.gemm1_large_tactic = dual_tile_cfg.gemm1_large_tactic
+            self.gemm2_large_tactic = dual_tile_cfg.gemm2_large_tactic
+
         self._weights_created = False
         if not model_config.skip_create_weights_in_init:
             self.create_weights()
@@ -594,41 +608,78 @@ class CutlassFusedMoE(MoE):
         if enable_alltoall is None:
             enable_alltoall = self.enable_alltoall
 
-        result = torch.ops.trtllm.fused_moe(
-            x,
-            token_selected_experts,
-            token_final_scales,
-            self.w3_w1_weight.view(weight_dtype),
-            self.w3_w1_bias,
-            self.w2_weight.view(weight_dtype),
-            self.w2_bias,
-            output_dtype,
-            quant_scales=self.quant_scales,
-            input_sf=x_sf,
-            swizzled_input_sf=is_sf_swizzled,
-            swiglu_alpha=self.swiglu_alpha,
-            swiglu_beta=self.swiglu_beta,
-            swiglu_limit=self.swiglu_limit,
-            tp_size=self.tp_size,
-            tp_rank=self.tp_rank,
-            ep_size=self.ep_size,
-            ep_rank=self.ep_rank,
-            cluster_size=self.cluster_size,
-            cluster_rank=self.cluster_rank,
-            enable_alltoall=enable_alltoall,
-            use_deepseek_fp8_block_scale=self.has_deepseek_fp8_block_scales,
-            use_w4_group_scaling=self.has_w4afp8 or self.has_w4a16_mxfp4,
-            use_int8_woq_per_channel=self.has_int8_woq_per_channel,
-            use_mxfp8_act_scaling=self.has_w4a8_mxfp4_mxfp8,
-            min_latency_mode=False,
-            use_fused_finalize=self.use_fused_finalize,
-            tune_max_num_tokens=self.tune_max_num_tokens,
-            tuner_num_tokens=tuner_num_tokens,
-            tuner_top_k=tuner_top_k,
-            activation_type=self.activation_type,
-            unpadded_hidden_size=self.unpadded_hidden_size,
-            out_tensor=moe_output,
-        )
+        if self.use_dual_tile:
+            result = torch.ops.trtllm.fused_moe_dual_tile(
+                x,
+                token_selected_experts,
+                token_final_scales,
+                self.w3_w1_weight.view(weight_dtype),
+                self.w3_w1_bias,
+                self.w2_weight.view(weight_dtype),
+                self.w2_bias,
+                output_dtype,
+                quant_scales=self.quant_scales,
+                input_sf=x_sf,
+                swizzled_input_sf=is_sf_swizzled,
+                swiglu_alpha=self.swiglu_alpha,
+                swiglu_beta=self.swiglu_beta,
+                swiglu_limit=self.swiglu_limit,
+                tp_size=self.tp_size,
+                tp_rank=self.tp_rank,
+                ep_size=self.ep_size,
+                ep_rank=self.ep_rank,
+                enable_alltoall=enable_alltoall,
+                use_deepseek_fp8_block_scale=self.has_deepseek_fp8_block_scales,
+                use_w4_group_scaling=self.has_w4afp8 or self.has_w4a16_mxfp4,
+                use_int8_woq_per_channel=self.has_int8_woq_per_channel,
+                use_mxfp8_act_scaling=self.has_w4a8_mxfp4_mxfp8,
+                use_fused_finalize=self.use_fused_finalize,
+                tune_max_num_tokens=self.tune_max_num_tokens,
+                activation_type=self.activation_type,
+                unpadded_hidden_size=self.unpadded_hidden_size,
+                out_tensor=moe_output,
+                dual_tile_threshold=self.dual_tile_threshold,
+                gemm1_small_tactic=self.gemm1_small_tactic,
+                gemm2_small_tactic=self.gemm2_small_tactic,
+                gemm1_large_tactic=self.gemm1_large_tactic,
+                gemm2_large_tactic=self.gemm2_large_tactic,
+            )
+        else:
+            result = torch.ops.trtllm.fused_moe(
+                x,
+                token_selected_experts,
+                token_final_scales,
+                self.w3_w1_weight.view(weight_dtype),
+                self.w3_w1_bias,
+                self.w2_weight.view(weight_dtype),
+                self.w2_bias,
+                output_dtype,
+                quant_scales=self.quant_scales,
+                input_sf=x_sf,
+                swizzled_input_sf=is_sf_swizzled,
+                swiglu_alpha=self.swiglu_alpha,
+                swiglu_beta=self.swiglu_beta,
+                swiglu_limit=self.swiglu_limit,
+                tp_size=self.tp_size,
+                tp_rank=self.tp_rank,
+                ep_size=self.ep_size,
+                ep_rank=self.ep_rank,
+                cluster_size=self.cluster_size,
+                cluster_rank=self.cluster_rank,
+                enable_alltoall=enable_alltoall,
+                use_deepseek_fp8_block_scale=self.has_deepseek_fp8_block_scales,
+                use_w4_group_scaling=self.has_w4afp8 or self.has_w4a16_mxfp4,
+                use_int8_woq_per_channel=self.has_int8_woq_per_channel,
+                use_mxfp8_act_scaling=self.has_w4a8_mxfp4_mxfp8,
+                min_latency_mode=False,
+                use_fused_finalize=self.use_fused_finalize,
+                tune_max_num_tokens=self.tune_max_num_tokens,
+                tuner_num_tokens=tuner_num_tokens,
+                tuner_top_k=tuner_top_k,
+                activation_type=self.activation_type,
+                unpadded_hidden_size=self.unpadded_hidden_size,
+                out_tensor=moe_output,
+            )
         # When moe_output is provided, the result is written in-place and
         # fused_moe returns empty list to avoid aliasing constraint violation.
         # Otherwise, unpack the single tensor from the returned list.

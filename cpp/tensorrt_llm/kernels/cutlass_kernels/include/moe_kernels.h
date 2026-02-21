@@ -529,6 +529,22 @@ public:
 
     virtual size_t getGemmWorkspaceSize(int num_experts_per_node) const = 0;
 
+    virtual void setDualTileTactic(cutlass_extensions::CutlassGemmConfig gemm1_config_small,
+        cutlass_extensions::CutlassGemmConfig gemm2_config_small,
+        cutlass_extensions::CutlassGemmConfig gemm1_config_large,
+        cutlass_extensions::CutlassGemmConfig gemm2_config_large, int64_t dual_tile_threshold)
+        = 0;
+
+    virtual void runMoeDualTile(void const* input_activations, void const* input_sf, bool const swizzled_input_sf,
+        int const* token_selected_experts, float const* token_final_scales, void const* fc1_expert_weights,
+        void const* fc1_expert_biases, ActivationParams fc1_activation_type, void const* fc2_expert_weights,
+        void const* fc2_expert_biases, QuantParams quant_params, int64_t const num_rows, int64_t const num_valid_rows,
+        int64_t const hidden_size, int64_t const unpadded_hidden_size, int64_t const inter_size, int const num_experts,
+        int const experts_per_token, char* workspace_ptr, void* final_output, int* unpermuted_row_to_permuted_row,
+        MOEParallelismConfig parallelism_config, bool const enable_alltoall, bool use_lora, LoraParams& lora_params,
+        bool use_deepseek_fp8_block_scale, cudaStream_t stream)
+        = 0;
+
     bool is_profiler = false;
     bool use_fused_finalize_ = true;
 };
@@ -667,7 +683,7 @@ public:
         float const** alpha_scale_ptr_array, bool use_lora, void* fc2_lora, cudaStream_t stream,
         MOEParallelismConfig parallelism_config, bool const enable_alltoall,
         cutlass_extensions::CutlassGemmConfig config, bool min_latency_mode, int* num_active_experts_per,
-        int* active_expert_global_ids);
+        int* active_expert_global_ids, bool skip_output_memset = false);
 
     // Overrides to allow us to forward on to the internal functions with the pointers using the correct type
     void gemm1(void const* const input, void* const output, void* const intermediate_result,
@@ -723,6 +739,20 @@ public:
     {
         return moe_gemm_runner_.getMaxWorkspaceSize(num_experts_per_node);
     }
+
+    void setDualTileTactic(cutlass_extensions::CutlassGemmConfig gemm1_config_small,
+        cutlass_extensions::CutlassGemmConfig gemm2_config_small,
+        cutlass_extensions::CutlassGemmConfig gemm1_config_large,
+        cutlass_extensions::CutlassGemmConfig gemm2_config_large, int64_t dual_tile_threshold) override;
+
+    void runMoeDualTile(void const* input_activations, void const* input_sf, bool const swizzled_input_sf,
+        int const* token_selected_experts, float const* token_final_scales, void const* fc1_expert_weights,
+        void const* fc1_expert_biases, ActivationParams fc1_activation_type, void const* fc2_expert_weights,
+        void const* fc2_expert_biases, QuantParams quant_params, int64_t const num_rows, int64_t const num_valid_rows,
+        int64_t const hidden_size, int64_t const unpadded_hidden_size, int64_t const inter_size, int const num_experts,
+        int const experts_per_token, char* workspace_ptr, void* final_output, int* unpermuted_row_to_permuted_row,
+        MOEParallelismConfig parallelism_config, bool const enable_alltoall, bool use_lora, LoraParams& lora_params,
+        bool use_deepseek_fp8_block_scale, cudaStream_t stream) override;
 
     std::pair<TmaWarpSpecializedGroupedGemmInput, TmaWarpSpecializedGroupedGemmInput>
     computeStridesTmaWarpSpecializedDispatch(int64_t const* expert_first_token_offset,
@@ -797,6 +827,19 @@ private:
         ScaleBiasType const* bias1, ScaleBiasType const* bias2, UnfusedGemmOutputType* output1,
         UnfusedGemmOutputType* output2, int const* num_active_experts_per, int const* active_expert_global_ids,
         int start_expert, cudaStream_t stream);
+
+    static std::pair<TmaWarpSpecializedGroupedGemmInput, TmaWarpSpecializedGroupedGemmInput>
+    computeStridesTmaWarpSpecializedDualTile(int64_t const* expert_first_token_offset,
+        TmaWarpSpecializedGroupedGemmInput layout_info1, TmaWarpSpecializedGroupedGemmInput layout_info2,
+        int64_t num_tokens, int64_t expanded_num_tokens, int64_t gemm1_n, int64_t gemm1_k, int64_t gemm2_n,
+        int64_t gemm2_k, int const num_experts_per_node, T const* gemm1_in, T const* gemm2_in,
+        WeightType const* weights1, WeightType const* weights2, float const* alpha_scale_flat1,
+        float const* alpha_scale_flat2, TmaWarpSpecializedGroupedGemmInput::ElementSF const* fp4_act_flat1,
+        TmaWarpSpecializedGroupedGemmInput::ElementSF const* fp4_act_flat2, QuantParams quant_params,
+        ScaleBiasType const* bias1, ScaleBiasType const* bias2, UnfusedGemmOutputType* gemm1_output,
+        UnfusedGemmOutputType* gemm2_output, float const* router_scales, int const* permuted_row_to_unpermuted_row,
+        cudaStream_t stream, int64_t dual_tile_threshold, bool keep_small);
+
     std::map<std::string, std::pair<size_t, size_t>> getWorkspaceDeviceBufferSizes(int64_t const num_rows,
         int64_t const hidden_size, int64_t const inter_size, int const num_experts_per_node,
         int const experts_per_token, ActivationType activation_type, bool use_lora, bool use_deepseek_fp8_block_scale,
@@ -889,6 +932,13 @@ private:
     std::optional<cutlass_extensions::CutlassGemmConfig> gemm1_config_;
     std::optional<cutlass_extensions::CutlassGemmConfig> gemm2_config_;
 
+    bool dual_tile_enabled_{false};
+    int64_t dual_tile_threshold_{0};
+    std::optional<cutlass_extensions::CutlassGemmConfig> gemm1_config_small_;
+    std::optional<cutlass_extensions::CutlassGemmConfig> gemm2_config_small_;
+    std::optional<cutlass_extensions::CutlassGemmConfig> gemm1_config_large_;
+    std::optional<cutlass_extensions::CutlassGemmConfig> gemm2_config_large_;
+
     // Pointers
     int* permuted_row_to_unpermuted_row_{};
     int* permuted_token_selected_experts_{};
@@ -916,6 +966,9 @@ private:
 
     TmaWarpSpecializedGroupedGemmInput tma_ws_grouped_gemm1_input_;
     TmaWarpSpecializedGroupedGemmInput tma_ws_grouped_gemm2_input_;
+
+    TmaWarpSpecializedGroupedGemmInput tma_ws_dual_tile_gemm1_input_;
+    TmaWarpSpecializedGroupedGemmInput tma_ws_dual_tile_gemm2_input_;
 
     struct HostLoraWorkspace
     {

@@ -339,6 +339,132 @@ def _(input: torch.Tensor,
         return [input.new_empty([seq_len, hidden_size], dtype=output_dtype)]
 
 
+@torch.library.custom_op("trtllm::fused_moe_dual_tile", mutates_args=())
+def fused_moe_dual_tile(
+    input: torch.Tensor,
+    token_selected_experts: torch.Tensor,
+    token_final_scales: torch.Tensor,
+    fc1_expert_weights: torch.Tensor,
+    fc1_expert_biases: Optional[torch.Tensor],
+    fc2_expert_weights: torch.Tensor,
+    fc2_expert_biases: Optional[torch.Tensor],
+    output_dtype: torch.dtype,
+    quant_scales: List[torch.Tensor],
+    input_sf: Optional[torch.Tensor] = None,
+    swizzled_input_sf: bool = True,
+    swiglu_alpha: Optional[torch.Tensor] = None,
+    swiglu_beta: Optional[torch.Tensor] = None,
+    swiglu_limit: Optional[torch.Tensor] = None,
+    tp_size: int = 1,
+    tp_rank: int = 0,
+    ep_size: int = 1,
+    ep_rank: int = 0,
+    enable_alltoall: bool = False,
+    use_deepseek_fp8_block_scale: bool = False,
+    use_w4_group_scaling: bool = False,
+    use_int8_woq_per_channel: bool = False,
+    use_mxfp8_act_scaling: bool = False,
+    use_fused_finalize: bool = True,
+    tune_max_num_tokens: int = 8192,
+    activation_type: int = int(ActivationType.Swiglu),
+    unpadded_hidden_size: Optional[int] = None,
+    out_tensor: Optional[torch.Tensor] = None,
+    dual_tile_threshold: int = 16,
+    gemm1_small_tactic: int = 0,
+    gemm2_small_tactic: int = 0,
+    gemm1_large_tactic: int = 0,
+    gemm2_large_tactic: int = 0,
+) -> List[torch.Tensor]:
+
+    moe_runner = MoERunner(
+        x_dtype=input.dtype,
+        weight_dtype=fc1_expert_weights.dtype,
+        output_dtype=output_dtype,
+        top_k=token_selected_experts.size(1),
+        tp_size=tp_size,
+        tp_rank=tp_rank,
+        ep_size=ep_size,
+        ep_rank=ep_rank,
+        cluster_size=1,
+        cluster_rank=0,
+        use_deepseek_fp8_block_scale=use_deepseek_fp8_block_scale,
+        use_w4_group_scaling=use_w4_group_scaling,
+        use_int8_woq_per_channel=use_int8_woq_per_channel,
+        use_mxfp8_act_scaling=use_mxfp8_act_scaling,
+        min_latency_mode=False,
+        use_fused_finalize=use_fused_finalize,
+        activation_type=activation_type,
+        unpadded_hidden_size=unpadded_hidden_size,
+    )
+
+    moe_runner.fused_moe_runner.set_dual_tile_profiles(
+        [gemm1_small_tactic, gemm2_small_tactic,
+         gemm1_large_tactic, gemm2_large_tactic],
+        dual_tile_threshold,
+    )
+    # output = run_moe(input, token_selected_experts, token_final_scales,
+    #              fc1_expert_weights, fc1_expert_biases,
+    #              fc2_expert_weights, fc2_expert_biases, quant_scales,
+    #              input_sf, swizzled_input_sf, swiglu_alpha, swiglu_beta,
+    #              swiglu_limit, tp_size, tp_rank, ep_size, ep_rank,
+    #              cluster_size, cluster_rank, enable_alltoall,
+    #              min_latency_mode, [gemm_tactic_1, gemm_tactic_2],
+    #              activation_type, unpadded_hidden_size,
+    #              tuner_num_tokens, out_tensor)
+    output = moe_runner.fused_moe_runner.run_moe_dual_tile(
+        input, token_selected_experts, token_final_scales,
+        fc1_expert_weights, fc1_expert_biases,
+        fc2_expert_weights, fc2_expert_biases, quant_scales,
+        input_sf, swizzled_input_sf, swiglu_alpha, swiglu_beta,
+        swiglu_limit, tp_size, tp_rank, ep_size, ep_rank,
+        enable_alltoall,
+        activation_type, unpadded_hidden_size,
+        None, out_tensor)
+
+    if out_tensor is not None:
+        return []
+    return [output]
+
+
+@torch.library.register_fake("trtllm::fused_moe_dual_tile")
+def _(input: torch.Tensor,
+      token_selected_experts: torch.Tensor,
+      token_final_scales: torch.Tensor,
+      fc1_expert_weights: torch.Tensor,
+      fc1_expert_biases: Optional[torch.Tensor],
+      fc2_expert_weights: torch.Tensor,
+      fc2_expert_biases: Optional[torch.Tensor],
+      output_dtype: torch.dtype,
+      quant_scales: List[torch.Tensor],
+      input_sf: Optional[torch.Tensor] = None,
+      swizzled_input_sf: bool = True,
+      swiglu_alpha: Optional[torch.Tensor] = None,
+      swiglu_beta: Optional[torch.Tensor] = None,
+      swiglu_limit: Optional[torch.Tensor] = None,
+      tp_size: int = 1,
+      tp_rank: int = 0,
+      ep_size: int = 1,
+      ep_rank: int = 0,
+      enable_alltoall: bool = False,
+      use_deepseek_fp8_block_scale: bool = False,
+      use_w4_group_scaling: bool = False,
+      use_int8_woq_per_channel: bool = False,
+      use_mxfp8_act_scaling: bool = False,
+      use_fused_finalize: bool = True,
+      tune_max_num_tokens: int = 8192,
+      activation_type: ActivationType = ActivationType.Swiglu,
+      unpadded_hidden_size: Optional[int] = None,
+      out_tensor: Optional[torch.Tensor] = None,
+      dual_tile_threshold: int = 16,
+      gemm1_small_tactic: int = 0,
+      gemm2_small_tactic: int = 0,
+      gemm1_large_tactic: int = 0,
+      gemm2_large_tactic: int = 0):
+    seq_len = input.shape[0]
+    hidden_size = fc2_expert_weights.shape[1]
+    return [input.new_empty([seq_len, hidden_size], dtype=output_dtype)]
+
+
 class FP8RowwiseGemmRunner(TunableRunner):
     runner_dict = dict()
     tuning_config = TuningConfig(

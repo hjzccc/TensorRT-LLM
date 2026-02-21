@@ -825,6 +825,119 @@ private:
         mKernelRunner->setTactic(best_gemm1_profile, best_gemm2_profile);
     }
 
+public:
+    void setDualTileProfiles(c10::ArrayRef<int64_t> profile_ids, int64_t threshold)
+    {
+        TORCH_CHECK(profile_ids.size() == 4,
+            "setDualTileProfiles expects 4 profile ids: [gemm1_small, gemm2_small, gemm1_large, gemm2_large]");
+        auto g1_small = mGemm1Profiles.at(profile_ids[0]);
+        auto g2_small = mGemm2Profiles.at(profile_ids[1]);
+        auto g1_large = mGemm1Profiles.at(profile_ids[2]);
+        auto g2_large = mGemm2Profiles.at(profile_ids[3]);
+        mKernelRunner->setDualTileTactic(g1_small, g2_small, g1_large, g2_large, threshold);
+    }
+
+    torch::Tensor runMoeDualTile(torch::Tensor const& input, torch::Tensor const& token_selected_experts,
+        torch::optional<torch::Tensor> const& token_final_scales, torch::Tensor const& fc1_expert_weights,
+        torch::optional<torch::Tensor> const& fc1_expert_biases, torch::Tensor const& fc2_expert_weights,
+        torch::optional<torch::Tensor> const& fc2_expert_biases,
+        torch::optional<c10::ArrayRef<torch::Tensor>> const& quant_scales,
+        torch::optional<torch::Tensor> const& input_sf, bool const swizzled_input_sf,
+        torch::optional<torch::Tensor> const& swiglu_alpha, torch::optional<torch::Tensor> const& swiglu_beta,
+        torch::optional<torch::Tensor> const& swiglu_limit, int64_t const tp_size, int64_t const tp_rank,
+        int64_t const ep_size, int64_t const ep_rank,
+        bool const enable_alltoall,
+        torch::optional<int64_t> const& activation_type, torch::optional<int64_t> const& unpadded_hidden_size,
+        torch::optional<int64_t> const& num_valid_tokens, torch::optional<torch::Tensor> const& out_tensor)
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        freeProfileWorkspace();
+
+        CHECK_INPUT(input, mActivationDtype)
+        CHECK_INPUT(token_selected_experts, at::ScalarType::Int)
+        if (token_final_scales)
+        {
+            CHECK_INPUT(token_final_scales.value(), at::ScalarType::Float)
+        }
+        CHECK_INPUT(fc1_expert_weights, mWeightDtype)
+        CHECK_INPUT(fc2_expert_weights, mWeightDtype)
+
+        TORCH_CHECK(input.dim() == 2, "input must be 2D.");
+        TORCH_CHECK(token_selected_experts.dim() == 2, "token_selected_experts must be 2D.");
+        TORCH_CHECK(fc1_expert_weights.dim() == 3, "fc1_expert_weights must be 3D.");
+        TORCH_CHECK(fc2_expert_weights.dim() == 3, "fc2_expert_weights must be 3D.");
+
+        int experts_per_token = token_selected_experts.sizes()[1];
+        int64_t num_rows = input.sizes()[0];
+        int64_t hidden_size = fc2_expert_weights.sizes()[1];
+        int64_t unpadded_hidden_size_val
+            = unpadded_hidden_size.has_value() ? unpadded_hidden_size.value() : hidden_size;
+        int64_t inter_size = fc2_expert_weights.sizes()[2] * mInnerDimMultiplier;
+        int const num_experts_on_rank = fc2_expert_weights.sizes()[0];
+        auto const num_experts_total = static_cast<int>(num_experts_on_rank * ep_size);
+        auto parallelism_config = kernels::MOEParallelismConfig(tp_size, tp_rank, ep_size, ep_rank);
+
+        ActivationType base_activation_type = activation_type.has_value()
+            ? static_cast<ActivationType>(activation_type.value())
+            : ActivationType::Swiglu;
+        if (swiglu_alpha.has_value())
+        {
+            base_activation_type = ActivationType::SwigluBias;
+        }
+        if (swiglu_beta.has_value())
+        {
+            base_activation_type = ActivationType::SwigluBias;
+        }
+        if (swiglu_limit.has_value())
+        {
+            base_activation_type = ActivationType::SwigluBias;
+        }
+        auto activation_params = ActivationParams(base_activation_type,
+            reinterpret_cast<float const*>(swiglu_alpha.has_value() ? swiglu_alpha.value().const_data_ptr() : nullptr),
+            reinterpret_cast<float const*>(swiglu_beta.has_value() ? swiglu_beta.value().const_data_ptr() : nullptr),
+            reinterpret_cast<float const*>(swiglu_limit.has_value() ? swiglu_limit.value().const_data_ptr() : nullptr));
+
+        auto stream = at::cuda::getCurrentCUDAStream(input.get_device());
+
+        std::vector<int64_t> output_shape = {num_rows, unpadded_hidden_size_val};
+        torch::Tensor output;
+        if (out_tensor.has_value())
+        {
+            auto const& provided = out_tensor.value();
+            CHECK_INPUT(provided, mOutputDtype);
+            TORCH_CHECK(provided.sizes() == output_shape, "Provided out tensor has incorrect shape.");
+            output = provided;
+        }
+        else
+        {
+            output = torch::empty(output_shape, input.options().dtype(mOutputDtype));
+        }
+
+        WorkspaceInfo const& workspace_info = getWorkspaceInfo(num_rows, hidden_size, inter_size, num_experts_total,
+            static_cast<int>(experts_per_token), base_activation_type, parallelism_config, false, stream);
+
+        auto const quant_params
+            = getQuantParams(num_experts_on_rank, hidden_size, inter_size, quant_scales, base_activation_type);
+
+        ::tensorrt_llm::kernels::LoraParams lora_params{};
+        mKernelRunner->runMoeDualTile(input.const_data_ptr(),
+            input_sf.has_value() ? input_sf.value().const_data_ptr() : nullptr, swizzled_input_sf,
+            reinterpret_cast<int const*>(token_selected_experts.const_data_ptr()),
+            token_final_scales.has_value() ? reinterpret_cast<float const*>(token_final_scales.value().const_data_ptr())
+                                           : nullptr,
+            fc1_expert_weights.const_data_ptr(),
+            fc1_expert_biases.has_value() ? fc1_expert_biases.value().const_data_ptr() : nullptr, activation_params,
+            fc2_expert_weights.const_data_ptr(),
+            fc2_expert_biases.has_value() ? fc2_expert_biases.value().const_data_ptr() : nullptr, quant_params,
+            num_rows, num_valid_tokens.has_value() ? num_valid_tokens.value() : num_rows, hidden_size,
+            unpadded_hidden_size_val, inter_size, num_experts_total, static_cast<int>(experts_per_token),
+            static_cast<char*>(workspace_info.workspace.data_ptr()), output.data_ptr(),
+            static_cast<int*>(workspace_info.src_to_dest_map), parallelism_config, enable_alltoall, false, lora_params,
+            false, stream);
+
+        return output;
+    }
+
     WorkspaceInfo const& getWorkspaceInfo(int64_t const num_rows, int64_t const hidden_size, int64_t const inter_size,
         int num_experts, int experts_per_token, ActivationType activation_type,
         kernels::MOEParallelismConfig const& parallelismConfig, bool min_latency_mode, cudaStream_t stream)
@@ -1210,5 +1323,7 @@ TORCH_LIBRARY(trtllm, m)
         .def("run_gemm_profile", &tensorrt_llm::torch_ext::FusedMoeRunner::runGemmProfile)
         .def("get_tactic_num", &tensorrt_llm::torch_ext::FusedMoeRunner::getTacticNum)
         .def("run_moe", &tensorrt_llm::torch_ext::FusedMoeRunner::runMoe)
-        .def("run_moe_min_latency", &tensorrt_llm::torch_ext::FusedMoeRunner::runMoeMinLantency);
+        .def("run_moe_min_latency", &tensorrt_llm::torch_ext::FusedMoeRunner::runMoeMinLantency)
+        .def("set_dual_tile_profiles", &tensorrt_llm::torch_ext::FusedMoeRunner::setDualTileProfiles)
+        .def("run_moe_dual_tile", &tensorrt_llm::torch_ext::FusedMoeRunner::runMoeDualTile);
 }
