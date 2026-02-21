@@ -32,10 +32,15 @@ template <class ArchTag, class TileShape, class ClusterShape, bool DYNAMIC_CGA, 
 struct should_filter_tma_warp_specialized_gemm_problem_shape
 {
 #ifdef FAST_BUILD
-    using SupportedCtaShape = cute::Shape<cute::_128, cute::_128, decltype(cute::get<2>(TileShape{}))>;
+    using SupportedCtaShape128 = cute::Shape<cute::_128, cute::_128, decltype(cute::get<2>(TileShape{}))>;
+    using SupportedCtaShape64 = cute::Shape<cute::_64, cute::_128, decltype(cute::get<2>(TileShape{}))>;
+    using SupportedCtaShape32 = cute::Shape<cute::_32, cute::_128, decltype(cute::get<2>(TileShape{}))>;
     using SupportedCgaShape = cute::Shape<cute::_1, cute::_1, cute::_1>;
 
-    constexpr static bool value = !cute::is_same_v<SupportedCtaShape, TileShape>
+    constexpr static bool is_supported_tile = cute::is_same_v<SupportedCtaShape128, TileShape>
+        || cute::is_same_v<SupportedCtaShape64, TileShape>
+        || cute::is_same_v<SupportedCtaShape32, TileShape>;
+    constexpr static bool value = !is_supported_tile
         || !cute::is_same_v<SupportedCgaShape, ClusterShape> || DYNAMIC_CGA;
 #else
     constexpr static bool value = false;

@@ -663,7 +663,7 @@ def generate_sm120_grouped_gemm_operations(is_arch_enabled):
     quant_ops = [TrtLlm_QuantOp.none]
     epi_tags = [TrtLlm_EpilogueTag.epilogue_op_default]
     cta_shapes_mnk = [[128, 128, 128], [128, 128, 256], [256, 128, 128],
-                      [128, 256, 128]]
+                      [128, 256, 128], [64, 128, 128], [32, 128, 128]]
 
     warp_shape = [0, 0, 0]  # ignored except for naming
     stages = 0  # auto

@@ -1,304 +1,241 @@
 #!/usr/bin/env python3
 """
-Profile expert batch sizes for Qwen3-30B-A3B-NVFP4 MoE model.
+Profile per-expert token counts for Qwen3-30B-A3B-NVFP4 MoE routing.
 
-Loads gate weights + embedding from safetensors, runs routing on wikitext data,
-and computes the expert batch size distribution for dual-tile configuration.
+Uses gate weights + embedding to simulate routing decisions on wikitext data.
+Shows per-expert M distribution at different global batch sizes to understand
+which CTA tile size (M32, M64, M128) is optimal.
+
+NOTE: This uses embedding-only hidden states (no attention). Routing patterns
+are approximate but representative of the distribution shape.
 """
 import json
-import os
 import sys
 import time
 from collections import defaultdict
 
 import numpy as np
 import torch
-from datasets import load_dataset
+import torch.nn.functional as F
 from safetensors import safe_open
-from transformers import AutoConfig, AutoTokenizer
 
-# ─── Config ───
-MODEL_ID = "nvidia/Qwen3-30B-A3B-NVFP4"
-DEVICE = "cuda"
-# Simulate different batch sizes (number of tokens per decoding step)
-BATCH_SIZES_TO_PROFILE = [1, 8, 16, 32, 64, 128, 256]
-NUM_WIKITEXT_SAMPLES = 200   # Number of wikitext passages to use
-MAX_SEQ_LEN = 512            # Max tokens per sample
+MODEL_PATH = '/root/.cache/huggingface/hub/models--nvidia--Qwen3-30B-A3B-NVFP4/snapshots/2538ded2a4edb247b4d2b4a8ba24e44bd4c017c3'
+NUM_EXPERTS = 128
+TOP_K = 8
+NUM_LAYERS = 48
+HIDDEN = 2048
+RMS_EPS = 1e-6
 
 
-def load_gate_weights_and_embedding(model_id):
-    """Load only the gate/router weights and embedding from safetensors."""
-    from huggingface_hub import hf_hub_download
+def load_weights(model_path):
+    with open(f'{model_path}/model.safetensors.index.json') as f:
+        weight_map = json.load(f)['weight_map']
 
-    config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
-    num_layers = config.num_hidden_layers
-    num_experts = config.num_experts
-    hidden_size = config.hidden_size
-    rms_norm_eps = config.rms_norm_eps
+    needed = {}
+    needed['model.embed_tokens.weight'] = weight_map['model.embed_tokens.weight']
+    for i in range(NUM_LAYERS):
+        for suffix in ['mlp.gate.weight', 'post_attention_layernorm.weight']:
+            key = f'model.layers.{i}.{suffix}'
+            if key in weight_map:
+                needed[key] = weight_map[key]
 
-    # Get the weight map
-    idx_path = hf_hub_download(model_id, "model.safetensors.index.json")
-    with open(idx_path) as f:
-        idx = json.load(f)
-    weight_map = idx["weight_map"]
+    shards = defaultdict(list)
+    for key, shard in needed.items():
+        shards[shard].append(key)
 
-    # Identify needed weights
-    needed_keys = {}
-    # Embedding
-    needed_keys["model.embed_tokens.weight"] = weight_map["model.embed_tokens.weight"]
-    # Final norm (for completeness)
-    if "model.norm.weight" in weight_map:
-        needed_keys["model.norm.weight"] = weight_map["model.norm.weight"]
-    # Per-layer: gate weight + post_attention_layernorm (input to MoE)
-    for i in range(num_layers):
-        gate_key = f"model.layers.{i}.mlp.gate.weight"
-        norm_key = f"model.layers.{i}.post_attention_layernorm.weight"
-        if gate_key in weight_map:
-            needed_keys[gate_key] = weight_map[gate_key]
-        if norm_key in weight_map:
-            needed_keys[norm_key] = weight_map[norm_key]
-
-    # Group by shard
-    shards_needed = defaultdict(list)
-    for key, shard in needed_keys.items():
-        shards_needed[shard].append(key)
-
-    # Load tensors
     tensors = {}
-    for shard_name, keys in sorted(shards_needed.items()):
-        shard_path = hf_hub_download(model_id, shard_name)
-        print(f"  Loading {len(keys)} tensors from {shard_name}")
-        with safe_open(shard_path, framework="pt", device="cpu") as f:
+    for shard_name, keys in sorted(shards.items()):
+        with safe_open(f'{model_path}/{shard_name}', framework='pt', device='cuda') as f:
             for key in keys:
                 tensors[key] = f.get_tensor(key)
 
-    # Organize into model components
-    embedding_weight = tensors["model.embed_tokens.weight"].to(DEVICE)
-    gate_weights = []
-    norm_weights = []
-    for i in range(num_layers):
-        gw = tensors.get(f"model.layers.{i}.mlp.gate.weight")
-        nw = tensors.get(f"model.layers.{i}.post_attention_layernorm.weight")
-        gate_weights.append(gw.to(DEVICE) if gw is not None else None)
-        norm_weights.append(nw.to(DEVICE) if nw is not None else None)
+    embedding = tensors['model.embed_tokens.weight']
+    gates, norms = [], []
+    for i in range(NUM_LAYERS):
+        gates.append(tensors.get(f'model.layers.{i}.mlp.gate.weight'))
+        norms.append(tensors.get(f'model.layers.{i}.post_attention_layernorm.weight'))
 
-    print(f"  Loaded: embedding {embedding_weight.shape}, "
-          f"{sum(1 for g in gate_weights if g is not None)} gates, "
-          f"{sum(1 for n in norm_weights if n is not None)} norms")
-
-    return config, embedding_weight, gate_weights, norm_weights
+    return embedding, gates, norms
 
 
-def rms_norm(x, weight, eps=1e-6):
-    """Apply RMS normalization."""
-    variance = x.float().pow(2).mean(-1, keepdim=True)
-    x = x * torch.rsqrt(variance + eps)
-    return (weight * x).to(x.dtype)
+def route_batch(token_ids, embedding, gates, norms, num_layers):
+    """Route a batch of tokens through all layers. Returns per-layer per-expert counts."""
+    hidden = embedding[token_ids]
+    layer_counts = []
 
-
-def route_topk(logits, top_k):
-    """Apply softmax routing and return top-k expert indices."""
-    # Softmax over experts
-    probs = torch.softmax(logits.float(), dim=-1)
-    # Top-k selection
-    top_k_probs, top_k_indices = torch.topk(probs, top_k, dim=-1)
-    return top_k_indices  # (num_tokens, top_k)
-
-
-def profile_routing(config, embedding_weight, gate_weights, norm_weights,
-                    tokenizer, dataset_texts, batch_sizes):
-    """Profile expert routing patterns across different batch sizes."""
-    num_layers = config.num_hidden_layers
-    num_experts = config.num_experts
-    top_k = config.num_experts_per_tok
-    rms_eps = config.rms_norm_eps
-
-    # Tokenize all texts
-    print(f"\nTokenizing {len(dataset_texts)} texts...")
-    all_token_ids = []
-    for text in dataset_texts:
-        enc = tokenizer(text, return_tensors="pt", truncation=True,
-                        max_length=MAX_SEQ_LEN, add_special_tokens=False)
-        if enc.input_ids.shape[1] > 10:  # Skip very short texts
-            all_token_ids.append(enc.input_ids.squeeze(0))
-    print(f"  Got {len(all_token_ids)} sequences, "
-          f"total tokens: {sum(t.shape[0] for t in all_token_ids)}")
-
-    # Flatten all tokens for sampling batches
-    all_tokens = torch.cat(all_token_ids, dim=0).to(DEVICE)
-    total_tokens = all_tokens.shape[0]
-    print(f"  Total tokens available: {total_tokens}")
-
-    # Results: per_layer_per_expert_counts[layer_idx][batch_size] = list of per-expert counts
-    results = defaultdict(lambda: defaultdict(list))
-
-    for batch_size in batch_sizes:
-        if batch_size > total_tokens:
-            print(f"\nSkipping batch_size={batch_size} (not enough tokens)")
+    for li in range(num_layers):
+        if gates[li] is None:
             continue
+        if norms[li] is not None:
+            normed = F.rms_norm(hidden.float(), (HIDDEN,), norms[li].float(), RMS_EPS).to(torch.bfloat16)
+        else:
+            normed = hidden
+        logits = normed.float() @ gates[li].float().T
+        probs = F.softmax(logits, dim=-1)
+        _, topk_idx = torch.topk(probs, TOP_K, dim=-1)
+        counts = torch.zeros(NUM_EXPERTS, dtype=torch.int32, device='cuda')
+        counts.scatter_add_(0, topk_idx.reshape(-1).long(),
+                            torch.ones(token_ids.shape[0] * TOP_K, dtype=torch.int32, device='cuda'))
+        layer_counts.append(counts.cpu().numpy())
 
-        num_batches = min(200, total_tokens // batch_size)
-        print(f"\nProfiling batch_size={batch_size}, {num_batches} batches...")
-
-        for b in range(num_batches):
-            # Sample a batch of tokens (sequential for locality)
-            start = (b * batch_size) % (total_tokens - batch_size)
-            batch_ids = all_tokens[start:start + batch_size]  # (batch_size,)
-
-            # Get embeddings
-            with torch.no_grad():
-                hidden = embedding_weight[batch_ids]  # (batch_size, hidden_size)
-
-                # Run through each layer's gate
-                for layer_idx in range(num_layers):
-                    if gate_weights[layer_idx] is None:
-                        continue
-
-                    # Apply post-attention layer norm (approximate: in reality,
-                    # hidden states are transformed by attention first)
-                    if norm_weights[layer_idx] is not None:
-                        normed = rms_norm(hidden, norm_weights[layer_idx], rms_eps)
-                    else:
-                        normed = hidden
-
-                    # Compute gate logits and route
-                    normed_bf16 = normed.to(gate_weights[layer_idx].dtype)
-                    logits = torch.nn.functional.linear(normed_bf16, gate_weights[layer_idx])
-                    expert_indices = route_topk(logits, top_k)  # (batch_size, top_k)
-
-                    # Count tokens per expert
-                    flat_indices = expert_indices.flatten()
-                    counts = torch.bincount(flat_indices, minlength=num_experts)
-                    results[layer_idx][batch_size].append(counts.cpu())
-
-        sys.stdout.flush()
-
-    return results
+    return np.stack(layer_counts)
 
 
-def analyze_results(results, config, batch_sizes):
-    """Analyze routing results and determine dual-tile threshold."""
-    num_experts = config.num_experts
-    top_k = config.num_experts_per_tok
-
-    print("\n" + "=" * 80)
-    print("EXPERT BATCH SIZE ANALYSIS")
-    print("=" * 80)
-
-    # Aggregate across all layers
-    all_layer_stats = defaultdict(list)
-
-    for batch_size in batch_sizes:
-        all_counts = []
-        for layer_idx in sorted(results.keys()):
-            if batch_size in results[layer_idx]:
-                layer_counts = torch.stack(results[layer_idx][batch_size])  # (num_batches, num_experts)
-                all_counts.append(layer_counts)
-
-        if not all_counts:
-            continue
-
-        # Shape: (total_observations, num_experts)
-        counts = torch.cat(all_counts, dim=0).float()
-
-        # Per-expert statistics (across all layers and batches)
-        mean_per_expert = counts.mean(dim=0)
-        median_all = counts.median().item()
-        p30 = torch.quantile(counts.flatten().float(), 0.30).item()
-        p50 = torch.quantile(counts.flatten().float(), 0.50).item()
-        p70 = torch.quantile(counts.flatten().float(), 0.70).item()
-        p90 = torch.quantile(counts.flatten().float(), 0.90).item()
-
-        # Theoretical expected
-        expected = batch_size * top_k / num_experts
-
-        # Count experts with 0 tokens (idle)
-        zero_frac = (counts == 0).float().mean().item()
-
-        print(f"\n--- Batch Size = {batch_size} tokens ---")
-        print(f"  Expected (uniform): {expected:.1f} tokens/expert")
-        print(f"  Actual mean:        {counts.mean().item():.1f}")
-        print(f"  Percentiles:  P30={p30:.0f}  P50={p50:.0f}  P70={p70:.0f}  P90={p90:.0f}")
-        print(f"  Min={counts.min().item():.0f}  Max={counts.max().item():.0f}")
-        print(f"  Idle experts (0 tokens): {zero_frac*100:.1f}%")
-
-        # Distribution histogram
-        hist_bins = [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
-        hist_bins = [b for b in hist_bins if b <= batch_size * top_k]
-        if hist_bins[-1] < batch_size * top_k:
-            hist_bins.append(batch_size * top_k + 1)
-        flat = counts.flatten().numpy()
-        hist, _ = np.histogram(flat, bins=hist_bins)
-        print(f"  Distribution:")
-        for i in range(len(hist)):
-            lo = hist_bins[i]
-            hi = hist_bins[i + 1] if i + 1 < len(hist_bins) else float('inf')
-            pct = hist[i] / len(flat) * 100
-            bar = "█" * int(pct / 2)
-            print(f"    [{lo:3d}-{hi:3d}): {pct:5.1f}% {bar}")
-
-        # 70/30 split
-        threshold_70 = torch.quantile(counts.flatten().float(), 0.70).item()
-        print(f"\n  70/30 SPLIT THRESHOLD: {threshold_70:.0f} tokens")
-        print(f"    70% of expert batches have <= {threshold_70:.0f} tokens (use SMALL tile)")
-        print(f"    30% of expert batches have >  {threshold_70:.0f} tokens (use LARGE tile)")
-
-        all_layer_stats[batch_size] = {
-            'p30': p30, 'p50': p50, 'p70': p70, 'p90': p90,
-            'mean': counts.mean().item(),
-            'threshold_70': threshold_70,
-            'zero_frac': zero_frac,
-        }
-
-    return all_layer_stats
+def optimal_tile(m):
+    if m <= 32:
+        return 'M32'
+    elif m <= 64:
+        return 'M64'
+    else:
+        return 'M128'
 
 
 def main():
-    print("=" * 80)
-    print("MoE Expert Batch Size Profiler")
-    print(f"Model: {MODEL_ID}")
-    print("=" * 80)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch-sizes', type=str, default='1,4,8,16,32,64,128,256,512',
+                        help='Comma-separated global batch sizes')
+    parser.add_argument('--num-layers', type=int, default=48)
+    parser.add_argument('--max-batches', type=int, default=0,
+                        help='Max batches per size (0=use all data)')
+    args = parser.parse_args()
 
-    # 1. Load gate weights and embedding
-    print("\n[1/4] Loading gate weights and embedding...")
-    config, embedding_weight, gate_weights, norm_weights = \
-        load_gate_weights_and_embedding(MODEL_ID)
+    batch_sizes = [int(x) for x in args.batch_sizes.split(',')]
+    num_layers = min(args.num_layers, NUM_LAYERS)
 
-    print(f"\nModel config:")
-    print(f"  num_experts={config.num_experts}, top_k={config.num_experts_per_tok}")
-    print(f"  hidden_size={config.hidden_size}, moe_intermediate_size={config.moe_intermediate_size}")
-    print(f"  num_layers={config.num_hidden_layers}")
+    print(f"{'=' * 80}")
+    print(f"Expert Routing Profiler — Qwen3-30B-A3B-NVFP4")
+    print(f"  {NUM_EXPERTS} experts, top-{TOP_K}, {num_layers} layers")
+    print(f"  Batch sizes: {batch_sizes}")
+    print(f"{'=' * 80}")
 
-    # 2. Load tokenizer and dataset
-    print("\n[2/4] Loading tokenizer and wikitext dataset...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-    dataset = load_dataset("wikitext", "wikitext-103-v1", split="test")
-    texts = [t for t in dataset["text"] if len(t) > 100][:NUM_WIKITEXT_SAMPLES]
-    print(f"  Using {len(texts)} wikitext passages")
+    print("\nLoading weights...")
+    embedding, gates, norms = load_weights(MODEL_PATH)
+    print(f"  Embedding: {embedding.shape}")
 
-    # 3. Profile routing
-    print("\n[3/4] Profiling expert routing...")
-    results = profile_routing(
-        config, embedding_weight, gate_weights, norm_weights,
-        tokenizer, texts, BATCH_SIZES_TO_PROFILE)
+    print("Loading tokenizer + wikitext-103 test set...")
+    from transformers import AutoTokenizer
+    from datasets import load_dataset
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, trust_remote_code=True)
+    dataset = load_dataset("wikitext", "wikitext-103-raw-v1", split="test")
+    full_text = " ".join([t for t in dataset["text"] if t.strip()])
+    all_tokens = tokenizer.encode(full_text)
+    total_tokens = len(all_tokens)
+    print(f"  Total tokens: {total_tokens}")
 
-    # 4. Analyze results
-    print("\n[4/4] Analyzing results...")
-    stats = analyze_results(results, config, BATCH_SIZES_TO_PROFILE)
+    all_tokens_t = torch.tensor(all_tokens, device='cuda')
+    summary_rows = []  # collect (bs, uniform, p50, p90, max, idle%, m32%, m64%, m128%)
 
-    # Summary
-    print("\n" + "=" * 80)
-    print("DUAL-TILE CONFIGURATION RECOMMENDATIONS")
-    print("=" * 80)
-    for bs, s in sorted(stats.items()):
-        print(f"\n  Batch {bs:3d} tokens → threshold={s['threshold_70']:.0f} "
-              f"(P70={s['p70']:.0f}, P50={s['p50']:.0f}, idle={s['zero_frac']*100:.0f}%)")
+    for bs in batch_sizes:
+        if bs > total_tokens:
+            print(f"\nSkipping batch_size={bs} (not enough tokens)")
+            continue
 
-    print("\n  Recommendation: For typical decode batch sizes,")
-    print("  set dual_tile_threshold to the P70 value for your target batch size.")
-    print("  Experts with <= threshold tokens use SMALL tile (faster for small M)")
-    print("  Experts with >  threshold tokens use LARGE tile (better utilization)")
+        num_batches = total_tokens // bs
+        if args.max_batches > 0:
+            num_batches = min(num_batches, args.max_batches)
+
+        print(f"\n{'=' * 80}")
+        print(f"BATCH SIZE: {bs} tokens  ({num_batches} batches, {num_batches * bs} total tokens)")
+        print(f"  Expected uniform per-expert M: {bs * TOP_K / NUM_EXPERTS:.1f}")
+        print(f"{'=' * 80}")
+
+        all_counts = []
+        t0 = time.time()
+
+        with torch.no_grad():
+            for bi in range(num_batches):
+                start = bi * bs
+                token_ids = all_tokens_t[start:start + bs]
+                counts = route_batch(token_ids, embedding, gates, norms, num_layers)
+                all_counts.append(counts)
+
+                if (bi + 1) % max(1, num_batches // 5) == 0:
+                    elapsed = time.time() - t0
+                    print(f"  {bi + 1}/{num_batches} batches ({elapsed:.1f}s)", flush=True)
+
+        elapsed = time.time() - t0
+        print(f"  Done: {num_batches} batches in {elapsed:.1f}s")
+
+        counts_all = np.concatenate(all_counts, axis=0)
+        flat = counts_all.flatten()
+        active = flat[flat > 0]
+
+        if len(active) == 0:
+            print("  No active experts!")
+            continue
+
+        p10 = np.percentile(active, 10)
+        p25 = np.percentile(active, 25)
+        p50 = np.percentile(active, 50)
+        p75 = np.percentile(active, 75)
+        p90 = np.percentile(active, 90)
+        p99 = np.percentile(active, 99)
+        idle_pct = np.mean(flat == 0) * 100
+
+        print(f"\n  Per-Expert Token Count Distribution (active experts only):")
+        print(f"    P10={p10:.0f}  P25={p25:.0f}  P50={p50:.0f}  P75={p75:.0f}  P90={p90:.0f}  P99={p99:.0f}")
+        print(f"    Mean={active.mean():.1f}  Max={flat.max():.0f}  Idle={idle_pct:.1f}%")
+
+        bins = [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+        bins = [b for b in bins if b <= flat.max() + 1]
+        if bins[-1] <= flat.max():
+            bins.append(int(flat.max()) + 1)
+
+        print(f"\n  Histogram (per-expert token count):")
+        print(f"  {'Range':>12s}  {'Count':>8s}  {'Pct':>6s}  {'Optimal':>8s}  Bar")
+        print(f"  {'-'*60}")
+
+        hist, _ = np.histogram(active, bins=bins)
+        for i in range(len(hist)):
+            lo, hi = bins[i], bins[i + 1]
+            pct = hist[i] / len(active) * 100
+            bar = '█' * int(pct / 2)
+            tile = optimal_tile((lo + hi) / 2)
+            label = f"[{lo:>3d}-{hi:>3d})"
+            print(f"  {label:>12s}  {hist[i]:>8d}  {pct:>5.1f}%  {tile:>8s}  {bar}")
+
+        m32_pct = np.mean(active <= 32) * 100
+        m64_pct = np.mean((active > 32) & (active <= 64)) * 100
+        m128_pct = np.mean(active > 64) * 100
+
+        print(f"\n  Optimal Tile Split:")
+        print(f"    M32  (≤32 tokens):  {m32_pct:5.1f}%")
+        print(f"    M64  (33-64):       {m64_pct:5.1f}%")
+        print(f"    M128 (>64):         {m128_pct:5.1f}%")
+
+        summary_rows.append((bs, bs * TOP_K / NUM_EXPERTS, p50, p90, float(flat.max()), idle_pct, m32_pct, m64_pct, m128_pct))
+
+        per_batch_means = []
+        per_batch_maxs = []
+        for chunk in all_counts:
+            for layer_counts in chunk:
+                act = layer_counts[layer_counts > 0]
+                if len(act) > 0:
+                    per_batch_means.append(act.mean())
+                    per_batch_maxs.append(act.max())
+
+        print(f"\n  Per-Layer Stats (across all batches):")
+        print(f"    Avg per-expert M:  mean={np.mean(per_batch_means):.1f}, "
+              f"std={np.std(per_batch_means):.1f}")
+        print(f"    Max per-expert M:  mean={np.mean(per_batch_maxs):.1f}, "
+              f"P90={np.percentile(per_batch_maxs, 90):.0f}, "
+              f"max={np.max(per_batch_maxs):.0f}")
+
+    print(f"\n{'=' * 80}")
+    print("SUMMARY")
+    print(f"{'=' * 80}")
+    print(f"\n  {'Batch':>6s}  {'Uniform':>8s}  {'P50':>5s}  {'P90':>5s}  {'Max':>5s}  "
+          f"{'Idle%':>6s}  {'M32%':>6s}  {'M64%':>6s}  {'M128%':>6s}")
+    print(f"  {'-' * 70}")
+
+    for row in summary_rows:
+        bs, uniform, p50, p90, mx, idle, m32, m64, m128 = row
+        print(f"  {bs:>6d}  {uniform:>8.1f}  {p50:>5.0f}  {p90:>5.0f}  {mx:>5.0f}  "
+              f"{idle:>5.1f}%  {m32:>5.1f}%  {m64:>5.1f}%  {m128:>5.1f}%")
+
+    print()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

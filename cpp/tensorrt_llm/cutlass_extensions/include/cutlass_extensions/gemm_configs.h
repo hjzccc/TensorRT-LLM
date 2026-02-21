@@ -172,9 +172,12 @@ enum class CutlassTileConfigSM120 : int
     CtaShape128x128x128B = shape_tuple_to_enum(128, 128, 128),
     CtaShape128x128x64B = shape_tuple_to_enum(128, 128, 64),
     CtaShape256x128x64B = shape_tuple_to_enum(256, 128, 64),
+    CtaShape64x128x64B = shape_tuple_to_enum(64, 128, 64),
+    CtaShape32x128x64B = shape_tuple_to_enum(32, 128, 64),
     CtaShape128x256x64B = shape_tuple_to_enum(128, 256, 64),
     CtaShape128x128x256B = shape_tuple_to_enum(128, 128, 256),
     CtaShape256x128x128B = shape_tuple_to_enum(256, 128, 128),
+
 };
 
 enum class MainloopScheduleType
