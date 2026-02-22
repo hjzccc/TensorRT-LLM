@@ -1,38 +1,36 @@
 #!/usr/bin/env python3
 """Benchmark single-tile vs dual-tile MoE with real end-to-end generation.
 
-This script uses TensorRT-LLM LLM API on the full Qwen3-30B-A3B-NVFP4 model,
+Uses wikitext-103 dataset for realistic expert routing patterns.
+Runs the full Qwen3-30B-A3B-NVFP4 model via TensorRT-LLM LLM API,
 measures real prefill + decode, and toggles dual-tile on live CutlassFusedMoE
 instances in the loaded model.
 """
 
 import argparse
-import itertools
 import os
 import time
-from dataclasses import dataclass
-from statistics import mean
 from collections.abc import Iterable
+from dataclasses import dataclass
+from statistics import mean, stdev
 from typing import Any
 
+from tensorrt_llm.llmapi import CudaGraphConfig, KvCacheConfig
 import torch
+import torch.cuda.nvtx as nvtx
 
 from tensorrt_llm import LLM, SamplingParams
-from tensorrt_llm.metrics.enums import MetricNames
+from tensorrt_llm.llmapi.llm_args import TorchCompileConfig
 
 
 @dataclass
 class ModeConfig:
     name: str
     dual_tile_enabled: bool
-
-
-@dataclass
-class Scenario:
-    batch_size: int
-    prompt_len: int
-    output_len: int
-
+    # For "forced single-tile" modes: use dual-tile machinery with a huge threshold
+    # so all experts go to the "small" group, which uses the specified small tactic.
+    forced_threshold: int | None = None  # None = use args.dual_tile_threshold
+    forced_small_tactics: tuple[int, int] | None = None  # (gemm1, gemm2) for small group
 
 def _parse_int_csv(value: str) -> list[int]:
     items = [x.strip() for x in value.split(",") if x.strip()]
@@ -41,18 +39,57 @@ def _parse_int_csv(value: str) -> list[int]:
     return [int(x) for x in items]
 
 
-def _metric(metrics_dict: dict[Any, Any], metric_name: MetricNames) -> float | None:
-    if not metrics_dict:
-        return None
-    if metric_name in metrics_dict:
-        return float(metrics_dict[metric_name])
-    raw_key = metric_name.value
-    if raw_key in metrics_dict:
-        return float(metrics_dict[raw_key])
-    return None
+def _load_wikitext_batches(
+    tokenizer: Any,
+    prompt_len: int,
+    batch_size: int,
+    max_batches: int = 0,
+) -> tuple[list[list[list[int]]], int]:
+    """Load wikitext-103 test set, tokenize, chunk into batches.
+
+    Returns:
+        batches: list of batches, each batch is a list of `batch_size` token-id lists
+        total_tokens: total tokens in the dataset
+    """
+    from datasets import load_dataset
+
+    print("Loading wikitext-103 test set...")
+    dataset = load_dataset("wikitext", "wikitext-103-raw-v1", split="test")
+    full_text = " ".join([t for t in dataset["text"] if t.strip()])
+    all_tokens = tokenizer.encode(full_text, add_special_tokens=False)
+    total_tokens = len(all_tokens)
+    print(f"  Total tokens in dataset: {total_tokens}")
+
+    # Chunk into prompt_len pieces
+    num_chunks = total_tokens // prompt_len
+    chunks = [all_tokens[i * prompt_len : (i + 1) * prompt_len] for i in range(num_chunks)]
+    print(f"  Chunks of {prompt_len} tokens: {num_chunks}")
+
+    # Group into batches of batch_size
+    num_batches = len(chunks) // batch_size
+    if max_batches > 0:
+        num_batches = min(num_batches, max_batches)
+
+    batches = []
+    for bi in range(num_batches):
+        batch = [list(chunks[bi * batch_size + j]) for j in range(batch_size)]
+        batches.append(batch)
+
+    tokens_covered = num_batches * batch_size * prompt_len
+    print(f"  Batches: {num_batches} (batch_size={batch_size})")
+    print(f"  Tokens covered: {tokens_covered} / {total_tokens} "
+          f"({tokens_covered / total_tokens * 100:.1f}%)")
+
+    return batches, total_tokens
 
 
-def _build_prompt_token_ids(tokenizer: Any, target_len: int) -> list[int]:
+def _build_synthetic_batches(
+    tokenizer: Any,
+    prompt_len: int,
+    batch_size: int,
+    num_batches: int,
+) -> list[list[list[int]]]:
+    """Build synthetic batches by repeating a seed sentence (old behavior)."""
     seed = (
         "TensorRT-LLM MoE benchmark prompt. "
         "We measure prefill and decode performance under controlled settings. "
@@ -60,9 +97,12 @@ def _build_prompt_token_ids(tokenizer: Any, target_len: int) -> list[int]:
     seed_ids = tokenizer.encode(seed, add_special_tokens=False)
     if not seed_ids:
         raise RuntimeError("tokenizer produced empty token sequence")
-    repeats = (target_len + len(seed_ids) - 1) // len(seed_ids)
+    repeats = (prompt_len + len(seed_ids) - 1) // len(seed_ids)
     full = seed_ids * max(repeats, 1)
-    return full[:target_len]
+    prompt_ids = full[:prompt_len]
+
+    batch = [list(prompt_ids) for _ in range(batch_size)]
+    return [batch for _ in range(num_batches)]
 
 
 def _extract_model_from_llm(llm: LLM) -> Any | None:
@@ -113,10 +153,6 @@ def _set_dual_tile(
         module.gemm2_large_tactic = g2l
 
 
-def _summarize_numbers(values: list[float]) -> tuple[float, float, float]:
-    return mean(values), min(values), max(values)
-
-
 def _format(v: float) -> str:
     return f"{v:.2f}"
 
@@ -136,124 +172,150 @@ def _print_table(headers: list[str], rows: list[list[str]]) -> None:
         print(fmt.format(*row))
 
 
-def _run_scenario(
+def _run_dataset_benchmark(
     llm: LLM,
     mode: ModeConfig,
-    scenario: Scenario,
+    batches: list[list[list[int]]],
+    output_len: int,
+    batch_size: int,
+    prompt_len: int,
     warmup: int,
-    runs: int,
-) -> dict[str, float | int | str]:
-    prompt_token_ids = _build_prompt_token_ids(llm.tokenizer, scenario.prompt_len)
-    prompts = [list(prompt_token_ids) for _ in range(scenario.batch_size)]
+) -> dict[str, Any]:
+    """Run all dataset batches through the model and collect timing."""
 
     sampling_params = SamplingParams(
-        max_tokens=scenario.output_len,
+        max_tokens=output_len,
         temperature=0.0,
         top_p=1.0,
-        return_perf_metrics=True,
     )
 
-    for _ in range(warmup):
-        _ = llm.generate(prompts, sampling_params, use_tqdm=False)
+    # Warmup with first batch
+    for wi in range(warmup):
+        nvtx.range_push(f"warmup/{mode.name}/b{batch_size}/{wi}")
+        _ = llm.generate(batches[0], sampling_params, use_tqdm=False)
+        nvtx.range_pop()
 
-    batch_latencies_ms: list[float] = []
-    req_e2e_ms: list[float] = []
-    req_ttft_ms: list[float] = []
-    req_decode_tps: list[float] = []
+    torch.cuda.synchronize()
 
-    for _ in range(runs):
+    # Run all batches
+    batch_times_ms: list[float] = []
+    total_start = time.perf_counter()
+
+    for bi, batch in enumerate(batches):
+        nvtx.range_push(f"run/{mode.name}/b{batch_size}/batch{bi}")
         torch.cuda.synchronize()
         t0 = time.perf_counter()
-        outputs = llm.generate(prompts, sampling_params, use_tqdm=False)
+        _ = llm.generate(batch, sampling_params, use_tqdm=False)
         torch.cuda.synchronize()
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
-        batch_latencies_ms.append(elapsed_ms)
+        nvtx.range_pop()
+        batch_times_ms.append(elapsed_ms)
 
-        if not isinstance(outputs, list):
-            outputs = [outputs]
+        if (bi + 1) % max(1, len(batches) // 5) == 0:
+            avg_so_far = mean(batch_times_ms)
+            print(f"    batch {bi + 1}/{len(batches)}: "
+                  f"this={elapsed_ms:.1f}ms, avg={avg_so_far:.1f}ms")
 
-        for out in outputs:
-            metrics_dict = out.metrics_dict or {}
-            e2e_s = _metric(metrics_dict, MetricNames.E2E)
-            ttft_s = _metric(metrics_dict, MetricNames.TTFT)
+    total_ms = (time.perf_counter() - total_start) * 1000.0
 
-            if e2e_s is None:
-                e2e_s = elapsed_ms / 1000.0 / scenario.batch_size
-            if ttft_s is None:
-                ttft_s = e2e_s
+    avg_batch_ms = mean(batch_times_ms)
+    std_batch_ms = stdev(batch_times_ms) if len(batch_times_ms) > 1 else 0.0
+    min_batch_ms = min(batch_times_ms)
+    max_batch_ms = max(batch_times_ms)
 
-            e2e_ms = e2e_s * 1000.0
-            ttft_ms = ttft_s * 1000.0
-            req_e2e_ms.append(e2e_ms)
-            req_ttft_ms.append(ttft_ms)
-
-            output_tokens = len(out.outputs[0].token_ids or [])
-            decode_time_s = max(e2e_s - ttft_s, 1e-9)
-            req_decode_tps.append(output_tokens / decode_time_s)
-
-    batch_mean, batch_min, batch_max = _summarize_numbers(batch_latencies_ms)
-    req_mean, req_min, req_max = _summarize_numbers(req_e2e_ms)
-    ttft_mean, ttft_min, ttft_max = _summarize_numbers(req_ttft_ms)
-    decode_tps_mean, _, _ = _summarize_numbers(req_decode_tps)
+    total_input_tokens = len(batches) * batch_size * prompt_len
+    total_output_tokens = len(batches) * batch_size * output_len
+    input_throughput = total_input_tokens / (total_ms / 1000.0)
+    output_throughput = total_output_tokens / (total_ms / 1000.0)
 
     return {
         "mode": mode.name,
-        "batch_size": scenario.batch_size,
-        "prompt_len": scenario.prompt_len,
-        "output_len": scenario.output_len,
-        "batch_latency_ms_mean": batch_mean,
-        "batch_latency_ms_min": batch_min,
-        "batch_latency_ms_max": batch_max,
-        "req_latency_ms_mean": req_mean,
-        "req_latency_ms_min": req_min,
-        "req_latency_ms_max": req_max,
-        "ttft_ms_mean": ttft_mean,
-        "ttft_ms_min": ttft_min,
-        "ttft_ms_max": ttft_max,
-        "decode_tps_mean": decode_tps_mean,
+        "num_batches": len(batches),
+        "batch_size": batch_size,
+        "prompt_len": prompt_len,
+        "output_len": output_len,
+        "total_ms": total_ms,
+        "avg_batch_ms": avg_batch_ms,
+        "std_batch_ms": std_batch_ms,
+        "min_batch_ms": min_batch_ms,
+        "max_batch_ms": max_batch_ms,
+        "total_input_tokens": total_input_tokens,
+        "total_output_tokens": total_output_tokens,
+        "input_tok_per_sec": input_throughput,
+        "output_tok_per_sec": output_throughput,
+        "batch_times_ms": batch_times_ms,
     }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="End-to-end single-tile vs dual-tile MoE benchmark on Qwen3-30B-A3B-NVFP4"
+        description="E2E single-tile vs dual-tile MoE benchmark on Qwen3-30B-A3B-NVFP4"
     )
     parser.add_argument("--model", default="nvidia/Qwen3-30B-A3B-NVFP4")
-    parser.add_argument("--batch-sizes", type=_parse_int_csv, default=[1, 2, 4])
-    parser.add_argument("--prompt-lengths", type=_parse_int_csv, default=[64, 256])
-    parser.add_argument("--output-lengths", type=_parse_int_csv, default=[32, 64])
+    parser.add_argument("--batch-size", type=int, default=512,
+                        help="Number of sequences per batch")
+    parser.add_argument("--prompt-len", type=int, default=64,
+                        help="Tokens per prompt (wikitext chunk size)")
+    parser.add_argument("--output-len", type=int, default=16,
+                        help="Max output tokens per sequence")
     parser.add_argument("--warmup", type=int, default=1)
-    parser.add_argument("--runs", type=int, default=3)
-    parser.add_argument("--dual-tile-threshold", type=int, default=16)
+    parser.add_argument("--max-batches", type=int, default=0,
+                        help="Max batches to run (0=all from dataset)")
+    parser.add_argument("--dataset", choices=["wikitext", "synthetic"],
+                        default="wikitext",
+                        help="Data source: wikitext-103 (realistic) or synthetic (repeated)")
+    parser.add_argument("--synthetic-batches", type=int, default=5,
+                        help="Number of batches when using synthetic dataset")
+    parser.add_argument("--torch-compile", action="store_true", default=False,
+                        help="Enable torch.compile for maximum performance")
+    parser.add_argument("--dual-tile-threshold", type=int, default=32)
     parser.add_argument(
         "--dual-tile-tactics",
         nargs=4,
         type=int,
         metavar=("G1S", "G2S", "G1L", "G2L"),
-        default=[0, 0, 0, 0],
+        default=[2, 5, 1, 4],
     )
     args = parser.parse_args()
 
-    if any(x > 512 for x in args.output_lengths):
-        raise ValueError("all output lengths must be <= 512")
+    if args.output_len > 512:
+        raise ValueError("output_len must be <= 512")
 
     os.environ.setdefault("TLLM_WORKER_USE_SINGLE_PROCESS", "1")
 
     print("=" * 110)
-    print("Dual-Tile MoE E2E Benchmark (real generation: prefill + decode)")
+    print("Dual-Tile MoE E2E Benchmark (wikitext dataset)")
     print("=" * 110)
     print(f"Model: {args.model}")
-    print(f"Batch sizes: {args.batch_sizes}")
-    print(f"Prompt lengths: {args.prompt_lengths}")
-    print(f"Output lengths: {args.output_lengths}")
-    print(f"Warmup: {args.warmup}, Runs: {args.runs}")
+    print(f"Dataset: {args.dataset}")
+    print(f"Batch size: {args.batch_size}")
+    print(f"Prompt length: {args.prompt_len}")
+    print(f"Output length: {args.output_len}")
+    print(f"Warmup: {args.warmup}")
+    print(f"Max batches: {args.max_batches if args.max_batches > 0 else 'all'}")
     print(
         "Dual-tile config: "
         f"threshold={args.dual_tile_threshold}, tactics={tuple(args.dual_tile_tactics)}"
     )
+    print(f"Torch compile: {args.torch_compile}")
     print()
 
-    llm = LLM(model=args.model, backend="pytorch")
+    # Load model
+    compile_config = TorchCompileConfig(
+        enable_fullgraph=True,
+        enable_inductor=False,
+        enable_piecewise_cuda_graph=True,
+    ) if args.torch_compile else None
+    cuda_graph_config = CudaGraphConfig(
+        max_batch_size=args.batch_size,
+    ) if args.torch_compile else None
+    llm = LLM(
+        model=args.model,
+        backend="pytorch",
+        torch_compile_config=compile_config,
+        cuda_graph_config=cuda_graph_config,
+        kv_cache_config=KvCacheConfig(free_gpu_memory_fraction=0.5),
+    )
 
     moe_modules = _find_moe_modules(llm)
     if not moe_modules:
@@ -264,126 +326,185 @@ def main() -> int:
 
     print(f"Found {len(moe_modules)} MoE modules with dual-tile attributes.")
     print("First few modules:")
-    for name, _ in moe_modules[:8]:
+    for name, _ in moe_modules[:5]:
         print(f"  - {name}")
-    if len(moe_modules) > 8:
-        print(f"  ... ({len(moe_modules) - 8} more)")
+    if len(moe_modules) > 5:
+        print(f"  ... ({len(moe_modules) - 5} more)")
     print()
 
+    # Load dataset
+    if args.dataset == "wikitext":
+        batches, total_dataset_tokens = _load_wikitext_batches(
+            llm.tokenizer, args.prompt_len, args.batch_size, args.max_batches
+        )
+    else:
+        batches = _build_synthetic_batches(
+            llm.tokenizer, args.prompt_len, args.batch_size, args.synthetic_batches
+        )
+        total_dataset_tokens = args.synthetic_batches * args.batch_size * args.prompt_len
+
+    if not batches:
+        raise RuntimeError(
+            f"No batches created. Dataset too small for batch_size={args.batch_size} "
+            f"and prompt_len={args.prompt_len}"
+        )
+
+    print(f"\nTotal batches to run: {len(batches)}")
+    print()
+
+    # Modes to test:
+    # 1. single_tile_M128: baseline — auto-tuner picks M128 (default for prefill-tuned profile)
+    # 2. single_tile_M32:  forced M32 via dual-tile with threshold=999999 (all experts → small group)
+    #                      Small overhead from dual-tile path (~0.2%), but gives us M32 tile for all experts.
+    # 3. dual_tile:        M32 for small experts + M64 for large experts (two-pass)
+    #
+    # Tactic mapping (FAST_BUILD SM120):
+    #   GEMM1: 0=M128, 1=M64, 2=M32  (no-swap variants)
+    #   GEMM2: 0=M128-DEFAULT, 1=M64-DEFAULT, 2=M32-DEFAULT,
+    #          3=M128-FINALIZE, 4=M64-FINALIZE, 5=M32-FINALIZE
+    g1s, g2s, g1l, g2l = args.dual_tile_tactics
     modes = [
-        ModeConfig(name="single_tile", dual_tile_enabled=False),
+        ModeConfig(name="single_tile_M128", dual_tile_enabled=False),
+        ModeConfig(
+            name="single_tile_M32",
+            dual_tile_enabled=True,
+            forced_threshold=999999,  # all experts → small group
+            forced_small_tactics=(2, 5),  # GEMM1=M32-noswap, GEMM2=M32-FINALIZE
+        ),
         ModeConfig(name="dual_tile", dual_tile_enabled=True),
     ]
-
-    scenarios = [
-        Scenario(batch_size=b, prompt_len=p, output_len=o)
-        for b, p, o in itertools.product(
-            args.batch_sizes, args.prompt_lengths, args.output_lengths)
-    ]
-
-    results: list[dict[str, float | int | str]] = []
     tactics = tuple(args.dual_tile_tactics)
 
-    for scenario in scenarios:
-        print(
-            f"Running scenario: batch={scenario.batch_size}, "
-            f"prompt_len={scenario.prompt_len}, output_len={scenario.output_len}"
-        )
-        for mode in modes:
+    results: list[dict[str, Any]] = []
+
+    torch.cuda.cudart().cudaProfilerStart()
+
+    for mode in modes:
+        print(f"\n{'=' * 80}")
+        print(f"MODE: {mode.name}")
+        print(f"{'=' * 80}")
+
+        if mode.forced_threshold is not None and mode.forced_small_tactics is not None:
+            # Forced single-tile mode: use dual-tile path with huge threshold
+            # so all experts go to "small" group with specified tactic.
+            fg1s, fg2s = mode.forced_small_tactics
+            _set_dual_tile(
+                moe_modules,
+                enabled=True,
+                threshold=mode.forced_threshold,
+                tactics=(fg1s, fg2s, g1l, g2l),  # large tactics don't matter (0 experts)
+            )
+            print(f"  (forcing all experts to small group with threshold={mode.forced_threshold}, "
+                  f"small tactics=({fg1s}, {fg2s}))")
+        else:
             _set_dual_tile(
                 moe_modules,
                 enabled=mode.dual_tile_enabled,
                 threshold=args.dual_tile_threshold,
                 tactics=tactics,
             )
-            torch.cuda.synchronize()
-            print(f"  -> mode={mode.name}")
-            result = _run_scenario(
-                llm=llm,
-                mode=mode,
-                scenario=scenario,
-                warmup=args.warmup,
-                runs=args.runs,
-            )
-            results.append(result)
+        torch.cuda.synchronize()
 
+        nvtx.range_push(f"dataset/{mode.name}/b{args.batch_size}_p{args.prompt_len}_o{args.output_len}")
+        result = _run_dataset_benchmark(
+            llm=llm,
+            mode=mode,
+            batches=batches,
+            output_len=args.output_len,
+            batch_size=args.batch_size,
+            prompt_len=args.prompt_len,
+            warmup=args.warmup,
+        )
+        nvtx.range_pop()
+
+        results.append(result)
+
+        print(f"\n  {mode.name} summary:")
+        print(f"    Total time:       {result['total_ms']:.1f} ms")
+        print(f"    Avg batch time:   {result['avg_batch_ms']:.1f} ± {result['std_batch_ms']:.1f} ms")
+        print(f"    Min/Max batch:    {result['min_batch_ms']:.1f} / {result['max_batch_ms']:.1f} ms")
+        print(f"    Input throughput: {result['input_tok_per_sec']:.0f} tok/s")
+        print(f"    Output throughput:{result['output_tok_per_sec']:.0f} tok/s")
+
+    torch.cuda.cudart().cudaProfilerStop()
+
+    # ============== Results ==============
     print()
     print("=" * 110)
-    print("Per-mode metrics")
+    print("RESULTS")
     print("=" * 110)
 
+    # Per-mode table
     rows = []
-    for item in results:
+    for r in results:
         rows.append([
-            item["mode"],
-            str(item["batch_size"]),
-            str(item["prompt_len"]),
-            str(item["output_len"]),
-            _format(float(item["batch_latency_ms_mean"])),
-            _format(float(item["req_latency_ms_mean"])),
-            _format(float(item["ttft_ms_mean"])),
-            _format(float(item["decode_tps_mean"])),
+            r["mode"],
+            str(r["num_batches"]),
+            _format(r["total_ms"]),
+            _format(r["avg_batch_ms"]),
+            _format(r["std_batch_ms"]),
+            _format(r["min_batch_ms"]),
+            _format(r["max_batch_ms"]),
+            f"{r['input_tok_per_sec']:.0f}",
+            f"{r['output_tok_per_sec']:.0f}",
         ])
 
     _print_table(
         [
             "mode",
-            "batch",
-            "prompt_tok",
-            "output_tok",
-            "batch_latency_ms(avg)",
-            "req_latency_ms(avg)",
-            "ttft_ms(avg)",
-            "decode_tok_s(avg)",
+            "batches",
+            "total_ms",
+            "avg_batch_ms",
+            "std_batch_ms",
+            "min_batch_ms",
+            "max_batch_ms",
+            "input_tok/s",
+            "output_tok/s",
         ],
         rows,
     )
 
-    print()
-    print("=" * 110)
-    print("Dual-tile comparison")
-    print("=" * 110)
+    # Pairwise comparison against baseline (first result)
+    baseline = results[0]
+    if len(results) > 1:
+        print()
+        print("=" * 110)
+        print(f"COMPARISON (all modes vs {baseline['mode']})")
+        print("=" * 110)
 
-    by_scenario = {}
-    for item in results:
-        key = (item["batch_size"], item["prompt_len"], item["output_len"])
-        by_scenario.setdefault(key, {})[item["mode"]] = item
+        for r in results[1:]:
+            speedup = baseline["avg_batch_ms"] / r["avg_batch_ms"]
+            delta_pct = (1 - r["avg_batch_ms"] / baseline["avg_batch_ms"]) * 100
+            sign = "+" if delta_pct > 0 else ""
+            print(f"  {r['mode']:>20s} vs {baseline['mode']:>20s}: "
+                  f"avg batch {r['avg_batch_ms']:.1f}ms vs {baseline['avg_batch_ms']:.1f}ms  "
+                  f"({sign}{delta_pct:.1f}%, {speedup:.4f}x)")
 
-    cmp_rows = []
-    for key in sorted(by_scenario):
-        item = by_scenario[key]
-        single = item["single_tile"]
-        dual = item["dual_tile"]
-        latency_speedup = float(single["batch_latency_ms_mean"]) / float(
-            dual["batch_latency_ms_mean"])
-        decode_speedup = float(dual["decode_tps_mean"]) / float(
-            single["decode_tps_mean"])
-        cmp_rows.append([
-            str(key[0]),
-            str(key[1]),
-            str(key[2]),
-            _format(float(single["batch_latency_ms_mean"])),
-            _format(float(dual["batch_latency_ms_mean"])),
-            f"{latency_speedup:.3f}x",
-            _format(float(single["ttft_ms_mean"])),
-            _format(float(dual["ttft_ms_mean"])),
-            f"{decode_speedup:.3f}x",
-        ])
+        # Per-batch comparison table
+        print()
+        print("Per-batch latency comparison (ms):")
+        hdr = f"  {'batch':>6s}"
+        for r in results:
+            hdr += f"  {r['mode']:>18s}"
+        print(hdr)
+        print(f"  {'-' * (8 + 20 * len(results))}")
+        num_batches = min(len(r["batch_times_ms"]) for r in results)
+        for bi in range(num_batches):
+            line = f"  {bi:>6d}"
+            for r in results:
+                line += f"  {r['batch_times_ms'][bi]:>18.1f}"
+            print(line)
 
-    _print_table(
-        [
-            "batch",
-            "prompt_tok",
-            "output_tok",
-            "single_batch_ms",
-            "dual_batch_ms",
-            "latency_speedup(single/dual)",
-            "single_ttft_ms",
-            "dual_ttft_ms",
-            "decode_tps_speedup(dual/single)",
-        ],
-        cmp_rows,
-    )
+        # Summary verdict
+        print()
+        for r in results[1:]:
+            speedup = baseline["total_ms"] / r["total_ms"]
+            if speedup > 1.01:
+                print(f">>> {r['mode']} is {(speedup - 1) * 100:.1f}% FASTER than {baseline['mode']}")
+            elif speedup < 0.99:
+                print(f">>> {r['mode']} is {(1 - speedup) * 100:.1f}% SLOWER than {baseline['mode']}")
+            else:
+                print(f">>> {r['mode']} vs {baseline['mode']}: NO SIGNIFICANT DIFFERENCE ({speedup:.4f}x)")
 
     llm.shutdown()
     return 0

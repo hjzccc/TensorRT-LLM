@@ -60,7 +60,7 @@ docker exec -it trtllm-build \
     --fast_build \
     -a '120-real' \
     --use_ccache --no-venv \
-    -j 4
+    -j 8
 ```
 
 ```bash
