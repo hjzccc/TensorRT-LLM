@@ -26,18 +26,27 @@ Edit the "Sweep configuration" globals below to control the parameter grid.
 
 import copy
 import csv
-import os
+import sys
+from pathlib import Path
 
-os.environ["ENABLE_CONFIGURABLE_MOE"] = "0"
+# Add tests/unittest to sys.path so we can import the shared heter_moe_utils.
+_UNITTEST_DIR = str(Path(__file__).resolve().parents[1] / "unittest")
+if _UNITTEST_DIR not in sys.path:
+    sys.path.insert(0, _UNITTEST_DIR)
 
 import torch
+from _torch.modules.moe.heter_moe_utils import (
+    all_bf16_heter_config,
+    all_nvfp4_heter_config,
+    create_backend,
+    create_cutlass_backend,
+    create_model_config,
+    create_unquantized_weights,
+    mixed_heter_config,
+    quantize_bf16_to_nvfp4,
+)
 
-from transformers.configuration_utils import PretrainedConfig
-
-from tensorrt_llm._torch.model_config import ModelConfig
 from tensorrt_llm._torch.modules.fused_moe import RenormalizeMoeRoutingMethod
-from tensorrt_llm._torch.modules.fused_moe.create_moe import create_moe_backend
-from tensorrt_llm._torch.modules.fused_moe.fused_moe_cutlass import CutlassFusedMoE
 from tensorrt_llm._torch.modules.fused_moe.fused_moe_heter import HeterCutlassFusedMoE
 from tensorrt_llm._utils import mpi_rank
 from tensorrt_llm.mapping import Mapping
@@ -67,229 +76,11 @@ ENABLE_CUDA_GRAPHS = True
 #   BF16_RATIOS: fraction of experts kept at BF16 (0.0 = all NVFP4, 1.0 = all BF16)
 #   SEQ_LENS:    number of tokens per forward pass (one line per value in the plot)
 # ---------------------------------------------------------------------------
-BF16_RATIOS = [0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0]
-SEQ_LENS = [1, 4, 16, 64, 256, 512]
+BF16_RATIOS = [0.0, 1/16, 1/8, 1/4, 1/2, 1]
+SEQ_LENS = [32, 64, 128, 256, 512, 1024]
 
 # Output CSV path (relative to cwd)
 CSV_PATH = "bench_heter_moe_ratio.csv"
-
-
-# ---------------------------------------------------------------------------
-# Helpers  (self-contained copies from test_heter_moe.py)
-# ---------------------------------------------------------------------------
-
-
-def _create_model_config(
-    num_experts,
-    hidden_size,
-    intermediate_size,
-    dtype,
-    moe_backend,
-    mapping,
-    quant_config=None,
-    heter_config=None,
-):
-    pretrained_config = PretrainedConfig()
-    pretrained_config.num_experts = num_experts
-    pretrained_config.hidden_size = hidden_size
-    pretrained_config.intermediate_size = intermediate_size
-    pretrained_config.torch_dtype = dtype
-
-    kwargs = {
-        "pretrained_config": pretrained_config,
-        "mapping": mapping,
-        "moe_backend": moe_backend,
-    }
-    if quant_config is not None:
-        kwargs["quant_config"] = quant_config
-
-    model_config = ModelConfig(**kwargs)
-
-    if heter_config is not None:
-        model_config.extra_attrs["heter_moe_config"] = heter_config
-
-    return model_config
-
-
-def _create_backend(
-    moe_cls,
-    routing_method,
-    num_experts,
-    hidden_size,
-    intermediate_size,
-    dtype,
-    model_config,
-):
-    return create_moe_backend(
-        moe_cls=moe_cls,
-        routing_method=routing_method,
-        num_experts=num_experts,
-        hidden_size=hidden_size,
-        intermediate_size=intermediate_size,
-        dtype=dtype,
-        reduce_results=True,
-        model_config=model_config,
-        init_load_balancer=False,
-    )
-
-
-def _create_unquantized_weights(
-    num_experts,
-    hidden_size,
-    intermediate_size,
-    dtype,
-    kaiming_fan_out=True,
-):
-    weights = {}
-    for eid in range(num_experts):
-        w1 = torch.randn(
-            (intermediate_size, hidden_size), dtype=dtype, device="cuda")
-        w2 = torch.randn(
-            (hidden_size, intermediate_size), dtype=dtype, device="cuda")
-        w3 = torch.randn(
-            (intermediate_size, hidden_size), dtype=dtype, device="cuda")
-        weights[f"{eid}.w1.weight"] = w1
-        weights[f"{eid}.w2.weight"] = w2
-        weights[f"{eid}.w3.weight"] = w3
-
-    if kaiming_fan_out:
-        for key, val in weights.items():
-            if isinstance(val, torch.Tensor) and val.ndim == 2:
-                fan_out = val.shape[0]
-                weights[key] = val * (2.0 / fan_out) ** 0.5
-
-    return weights
-
-
-def _quantize_bf16_to_nvfp4(
-    bf16_weights,
-    num_experts,
-    hidden_size,
-    intermediate_size,
-    dtype,
-    x,
-    scaling_vector_size=16,
-):
-    x_sf_global = (448 * 6) / x.abs().max().float()
-    weights = {}
-    for eid in range(num_experts):
-        w1 = bf16_weights[f"{eid}.w1.weight"]
-        w2 = bf16_weights[f"{eid}.w2.weight"]
-        w3 = bf16_weights[f"{eid}.w3.weight"]
-
-        w1_sf = (448 * 6) / w1.abs().max().float()
-        w2_sf = (448 * 6) / w2.abs().max().float()
-        w3_sf = (448 * 6) / w3.abs().max().float()
-        w3_w1_sf = min(w1_sf, w3_sf)
-
-        w1_q, w1_sb = torch.ops.trtllm.fp4_quantize(
-            w1, w3_w1_sf, scaling_vector_size, False, False)
-        w1_sb = w1_sb.view(intermediate_size, -1)
-
-        w2_q, w2_sb = torch.ops.trtllm.fp4_quantize(
-            w2, w2_sf, scaling_vector_size, False, False)
-        w2_sb = w2_sb.view(hidden_size, -1)
-
-        w3_q, w3_sb = torch.ops.trtllm.fp4_quantize(
-            w3, w3_w1_sf, scaling_vector_size, False, False)
-        w3_sb = w3_sb.view(intermediate_size, -1)
-
-        weights[f"{eid}.w1.weight"] = w1_q
-        weights[f"{eid}.w2.weight"] = w2_q
-        weights[f"{eid}.w3.weight"] = w3_q
-        weights[f"{eid}.w1.weight_scale"] = w1_sb.view(
-            torch.float8_e4m3fn).cuda()
-        weights[f"{eid}.w2.weight_scale"] = w2_sb.view(
-            torch.float8_e4m3fn).cuda()
-        weights[f"{eid}.w3.weight_scale"] = w3_sb.view(
-            torch.float8_e4m3fn).cuda()
-        weights[f"{eid}.w1.input_scale"] = 1.0 / x_sf_global.cuda()
-        weights[f"{eid}.w2.input_scale"] = 1.0 / x_sf_global.cuda()
-        weights[f"{eid}.w3.input_scale"] = 1.0 / x_sf_global.cuda()
-        weights[f"{eid}.w1.weight_scale_2"] = 1.0 / w3_w1_sf
-        weights[f"{eid}.w2.weight_scale_2"] = 1.0 / w2_sf
-        weights[f"{eid}.w3.weight_scale_2"] = 1.0 / w3_w1_sf
-    return weights
-
-
-def _create_cutlass_backend(
-    routing_method,
-    mapping,
-    num_experts,
-    hidden_size,
-    intermediate_size,
-    dtype,
-    weights,
-    quant_config=None,
-):
-    model_config = _create_model_config(
-        num_experts=num_experts,
-        hidden_size=hidden_size,
-        intermediate_size=intermediate_size,
-        dtype=dtype,
-        moe_backend="CUTLASS",
-        mapping=mapping,
-        quant_config=quant_config,
-    )
-    backend = _create_backend(
-        moe_cls=CutlassFusedMoE,
-        routing_method=routing_method,
-        num_experts=num_experts,
-        hidden_size=hidden_size,
-        intermediate_size=intermediate_size,
-        dtype=dtype,
-        model_config=model_config,
-    )
-    backend.load_weights([copy.deepcopy(weights)])
-    backend.post_load_weights()
-    backend.cuda()
-    return backend
-
-
-# ---------------------------------------------------------------------------
-# Heter config factories
-# ---------------------------------------------------------------------------
-
-
-def _all_bf16_heter_config():
-    return {
-        "groups": [{
-            "name": "all_bf16",
-            "quant_algo": None,
-            "size_ratio": 1.0,
-            "checkpoint": None,
-        }],
-    }
-
-
-def _all_nvfp4_heter_config():
-    return {
-        "groups": [{
-            "name": "all_nvfp4",
-            "quant_algo": QuantAlgo.NVFP4,
-            "size_ratio": 1.0,
-            "checkpoint": None,
-        }],
-    }
-
-
-def _mixed_heter_config(bf16_ratio):
-    return {
-        "groups": [
-            {
-                "name": "cold_nvfp4",
-                "quant_algo": QuantAlgo.NVFP4,
-                "size_ratio": round(1.0 - bf16_ratio, 4),
-                "checkpoint": None,
-            },
-            {
-                "name": "hot_bf16",
-                "quant_algo": None,
-                "size_ratio": bf16_ratio,
-                "checkpoint": None,
-            },
-        ],
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -392,13 +183,13 @@ def bench_one(seq_len, bf16_ratio, bf16_weights, nvfp4_cutlass, mapping):
 
     # --- Select heter config based on ratio ---
     if bf16_ratio <= 0.0:
-        heter_config = _all_nvfp4_heter_config()
+        heter_config = all_nvfp4_heter_config()
     elif bf16_ratio >= 1.0:
-        heter_config = _all_bf16_heter_config()
+        heter_config = all_bf16_heter_config()
     else:
-        heter_config = _mixed_heter_config(bf16_ratio=bf16_ratio)
+        heter_config = mixed_heter_config(bf16_ratio=bf16_ratio)
 
-    model_config = _create_model_config(
+    model_config = create_model_config(
         num_experts=NUM_EXPERTS,
         hidden_size=HIDDEN_SIZE,
         intermediate_size=INTERMEDIATE_SIZE,
@@ -407,7 +198,7 @@ def bench_one(seq_len, bf16_ratio, bf16_weights, nvfp4_cutlass, mapping):
         mapping=mapping,
         heter_config=heter_config,
     )
-    backend = _create_backend(
+    backend = create_backend(
         moe_cls=HeterCutlassFusedMoE,
         routing_method=routing_method,
         num_experts=NUM_EXPERTS,
@@ -470,7 +261,7 @@ def main():
         # One-time setup: create BF16 weights and NVFP4 reference backend
         # ------------------------------------------------------------------
         print("Creating BF16 weights …")
-        bf16_weights = _create_unquantized_weights(
+        bf16_weights = create_unquantized_weights(
             num_experts=NUM_EXPERTS,
             hidden_size=HIDDEN_SIZE,
             intermediate_size=INTERMEDIATE_SIZE,
@@ -480,7 +271,7 @@ def main():
         print("Quantizing to NVFP4 …")
         x_dummy = torch.randn(
             (max(SEQ_LENS), HIDDEN_SIZE), dtype=DTYPE, device="cuda")
-        nvfp4_weights = _quantize_bf16_to_nvfp4(
+        nvfp4_weights = quantize_bf16_to_nvfp4(
             bf16_weights=bf16_weights,
             num_experts=NUM_EXPERTS,
             hidden_size=HIDDEN_SIZE,
@@ -492,7 +283,7 @@ def main():
 
         print("Creating NVFP4 reference backend …")
         routing_method = RenormalizeMoeRoutingMethod(top_k=TOP_K)
-        nvfp4_cutlass = _create_cutlass_backend(
+        nvfp4_cutlass = create_cutlass_backend(
             routing_method=routing_method,
             mapping=mapping,
             num_experts=NUM_EXPERTS,
@@ -526,21 +317,25 @@ def main():
     # Print results table
     # ------------------------------------------------------------------
     print()
-    print("=" * 80)
-    print("RESULTS  (median ms per forward pass)")
-    print("=" * 80)
+    print("=" * 100)
+    print("RESULTS  (median ms per forward pass, speedup vs pure BF16)")
+    print("=" * 100)
 
-    col_w = 12
+    # Baseline = pure BF16 (bf16_ratio=1.0) for each seq_len
+    baseline = {s: results[s][1.0] for s in SEQ_LENS}
+
+    col_w = 16
     header = f"{'bf16_ratio':>{col_w}}"
     for s in SEQ_LENS:
         header += f"{'seq=' + str(s):>{col_w}}"
     print(header)
     print("-" * len(header))
-
     for ratio in BF16_RATIOS:
         row = f"{ratio:>{col_w}.3f}"
         for seq_len in SEQ_LENS:
-            row += f"{results[seq_len][ratio]:>{col_w}.3f}"
+            t = results[seq_len][ratio]
+            speedup = baseline[seq_len] / t
+            row += f"{t:>8.3f} (x{speedup:.1f})"
         print(row)
 
     # ------------------------------------------------------------------

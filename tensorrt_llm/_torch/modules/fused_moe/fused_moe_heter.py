@@ -460,7 +460,7 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             size_ratio = grp.get("size_ratio")
             if size_ratio is None:
                 raise ValueError(
-                    f"Group '{name}': 'size_ratio' is required."
+                    f"Group '{name}': size_ratio is required."
                 )
             size_ratio = float(size_ratio)
             if not (0.0 < size_ratio <= 1.0):
