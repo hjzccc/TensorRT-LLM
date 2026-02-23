@@ -44,7 +44,7 @@ def resolve_dispatch_policy(
       Uses default constructor kwargs (e.g. ``seed=42``).
     * A **dict** with a ``"type"`` key (policy name) plus any extra
       keyword arguments forwarded to the constructor.
-    * **Absent** — defaults to ``"random"``.
+    * **Absent** — defaults to ``"expert_load"``.
 
     Example config snippets::
 
@@ -60,13 +60,13 @@ def resolve_dispatch_policy(
         ValueError: If the policy type is unknown or the value has
             an unexpected type.
     """
-    policy_cfg = heter_config.get("policy", "random")
+    policy_cfg = heter_config.get("policy", "expert_load")
 
     if isinstance(policy_cfg, str):
         policy_type = policy_cfg
         policy_kwargs: Dict[str, Any] = {}
     elif isinstance(policy_cfg, dict):
-        policy_type = policy_cfg.get("type", "random")
+        policy_type = policy_cfg.get("type", "expert_load")
         policy_kwargs = {
             k: v for k, v in policy_cfg.items() if k != "type"
         }

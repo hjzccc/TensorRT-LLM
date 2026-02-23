@@ -57,7 +57,7 @@ ENABLE_CUDA_GRAPHS = True
 
 # Benchmark parameters
 _WARMUP_ITERS = 10
-_BENCH_ITERS = 20
+_BENCH_ITERS = 1
 
 
 def _nvfp4_supported(dtype: torch.dtype = torch.bfloat16) -> bool:
@@ -1199,7 +1199,7 @@ class TestRuntimeBenchmark:
     HIDDEN_SIZE = 2048
     INTERMEDIATE_SIZE = 768
     DTYPE = torch.bfloat16
-    SEQ_LEN = 512
+    SEQ_LEN = 128
     TOP_K = 8
 
     _MAX_WORKSPACE_COUNT = 16

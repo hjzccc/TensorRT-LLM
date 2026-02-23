@@ -54,6 +54,7 @@ Implementation notes — torch.compile & CUDA graph safety:
 """
 
 import abc
+import logging
 from typing import List, Optional, Tuple
 
 import torch
@@ -132,21 +133,25 @@ def _assign_by_score_gpu(
     """
     num_groups = len(group_size_ratios)
 
+    if num_groups <= 1:
+        expert_to_group.zero_()
+        return expert_to_group
+
     if num_groups == 2:
         # Fast path: single topk for the high-precision (last) group.
         k_high = round(num_experts * group_size_ratios[1])
         expert_to_group.zero_()
         _, top_indices = torch.topk(scores, k_high)
         expert_to_group[top_indices] = 1
-        if True:
-            # Log token-slots dispatched to each group (scores = per-expert
-            # activation counts when called from ExpertLoadHeterDispatch).
-            group_0_tokens = scores[expert_to_group == 0].sum()
-            group_1_tokens = scores[expert_to_group == 1].sum()
-            print(
-                f"HeterDispatch: token-slots per group: "
-                f"group_0={group_0_tokens.item():.0f}, "
-                f"group_1={group_1_tokens.item():.0f}")
+        # if True:
+        #     # Log token-slots dispatched to each group (scores = per-expert
+        #     # activation counts when called from ExpertLoadHeterDispatch).
+        #     group_0_tokens = scores[expert_to_group == 0].sum()
+        #     group_1_tokens = scores[expert_to_group == 1].sum()
+        #     print(
+        #         "HeterDispatch: token-slots per group: "
+        #         "group_0=%d, group_1=%d",
+        #         group_0_tokens.item(), group_1_tokens.item())
         return expert_to_group
     else:
         # General N-group path: argsort on GPU + scatter.
@@ -381,6 +386,8 @@ class ConfidenceThresholdHeterDispatch(HeterDispatchPolicy):
         )
         self._expert_weight_sum = torch.empty(
             num_experts, device=self._device, dtype=torch.float32)
+        self._expert_count_buf = torch.zeros(
+            num_experts, device=self._device, dtype=torch.float32)
 
     def _assign(self, token_selected_experts, token_final_scales):
         if token_selected_experts is None or token_final_scales is None:
@@ -395,10 +402,13 @@ class ConfidenceThresholdHeterDispatch(HeterDispatchPolicy):
         buf.zero_()
         buf.scatter_add_(0, flat_experts, flat_scales)
 
-        expert_count = torch.bincount(
-            flat_experts,
-            minlength=self._num_experts,
-        ).to(dtype=torch.float32)
+        # scatter_add_ with ones instead of bincount — bincount has
+        # dynamic output shape which breaks torch.compile.
+        expert_count = self._expert_count_buf
+        expert_count.zero_()
+        expert_count.scatter_add_(
+            0, flat_experts,
+            torch.ones_like(flat_experts, dtype=torch.float32))
         expert_count.clamp_min_(1.0)
         buf.div_(expert_count)
 
@@ -439,6 +449,8 @@ class ExpertLoadHeterDispatch(HeterDispatchPolicy):
             seed=fallback_seed,
             device=device,
         )
+        self._count_buf = torch.zeros(
+            num_experts, device=self._device, dtype=torch.float32)
 
     def _assign(self, token_selected_experts, token_final_scales):
         if token_selected_experts is None:
@@ -446,10 +458,13 @@ class ExpertLoadHeterDispatch(HeterDispatchPolicy):
                 token_selected_experts, token_final_scales)
 
         flat_experts = token_selected_experts.reshape(-1).long()
-        counts = torch.bincount(
-            flat_experts,
-            minlength=self._num_experts,
-        ).to(dtype=torch.float32)
+        # scatter_add_ with ones instead of bincount — bincount has
+        # dynamic output shape which breaks torch.compile.
+        counts = self._count_buf
+        counts.zero_()
+        counts.scatter_add_(
+            0, flat_experts,
+            torch.ones_like(flat_experts, dtype=torch.float32))
 
         return _assign_by_score_gpu(
             counts,
