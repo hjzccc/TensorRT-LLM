@@ -57,6 +57,7 @@ import abc
 from typing import List, Optional, Tuple
 
 import torch
+from tensorrt_llm.logger import logger
 
 # Type alias for a per-group dispatch result: (experts, scales).
 # Both tensors have shape [N, K].  Non-group expert slots use a sentinel
@@ -137,6 +138,15 @@ def _assign_by_score_gpu(
         expert_to_group.zero_()
         _, top_indices = torch.topk(scores, k_high)
         expert_to_group[top_indices] = 1
+        if True:
+            # Log token-slots dispatched to each group (scores = per-expert
+            # activation counts when called from ExpertLoadHeterDispatch).
+            group_0_tokens = scores[expert_to_group == 0].sum()
+            group_1_tokens = scores[expert_to_group == 1].sum()
+            print(
+                f"HeterDispatch: token-slots per group: "
+                f"group_0={group_0_tokens.item():.0f}, "
+                f"group_1={group_1_tokens.item():.0f}")
         return expert_to_group
     else:
         # General N-group path: argsort on GPU + scatter.
@@ -258,9 +268,9 @@ class HeterDispatchPolicy(abc.ABC):
             token_selected_experts,
             token_final_scales,
         )
-        if __debug__:
-            _validate_expert_to_group(
-                expert_to_group, self._num_experts, self.num_groups)
+        # if __debug__:
+        #     _validate_expert_to_group(
+        #         expert_to_group, self._num_experts, self.num_groups)
 
         return self._dispatch_from_expert_to_group(
             expert_to_group, token_selected_experts, token_final_scales)

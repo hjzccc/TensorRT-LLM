@@ -431,7 +431,7 @@ def _prepare_single_runner(backend, x, router_logits,
     torch.cuda.synchronize()
 
     # --- Optionally capture a CUDA graph ---
-    if ENABLE_CUDA_GRAPHS and not ENABLE_TORCH_COMPILE:
+    if ENABLE_CUDA_GRAPHS:
         graph = torch.cuda.CUDAGraph()
         with torch.cuda.graph(graph):
             fn()
@@ -1199,7 +1199,7 @@ class TestRuntimeBenchmark:
     HIDDEN_SIZE = 2048
     INTERMEDIATE_SIZE = 768
     DTYPE = torch.bfloat16
-    SEQ_LEN = 64
+    SEQ_LEN = 512
     TOP_K = 8
 
     _MAX_WORKSPACE_COUNT = 16
