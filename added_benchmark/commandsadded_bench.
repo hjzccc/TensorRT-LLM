@@ -1,0 +1,39 @@
+docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' -e PYTHONPATH='/code/tensorrt_llm' -e TLLM_WORKER_USE_SINGLE_PROCESS=1 trtllm-build \
+  nsys profile -o /code/tensorrt_llm/dual_tile_wikitext -f true --trace cuda,nvtx --capture-range cudaProfilerApi -x true \
+  python3 /code/tensorrt_llm/tests/bench_dual_tile_e2e.py \
+  --batch-size 512 --prompt-len 64 --output-len 16 --warmup 1 --max-batches 2
+
+
+
+docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' -e PYTHONPATH='/code/tensorrt_llm' -e TLLM_WORKER_USE_SINGLE_PROCESS=1 trtllm-build \
+  nsys profile -o /code/tensorrt_llm/dual_tile_wikitext -f true --trace cuda,nvtx --capture-range cudaProfilerApi -x true \
+   python3 /code/tensorrt_llm/tests/bench_dual_tile_e2e.py \
+  --batch-size 512 --prompt-len 512 --output-len 128 --warmup 1 --max-batches 2
+
+
+docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' -e PYTHONPATH='/code/tensorrt_llm' -e TLLM_WORKER_USE_SINGLE_PROCESS=1 trtllm-build \
+   nsys profile -o /code/tensorrt_llm/dual_tile_wikitext -f true --trace cuda,nvtx --capture-range cudaProfilerApi -x true --trace-fork-before-exec=true --cuda-graph-trace=node \
+  python3 /code/tensorrt_llm/tests/bench_dual_tile_e2e.py \
+  --batch-size 512 --prompt-len 64 --output-len 16 --warmup 1 \
+  --torch-compile \
+  --dual-tile-threshold 32 --dual-tile-tactics 2 5 1 4
+
+
+
+  docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' -e PYTHONPATH='/code/tensorrt_llm' -e TLLM_WORKER_USE_SINGLE_PROCESS=1 trtllm-build \
+  python3 /code/tensorrt_llm/tests/bench_dual_tile_e2e.py \
+  --batch-size 512 --prompt-len 64 --output-len 16 --warmup 1 \
+  --torch-compile \
+  --dual-tile-threshold 32 --dual-tile-tactics 2 5 1 4
+
+
+
+  nsys profile --output hetermoe --trace=cuda --trace-fork-before-exec=true --cuda-graph-trace=node --force-overwrite=true pytest tests/unittest/_torch/modules/moe/test_heter_moe.py::TestRuntimeBenchmark::test_heter_mixed_runtime_between_heter_extremes -xvs -W ignore
+
+
+  docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' -e PYTHONPATH='/code/tensorrt_llm' -e TLLM_WORKER_USE_SINGLE_PROCESS=1 trtllm-dual-tile \
+   nsys profile -o /code/tensorrt_llm/dual_tile_wikitext_updated -f true --trace cuda,nvtx --capture-range cudaProfilerApi -x true --trace-fork-before-exec=true --cuda-graph-trace=node \
+  python3 /code/tensorrt_llm/added_benchmark/bench_dual_tile_e2e.py \
+  --batch-size 512 --prompt-len 64 --output-len 16 --warmup 1 \
+  --torch-compile \
+  --dual-tile-threshold 32 --dual-tile-tactics 2 5 1 4

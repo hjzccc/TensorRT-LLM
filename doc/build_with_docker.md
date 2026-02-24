@@ -62,6 +62,14 @@ docker exec -it trtllm-build \
     --use_ccache --no-venv \
     -j 8
 ```
+```bash
+docker exec -it trtllm-dual-tile \
+  python3 /code/tensorrt_llm/scripts/build_wheel.py \
+    --fast_build \
+    -a '120-real' \
+    --use_ccache --no-venv \
+    -j 8
+```
 
 ```bash
 docker exec -it trtllm-build \

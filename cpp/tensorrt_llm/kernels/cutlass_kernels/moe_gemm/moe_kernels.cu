@@ -3310,7 +3310,7 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
     int64_t const inter_size, int const num_experts_per_node, ActivationParams fc1_activation_type,
     float const** alpha_scale_ptr_array, bool bias_is_broadcast, cudaStream_t stream,
     cutlass_extensions::CutlassGemmConfig config, bool min_latency_mode, int* num_active_experts_per,
-    int* active_expert_global_ids, void const* fc2_prequant_scale)
+    int* active_expert_global_ids, void const* fc2_prequant_scale, bool skip_activation)
 {
 
     if (fp8_blockscale_gemm_runner)
@@ -3370,6 +3370,12 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
         gemm_runner.moeGemm(universal_input, tma_ws_input);
 
         sync_check_cuda_error(stream);
+
+
+        // In dual-tile mode, we run both GEMM1 kernels first (skip_activation=true),
+        // then call doActivation once over all expanded rows in runMoeDualTile.
+        if (skip_activation)
+            return;
 
         // TODO: when bias_is_broadcast is false, fuse bias to gemm
         bool use_per_expert_act_scale = use_fp4 ? quant_params.fp4.fc2.use_per_expert_act_scale
@@ -4266,124 +4272,111 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
             permuted_row_to_unpermuted_row_, stream, dual_tile_threshold_, keep_small);
     };
 
-    // Per-group sequential execution: setup → gemm1 → gemm2 for each group.
-    // This avoids any intermediate buffer aliasing between the two tile groups.
-    // The FINALIZE epilogue uses atomic reduction, so both groups safely accumulate
-    // into the same zeroed final_output buffer.
-
-    // Zero the final output once before both gemm2 calls.
-    check_cuda_error(
-        cudaMemsetAsync(final_output, 0x0, sizeof(OutputType) * num_rows * unpadded_hidden_size, stream));
-
-    auto gemm2_config_small_fused = *gemm2_config_small_;
-    gemm2_config_small_fused.epilogue_fusion_type = cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE;
-    auto gemm2_config_large_fused = *gemm2_config_large_;
-    gemm2_config_large_fused.epilogue_fusion_type = cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE;
-
-    // Zero the GEMM1 intermediate buffer before each group so that doActivation
-    // (called inside gemm1) produces zeros for masked experts. Without this,
-    // doActivation operates on ALL expanded rows and stale data from uninitialized
-    // positions corrupts fc1_result_ for the other group's experts.
+    // Phase 0: initialize shared buffers once for the full dual-tile pipeline.
     size_t const gemm1_inter_bytes = has_intermediate
         ? static_cast<size_t>(expanded_num_rows) * fc1_out_size * sizeof(UnfusedGemmOutputType)
         : 0;
-
-    // Helper lambda to re-expand input rows before each group's GEMM1.
-    // This is needed because permuted_data_ and fc1_result_ alias the same buffer
-    // ("overlapped_gemm1_gemm2_inputs"), and fc1_fp4_act_scale_ and fc2_fp4_act_scale_
-    // also alias the same buffer ("fp4_act_scale"). After the first group's doActivation
-    // (inside gemm1), both buffers are overwritten — permuted_data_ with FP4 quantized
-    // activation output, and fc1_fp4_act_scale_ with GEMM2 activation scale factors.
-    // We must re-expand before the second group to restore these.
-    auto reExpandInputRows = [&]()
+    if (gemm1_inter_bytes > 0)
     {
-        T* gemm1_input_expand_local = use_w4afp8 ? reinterpret_cast<T*>(smoothed_act_) : reinterpret_cast<T*>(permuted_data_);
-        expandInputRowsKernelLauncher(input_activations, gemm1_input_expand_local, token_final_scales,
-            permuted_token_final_scales_, permuted_row_to_unpermuted_row_, num_rows, hidden_size, experts_per_token,
-            num_experts_per_node, quant_params, use_per_expert_act_scale, expert_first_token_offset_,
-            fc1_fp4_act_scale_, input_sf, swizzled_input_sf,
-            (use_w4afp8 && !use_fp8_input) ? quant_params.groupwise.fc1.act_scales : nullptr, stream);
-        sync_check_cuda_error(stream);
-    };
+        check_cuda_error(cudaMemsetAsync(gemm1_output_buf, 0x0, gemm1_inter_bytes, stream));
+    }
+    check_cuda_error(
+        cudaMemsetAsync(final_output, 0x0, sizeof(OutputType) * num_rows * unpadded_hidden_size, stream));
 
-    // --- Small tile group: setup → gemm1 → prequant → gemm2 ---
+    // Phase 1: run dual-tile GEMM1 for both groups (CUTLASS GEMM only, no activation).
     {
-        if (gemm1_inter_bytes > 0)
-        {
-            check_cuda_error(cudaMemsetAsync(gemm1_output_buf, 0x0, gemm1_inter_bytes, stream));
-        }
-
         auto small_g1_tma = tma_ws_grouped_gemm1_input_;
         auto small_g2_tma = tma_ws_grouped_gemm2_input_;
-        auto [small_gemm1_tma, small_gemm2_tma] = setupDualTileInputs(
+        auto [small_gemm1_tma, small_gemm2_tma_unused] = setupDualTileInputs(
             small_g1_tma, small_g2_tma, *gemm1_config_small_, *gemm2_config_small_, true);
+        static_cast<void>(small_gemm2_tma_unused);
 
         Self::gemm1(moe_gemm_runner_, nullptr, gemm1_input, fc1_result_, glu_inter_result_,
             expert_first_token_offset_, small_gemm1_tma, fc1_expert_weights, fc1_expert_biases, num_valid_tokens_ptr,
             nullptr, quant_params.fp8.dequant_fc1, quant_params.fp8.quant_fc2,
             fc1_fp4_act_scale_, fc2_fp4_act_scale_, quant_params, num_rows, expanded_num_rows,
             expected_tokens_per_expert, hidden_size, inter_size, num_experts_per_node, fc1_activation_type,
-            alpha_scale_ptr_array_fc1_, true, stream, *gemm1_config_small_, false, nullptr, nullptr);
-        sync_check_cuda_error(stream);
-
-        T const* gemm2_input_small{reinterpret_cast<T const*>(smoothed_act_)};
-        gemm2_input_small = applyPrequantScale(smoothed_act_, fc1_result_, quant_params.groupwise.fc2.act_scales,
-            num_valid_tokens_ptr, expanded_num_rows, inter_size, use_awq, stream, quant_params,
-            expert_first_token_offset_, num_experts_per_node);
-        sync_check_cuda_error(stream);
-
-        Self::gemm2(moe_gemm_runner_, nullptr, gemm2_input_small, fc2_result_, final_output,
-            expert_first_token_offset_, small_gemm2_tma, fc2_expert_weights, fc2_expert_biases, nullptr,
-            quant_params.fp8.dequant_fc2, fc2_fp4_act_scale_, quant_params, token_final_scales,
-            permuted_token_final_scales_, unpermuted_row_to_permuted_row, permuted_row_to_unpermuted_row_,
-            token_selected_experts, num_valid_tokens_ptr, num_rows, expanded_num_rows, expected_tokens_per_expert,
-            hidden_size, unpadded_hidden_size, inter_size, num_experts_per_node, experts_per_token,
-            alpha_scale_ptr_array_fc2_, false, nullptr, stream, parallelism_config, enable_alltoall,
-            gemm2_config_small_fused, false, nullptr, nullptr, /*skip_output_memset=*/true);
+            alpha_scale_ptr_array_fc1_, true, stream, *gemm1_config_small_, false, nullptr, nullptr,
+            /*fc2_prequant_scale=*/nullptr, /*skip_activation=*/true);
         sync_check_cuda_error(stream);
     }
 
-    // Re-expand input rows before second group: the first group's doActivation
-    // (inside gemm1) overwrote permuted_data_ (= fc1_result_) with FP4 quantized
-    // activations, and fc1_fp4_act_scale_ (= fc2_fp4_act_scale_) with GEMM2 SFs.
-    reExpandInputRows();
-
-    // --- Large tile group: setup → gemm1 → prequant → gemm2 ---
     {
-        if (gemm1_inter_bytes > 0)
-        {
-            check_cuda_error(cudaMemsetAsync(gemm1_output_buf, 0x0, gemm1_inter_bytes, stream));
-        }
-
         auto large_g1_tma = tma_ws_dual_tile_gemm1_input_;
         auto large_g2_tma = tma_ws_dual_tile_gemm2_input_;
-        auto [large_gemm1_tma, large_gemm2_tma] = setupDualTileInputs(
+        auto [large_gemm1_tma, large_gemm2_tma_unused] = setupDualTileInputs(
             large_g1_tma, large_g2_tma, *gemm1_config_large_, *gemm2_config_large_, false);
+        static_cast<void>(large_gemm2_tma_unused);
 
         Self::gemm1(moe_gemm_runner_, nullptr, gemm1_input, fc1_result_, glu_inter_result_,
             expert_first_token_offset_, large_gemm1_tma, fc1_expert_weights, fc1_expert_biases, num_valid_tokens_ptr,
             nullptr, quant_params.fp8.dequant_fc1, quant_params.fp8.quant_fc2,
             fc1_fp4_act_scale_, fc2_fp4_act_scale_, quant_params, num_rows, expanded_num_rows,
             expected_tokens_per_expert, hidden_size, inter_size, num_experts_per_node, fc1_activation_type,
-            alpha_scale_ptr_array_fc1_, true, stream, *gemm1_config_large_, false, nullptr, nullptr);
-        sync_check_cuda_error(stream);
-
-        T const* gemm2_input_large{reinterpret_cast<T const*>(smoothed_act_)};
-        gemm2_input_large = applyPrequantScale(smoothed_act_, fc1_result_, quant_params.groupwise.fc2.act_scales,
-            num_valid_tokens_ptr, expanded_num_rows, inter_size, use_awq, stream, quant_params,
-            expert_first_token_offset_, num_experts_per_node);
-        sync_check_cuda_error(stream);
-
-        Self::gemm2(moe_gemm_runner_, nullptr, gemm2_input_large, fc2_result_, final_output,
-            expert_first_token_offset_, large_gemm2_tma, fc2_expert_weights, fc2_expert_biases, nullptr,
-            quant_params.fp8.dequant_fc2, fc2_fp4_act_scale_, quant_params, token_final_scales,
-            permuted_token_final_scales_, unpermuted_row_to_permuted_row, permuted_row_to_unpermuted_row_,
-            token_selected_experts, num_valid_tokens_ptr, num_rows, expanded_num_rows, expected_tokens_per_expert,
-            hidden_size, unpadded_hidden_size, inter_size, num_experts_per_node, experts_per_token,
-            alpha_scale_ptr_array_fc2_, false, nullptr, stream, parallelism_config, enable_alltoall,
-            gemm2_config_large_fused, false, nullptr, nullptr, /*skip_output_memset=*/true);
+            alpha_scale_ptr_array_fc1_, true, stream, *gemm1_config_large_, false, nullptr, nullptr,
+            /*fc2_prequant_scale=*/nullptr, /*skip_activation=*/true);
         sync_check_cuda_error(stream);
     }
+
+    // Phase 2: run activation once across the full expanded rows.
+    bool use_per_expert_act_scale_fc2 = use_fp4 ? quant_params.fp4.fc2.use_per_expert_act_scale
+        : use_wfp4afp8 ? quant_params.fp8_mxfp4.fc2.use_per_expert_act_scale
+        : use_fp8 ? quant_params.fp8.fc2_use_per_expert_act_scale
+        : Self::useAwq(quant_params) ? quant_params.groupwise.fc2.use_per_expert_act_scale
+        : false;
+    using GatedActOutputType = std::conditional_t<use_w4afp8, BackBoneType, T>;
+    doActivation<GatedActOutputType, UnfusedGemmOutputType>(
+        reinterpret_cast<GatedActOutputType*>(fc1_result_),
+        static_cast<UnfusedGemmOutputType const*>(gemm1_output_buf),
+        quant_params.fp8.quant_fc2, fc1_expert_biases,
+        /*bias_is_broadcast=*/true,
+        expert_first_token_offset_, num_experts_per_node, inter_size,
+        expanded_num_rows, fc1_activation_type, quant_params,
+        use_per_expert_act_scale_fc2, fc2_fp4_act_scale_, stream);
+
+    // Phase 3: apply prequant scale once for GEMM2 input.
+    T const* gemm2_input_final{reinterpret_cast<T const*>(smoothed_act_)};
+    gemm2_input_final = applyPrequantScale(smoothed_act_, fc1_result_,
+        quant_params.groupwise.fc2.act_scales, num_valid_tokens_ptr,
+        expanded_num_rows, inter_size, use_awq, stream, quant_params,
+        expert_first_token_offset_, num_experts_per_node);
+    sync_check_cuda_error(stream);
+
+    // Phase 4: run GEMM2 once with non-masked TMA setup and FINALIZE epilogue.
+    auto gemm2_tma = tma_ws_grouped_gemm2_input_;
+    auto gemm1_tma_dummy = tma_ws_grouped_gemm1_input_;
+    gemm1_tma_dummy.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE;
+    gemm2_tma.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE;
+    gemm2_tma.setFinalizeFusionParams(final_output, unpadded_hidden_size, num_rows, use_reduction);
+    gemm1_tma_dummy.swap_ab = gemm1_config_small_->swap_ab;
+    gemm2_tma.swap_ab = gemm2_config_small_->swap_ab;
+
+    auto [gemm1_tma_unused, gemm2_tma_final] = Self::computeStridesTmaWarpSpecialized(
+        expert_first_token_offset_, gemm1_tma_dummy, gemm2_tma, num_rows,
+        expanded_num_rows, fc1_out_size, hidden_size, hidden_size, inter_size,
+        num_experts_per_node, reinterpret_cast<T const*>(gemm1_input),
+        reinterpret_cast<T const*>(gemm2_input_final), fc1_expert_weights, fc2_expert_weights,
+        quant_params.fp8.dequant_fc1, quant_params.fp8.dequant_fc2,
+        fc1_fp4_act_scale_, fc2_fp4_act_scale_, quant_params, fc1_expert_biases, fc2_bias,
+        reinterpret_cast<UnfusedGemmOutputType*>(gemm1_output_buf),
+        reinterpret_cast<UnfusedGemmOutputType*>(fc2_result_), permuted_token_final_scales_,
+        permuted_row_to_unpermuted_row_, stream);
+    static_cast<void>(gemm1_tma_unused);
+
+    auto gemm2_config_fused = *gemm2_config_small_;
+    gemm2_config_fused.epilogue_fusion_type = cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE;
+
+    Self::gemm2(moe_gemm_runner_, nullptr, gemm2_input_final, fc2_result_, final_output,
+        expert_first_token_offset_, gemm2_tma_final, fc2_expert_weights, fc2_expert_biases,
+        nullptr, quant_params.fp8.dequant_fc2, fc2_fp4_act_scale_, quant_params,
+        token_final_scales, permuted_token_final_scales_, unpermuted_row_to_permuted_row,
+        permuted_row_to_unpermuted_row_, token_selected_experts, num_valid_tokens_ptr,
+        num_rows, expanded_num_rows, expected_tokens_per_expert, hidden_size,
+        unpadded_hidden_size, inter_size, num_experts_per_node, experts_per_token,
+        alpha_scale_ptr_array_fc2_, false, nullptr, stream, parallelism_config,
+        enable_alltoall, gemm2_config_fused, false, nullptr, nullptr,
+        /*skip_output_memset=*/true);
+    sync_check_cuda_error(stream);
 
     // Restore saved configs
     gemm1_config_ = saved_gemm1_config;

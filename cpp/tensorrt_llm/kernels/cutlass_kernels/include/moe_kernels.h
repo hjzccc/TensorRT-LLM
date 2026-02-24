@@ -666,7 +666,8 @@ public:
         int64_t const hidden_size, int64_t const inter_size, int const num_experts_per_node,
         ActivationParams fc1_activation_type, float const** alpha_scale_ptr_array, bool bias_is_broadcast,
         cudaStream_t stream, cutlass_extensions::CutlassGemmConfig config, bool min_latency_mode,
-        int* num_active_experts_per, int* active_expert_global_ids, void const* fc2_prequant_scale = nullptr);
+        int* num_active_experts_per, int* active_expert_global_ids, void const* fc2_prequant_scale = nullptr,
+        bool skip_activation = false);
 
     static void gemm2(MoeGemmRunner<T, WeightType, OutputType, ScaleBiasType>& gemm_runner,
         DeepSeekBlockScaleGemmRunner* fp8_blockscale_gemm_runner, T const* const input, void* const gemm_output,
