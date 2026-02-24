@@ -4273,13 +4273,11 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
     };
 
     // Phase 0: initialize shared buffers once for the full dual-tile pipeline.
-    size_t const gemm1_inter_bytes = has_intermediate
-        ? static_cast<size_t>(expanded_num_rows) * fc1_out_size * sizeof(UnfusedGemmOutputType)
-        : 0;
-    if (gemm1_inter_bytes > 0)
-    {
-        check_cuda_error(cudaMemsetAsync(gemm1_output_buf, 0x0, gemm1_inter_bytes, stream));
-    }
+    // NOTE: No memset needed for gemm1_output_buf. The two dual-tile GEMM1 groups use
+    // complementary masking (keep_small=true masks experts with M > threshold, keep_small=false
+    // masks experts with M <= threshold). Together they cover ALL active experts, so every
+    // position in gemm1_output_buf that doActivation reads will have been written by exactly
+    // one of the two GEMM1 calls. Experts with 0 tokens occupy 0 rows and need no zeroing.
     check_cuda_error(
         cudaMemsetAsync(final_output, 0x0, sizeof(OutputType) * num_rows * unpadded_hidden_size, stream));
 
