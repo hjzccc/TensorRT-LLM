@@ -37,3 +37,44 @@ docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' -e PYTHONPATH='/code/te
   --batch-size 512 --prompt-len 64 --output-len 16 --warmup 1 \
   --torch-compile \
   --dual-tile-threshold 32 --dual-tile-tactics 2 5 1 4
+
+
+
+  docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' -e PYTHONPATH='/code/tensorrt_llm' -e TLLM_WORKER_USE_SINGLE_PROCESS=1 trtllm-dual-tile \
+  nsys profile -o /code/tensorrt_llm/dual_tile_broad -f true --trace cuda,nvtx --capture-range cudaProfilerApi -x true --trace-fork-before-exec=true --cuda-graph-trace=node \
+  python3 /code/tensorrt_llm/added_benchmark/bench_dual_broad.py \
+
+
+  docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' -e PYTHONPATH='/code/tensorrt_llm' -e TLLM_WORKER_USE_SINGLE_PROCESS=1 trtllm-dual-tile \
+  python3 /code/tensorrt_llm/added_benchmark/test_m64_tile.py --torch-compile \
+
+
+  docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' trtllm-dual-tile bash -c \
+  "cd /code/tensorrt_llm/added_benchmark && ncu --set full --kernel-name-base demangled \
+   --kernel-name regex:'GemmUniversal(?!.*Scatter)' \
+   --launch-skip 10 --launch-count 3 \
+   -o ncu_m32_equal_g1 -f \
+   python3 ncu_tile_roofline.py 2"
+
+
+
+docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' -e PYTHONPATH='/code/tensorrt_llm' -e TLLM_WORKER_USE_SINGLE_PROCESS=1 trtllm-dual-tile \
+  python3 /code/tensorrt_llm/added_benchmark/test_m64_tile.py --torch-compile \
+
+
+
+  docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' trtllm-dual-tile bash -c \
+  "cd /code/tensorrt_llm/added_benchmark && ncu --set full --kernel-name-base demangled \
+   --kernel-name regex:'GemmUniversal(?!.*Scatter)' \
+   --launch-skip 10 --launch-count 3 \
+   -o ncu_m32_equal_g1 -f \
+   python3 ncu_tile_roofline.py 2"
+
+docker exec -e LD_LIBRARY_PATH='/usr/local/tensorrt/lib' trtllm-dual-tile bash -c \
+"cd /code/tensorrt_llm/added_benchmark && ncu --set full \
+    --launch-count 6 \
+    -o profile_moe_gemms \
+    python3 test_m64_tile.py --skip-benchmark"
+
+
+

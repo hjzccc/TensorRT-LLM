@@ -521,6 +521,8 @@ std::vector<CutlassGemmConfig> get_candidate_configs_sm120(CutlassGemmConfig::Ca
                 CutlassGemmConfig{CutlassTileConfigSM120::CtaShape64x128x64B, MainloopScheduleType::AUTO,
                     EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1},
                 CutlassGemmConfig{CutlassTileConfigSM120::CtaShape32x128x64B, MainloopScheduleType::AUTO,
+                    EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1},
+                CutlassGemmConfig{CutlassTileConfigSM120::CtaShape256x128x64B, MainloopScheduleType::AUTO,
                     EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1}};
     }
     else

@@ -11,18 +11,20 @@ import argparse
 import sys
 import time
 
+
 import torch
 
 import warnings
 warnings.filterwarnings("ignore")
 
 import tensorrt_llm  # noqa: F401
+from tensorrt_llm._torch.compilation.backend import Backend
 
 # --- Model dimensions (Qwen3-30B-A3B) ---
 HIDDEN_SIZE = 2048
 INTER_SIZE = 768  # per-expert intermediate size (gate/up each)
-NUM_EXPERTS = 8   # use fewer experts for test (saves memory)
-TOP_K = 4
+NUM_EXPERTS = 128   # use fewer experts for test (saves memory)
+TOP_K = 8
 
 # --- NVFP4 packing constants ---
 FP4_PER_INT64 = 16
@@ -108,11 +110,12 @@ def create_input(num_tokens):
     x_fp4, x_sf = torch.ops.trtllm.fp4_quantize(x_bf16, gs, BLOCK_SCALE_VECTOR_SIZE, False, True)
     x_input = x_fp4.view(torch.int64)  # [num_tokens, 128] int64
 
-    # Random expert routing
-    token_experts = torch.stack([
-        torch.randperm(NUM_EXPERTS, device='cuda')[:TOP_K]
-        for _ in range(num_tokens)
-    ]).to(torch.int32)
+    # Equal routing: distribute tokens round-robin across all experts
+    # so each expert gets the same number of tokens (±1)
+    token_experts = torch.zeros(num_tokens, TOP_K, dtype=torch.int32, device='cuda')
+    for t in range(num_tokens):
+        start = (t * TOP_K) % NUM_EXPERTS
+        token_experts[t] = torch.arange(start, start + TOP_K, device='cuda') % NUM_EXPERTS
     token_scales = torch.ones(num_tokens, TOP_K, dtype=torch.float32, device='cuda') / TOP_K
 
     return x_input, x_sf, token_experts, token_scales
@@ -235,9 +238,10 @@ def test_correctness(runner):
         return None
 
 
-def benchmark_tactics(runner):
+def benchmark_tactics(runner, use_torch_compile=False):
     print("\n" + "=" * 70)
-    print("Test 3: Performance benchmark — M128 vs M64 vs M32")
+    mode_tag = ' [torch.compile + CUDA Graph]' if use_torch_compile else ''
+    print(f"Test 3: Performance benchmark \u2014 M128 vs M64 vs M32{mode_tag}")
     print("=" * 70)
     try:
         fc1_w, fc2_w, quant_scales = create_synthetic_weights()
@@ -245,13 +249,35 @@ def benchmark_tactics(runner):
         n_tactics = runner.get_tactic_num(1)
         has_m32 = n_tactics >= 6
 
+        # Match bench_dual_tile_e2e.py: uses tensorrt_llm Backend class
+        # (same as model_engine.py: Backend(enable_inductor=False, ...) )
+        # CUDA Graph capture/replay handled manually below
+        run_fn = run_moe
+        if use_torch_compile:
+            print('  Applying TRT-LLM Backend + CUDA Graph capture...')
+            try:
+                compile_backend = Backend(
+                    enable_inductor=False,
+                    enable_piecewise_cuda_graph=False,  # we capture graphs manually
+                )
+                run_fn = torch.compile(run_moe, backend=compile_backend, fullgraph=True)
+                # Trigger compilation with a small input
+                _x, _sf, _te, _ts = create_input(4)
+                run_fn(runner, _x, _sf, _te, _ts, fc1_w, fc2_w, quant_scales, 0, 0)
+                torch.cuda.synchronize()
+                del _x, _sf, _te, _ts
+                print('  torch.compile succeeded')
+            except Exception as e:
+                print(f'  torch.compile failed ({e}), falling back to eager')
+                run_fn = run_moe
+
         bench_tactics = [0, 1]
         tactic_names = {0: "M128", 1: "M64"}
         if has_m32:
             bench_tactics.append(2)
             tactic_names[2] = "M32"
 
-        token_counts = [4, 8, 16, 32, 64, 128, 256]
+        token_counts = [1, 32, 64, 128, 256,512,1024,2048,4096,8192]
         warmup = 10
         runs = 50
 
@@ -270,27 +296,49 @@ def benchmark_tactics(runner):
         for num_tokens in token_counts:
             x_input, x_sf, token_experts, token_scales = create_input(num_tokens)
 
-            row = f"  {num_tokens:>6} |"
+            row = f"  {num_tokens*TOP_K/NUM_EXPERTS:>6} |"
             times = {}
             for tactic in bench_tactics:
                 try:
                     for _ in range(warmup):
-                        run_moe(runner, x_input, x_sf, token_experts, token_scales,
-                                fc1_w, fc2_w, quant_scales, tactic, tactic)
+                        run_fn(runner, x_input, x_sf, token_experts, token_scales,
+                               fc1_w, fc2_w, quant_scales, tactic, tactic)
                     torch.cuda.synchronize()
 
-                    torch.cuda.synchronize()
-                    start = time.perf_counter()
-                    for _ in range(runs):
-                        run_moe(runner, x_input, x_sf, token_experts, token_scales,
-                                fc1_w, fc2_w, quant_scales, tactic, tactic)
-                    torch.cuda.synchronize()
-                    elapsed_ms = (time.perf_counter() - start) * 1000 / runs
+                    if use_torch_compile:
+                        # Capture CUDA graph after warmup
+                        g = torch.cuda.CUDAGraph()
+                        s = torch.cuda.Stream()
+                        s.wait_stream(torch.cuda.current_stream())
+                        with torch.cuda.stream(s):
+                            for _ in range(3):
+                                run_fn(runner, x_input, x_sf, token_experts, token_scales,
+                                       fc1_w, fc2_w, quant_scales, tactic, tactic)
+                        torch.cuda.current_stream().wait_stream(s)
+
+                        with torch.cuda.graph(g):
+                            run_fn(runner, x_input, x_sf, token_experts, token_scales,
+                                   fc1_w, fc2_w, quant_scales, tactic, tactic)
+
+                        torch.cuda.synchronize()
+                        start = time.perf_counter()
+                        for _ in range(runs):
+                            g.replay()
+                        torch.cuda.synchronize()
+                        elapsed_ms = (time.perf_counter() - start) * 1000 / runs
+                    else:
+                        torch.cuda.synchronize()
+                        start = time.perf_counter()
+                        for _ in range(runs):
+                            run_fn(runner, x_input, x_sf, token_experts, token_scales,
+                                   fc1_w, fc2_w, quant_scales, tactic, tactic)
+                        torch.cuda.synchronize()
+                        elapsed_ms = (time.perf_counter() - start) * 1000 / runs
+
                     times[tactic] = elapsed_ms
                     row += f" {elapsed_ms:>9.3f} ms |"
                 except Exception:
                     row += f" {'ERR':>9} ms |"
-
             if 0 in times and 1 in times and times[1] > 0:
                 row += f"  {times[0] / times[1]:.2f}x"
             else:
@@ -316,6 +364,8 @@ def main():
                         help="Only test tactic availability")
     parser.add_argument("--skip-correctness", action="store_true")
     parser.add_argument("--skip-benchmark", action="store_true")
+    parser.add_argument('--torch-compile', action='store_true', default=False,
+                        help='Enable torch.compile + CUDA Graphs (matches bench_dual_tile_e2e.py pattern)')
     args = parser.parse_args()
 
     print("M64/M32 Tile Test — SM120 NVFP4 MoE Grouped GEMM")
@@ -333,7 +383,7 @@ def main():
 
     # Test 3
     if not args.skip_benchmark:
-        benchmark_tactics(runner)
+        benchmark_tactics(runner, use_torch_compile=args.torch_compile)
 
     # Summary
     print("\n" + "=" * 70)
@@ -347,3 +397,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

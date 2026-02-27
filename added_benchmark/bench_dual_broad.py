@@ -40,15 +40,18 @@ def bench_dual(inp, eidx, sc, isf, g1s, g2s, g1l, g2l, thr, iters=200):
     torch.cuda.synchronize()
     return (time.perf_counter() - t0) / iters * 1000
 
-# Config index: 0=M32, 1=M64, 3=M128
+# Tactic indices (FAST_BUILD, SM120, GROUPED_GEMM, NVFP4):
+# GEMM1 (6):  [0]=M128  [1]=M64  [2]=M32  [3]=M128-swap  [4]=M64-swap  [5]=M32-swap
+# GEMM2 (12): [0]=M128  [1]=M64  [2]=M32  [3]=M128+FIN  [4]=M64+FIN  [5]=M32+FIN
+#              [6..11] = same with swap_ab
 # Dual: (name, g1_small, g2_small, g1_large, g2_large)
 dual_cfgs = [
-    ("M32+M64",              0, 0, 1, 1),
-    ("M32+M128",             0, 0, 3, 3),
-    ("M64+M128",             1, 1, 3, 3),
-    ("M32+M64 g2=M128",     0, 3, 1, 3),
-    ("M32+M128 g2=M128",    0, 3, 3, 3),
-    ("M64+M128 g2=M128",    1, 3, 3, 3),
+    ("M32+M64",              2, 5, 1, 4),
+    ("M32+M128",             2, 5, 0, 3),
+    ("M64+M128",             1, 4, 0, 3),
+    ("M32+M64 g2=M128",     2, 3, 1, 3),
+    ("M32+M128 g2=M128",    2, 3, 0, 3),
+    ("M64+M128 g2=M128",    1, 3, 0, 3),
 ]
 
 for batch in [256, 512, 1024, 2048, 4096]:
@@ -57,9 +60,9 @@ for batch in [256, 512, 1024, 2048, 4096]:
     isf = torch.ones(batch, HIDDEN // 16, dtype=torch.float8_e4m3fn, device=DEVICE)
     avg_m = batch * TOP_K // NUM_EXPERTS
 
-    s32 = bench_single(inp, eidx, sc, isf, 0, 0)
-    s64 = bench_single(inp, eidx, sc, isf, 1, 1)
-    s128 = bench_single(inp, eidx, sc, isf, 3, 3)
+    s32 = bench_single(inp, eidx, sc, isf, 2, 5)
+    s64 = bench_single(inp, eidx, sc, isf, 1, 4)
+    s128 = bench_single(inp, eidx, sc, isf, 0, 3)
     best_s = min(s32, s64, s128)
     best_name = "M32" if best_s == s32 else ("M64" if best_s == s64 else "M128")
 
@@ -69,9 +72,11 @@ for batch in [256, 512, 1024, 2048, 4096]:
     print(hdr)
     print("-" * len(hdr))
 
+    torch.cuda.cudart().cudaProfilerStart()
     for name, g1s, g2s, g1l, g2l in dual_cfgs:
         for thr in [16, 32, 64, 128, 256]:
             d = bench_dual(inp, eidx, sc, isf, g1s, g2s, g1l, g2l, thr)
             diff_pct = (d - best_s) / best_s * 100
             marker = " <<<" if diff_pct < -0.5 else ""
             print(f"{name:>25} | {thr:4d} | {d:7.3f}ms | {diff_pct:+6.1f}%{marker}")
+    torch.cuda.cudart().cudaProfilerStop()
