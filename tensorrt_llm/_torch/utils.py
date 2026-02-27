@@ -23,6 +23,7 @@ aux_stream_name_list = [
     'MoeChunkingOverlap',
     'MoeBalancer',
     'MoeOutputMemset',
+    'HeterQuantization',
 ]
 AuxStreamType = Enum(
     'AuxStreamType',

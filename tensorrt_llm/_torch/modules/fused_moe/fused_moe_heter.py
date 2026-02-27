@@ -785,9 +785,104 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         )
 
     # ==============================================================
-    # run_moe — per-group dispatch
+    # run_moe — per-group dispatch with stream overlap
     # ==============================================================
 
+    def _run_one_group(
+        self,
+        qi: _QuantizedInput,
+        grp_experts: torch.Tensor,
+        grp_scales: torch.Tensor,
+        ws: Optional[_GroupWeightSet],
+        output_dtype: torch.dtype,
+        *,
+        tuner_num_tokens: Optional[int],
+        tuner_top_k: Optional[int],
+        enable_alltoall: bool,
+    ) -> torch.Tensor:
+        """Execute a single-group fused_moe call."""
+        if ws is not None:
+            src_w3_w1 = ws.w3_w1_weight
+            src_w2 = ws.w2_weight
+            src_w3_w1_bias = ws.w3_w1_bias
+            src_w2_bias = ws.w2_bias
+            src_quant_scales = ws.quant_scales
+            src_weight_dtype = ws.weight_dtype
+        else:
+            src_w3_w1 = self.w3_w1_weight
+            src_w2 = self.w2_weight
+            src_w3_w1_bias = self.w3_w1_bias
+            src_w2_bias = self.w2_bias
+            src_quant_scales = self.quant_scales
+                src_weight_dtype = self.w3_w1_weight.dtype
+        return torch.ops.trtllm.fused_moe(
+            qi.x,
+            grp_experts,
+            grp_scales,
+            src_w3_w1.view(src_weight_dtype),
+            src_w3_w1_bias,
+            src_w2.view(src_weight_dtype),
+            src_w2_bias,
+            output_dtype,
+            quant_scales=src_quant_scales,
+            input_sf=qi.x_sf,
+            swizzled_input_sf=qi.is_sf_swizzled,
+            swiglu_alpha=self.swiglu_alpha,
+            swiglu_beta=self.swiglu_beta,
+            swiglu_limit=self.swiglu_limit,
+            tp_size=self.tp_size,
+            tp_rank=self.tp_rank,
+            ep_size=self.ep_size,
+            ep_rank=self.ep_rank,
+            cluster_size=self.cluster_size,
+            cluster_rank=self.cluster_rank,
+            enable_alltoall=enable_alltoall,
+            use_deepseek_fp8_block_scale=False,
+            use_w4_group_scaling=False,
+            use_int8_woq_per_channel=False,
+            use_mxfp8_act_scaling=False,
+            min_latency_mode=False,
+            use_fused_finalize=self.use_fused_finalize,
+            tune_max_num_tokens=self.tune_max_num_tokens,
+            tuner_num_tokens=tuner_num_tokens,
+            tuner_top_k=tuner_top_k,
+            activation_type=self.activation_type,
+            unpadded_hidden_size=self.unpadded_hidden_size,
+            out_tensor=None,
+        )[0]
+
+    def _run_one_group_with_qi(
+        self,
+        x: torch.Tensor,
+        group_idx: int,
+        grp_experts: torch.Tensor,
+        grp_scales: torch.Tensor,
+        output_dtype: torch.dtype,
+        *,
+        tuner_num_tokens: Optional[int],
+        tuner_top_k: Optional[int],
+        enable_alltoall: bool,
+    ) -> torch.Tensor:
+        """Quantize input then execute fused_moe for one group."""
+        desc = self._group_descs[group_idx]
+        ws = self._heter_weight_sets[group_idx]
+        qi = _quantize_input_for_group(x, desc.quant_algo, ws)
+        return self._run_one_group(
+            qi, grp_experts, grp_scales, ws, output_dtype,
+            tuner_num_tokens=tuner_num_tokens,
+            tuner_top_k=tuner_top_k,
+            enable_alltoall=enable_alltoall,
+        )
+
+    @staticmethod
+    def _ensure_heter_quant_stream() -> torch.cuda.Stream:
+        """Get or create the HeterQuantization aux stream.
+
+        Lazily imported to avoid circular imports.  The stream persists
+        for the lifetime of the process (created once per device)."""
+        from ..multi_stream_utils import get_aux_stream
+        from ...utils import AuxStreamType
+        return get_aux_stream(AuxStreamType.HeterQuantization)
     def run_moe(
         self,
         x: torch.Tensor,
@@ -801,18 +896,18 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
         moe_output: Optional[torch.Tensor] = None,
         enable_alltoall: Optional[bool] = None,
     ) -> torch.Tensor:
-        """Per-group dispatch: call fused_moe once per group, sum outputs.
+        """Per-group dispatch with optional stream overlap.
 
-        The dispatch policy sentinel-masks non-group expert slots (zero
-        scale) so the kernel skips them automatically.  See
-        :class:`~.policy.heter_dispatch.HeterDispatchPolicy`.
+        When ``do_multi_stream()`` is True and exactly one BF16 + one
+        NVFP4 group exist, FP4 input quantization runs on an auxiliary
+        stream concurrently with the BF16 GroupGEMM on the main stream.
+        Otherwise falls back to sequential per-group dispatch.
         """
         # --- Dispatch: split routing by group via policy ---
         dispatches = self._policy.dispatch(
             token_selected_experts,
             token_final_scales,
         )
-
         # --- Fast path: single group with parent weights ---
         if len(dispatches) == 1 and self._heter_weight_sets[0] is None:
             return super().run_moe(
@@ -827,77 +922,93 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
                 moe_output=moe_output,
                 enable_alltoall=enable_alltoall,
             )
-
         if enable_alltoall is None:
             enable_alltoall = self.enable_alltoall
-
-        out_dtype = output_dtype if output_dtype is not None else x.dtype
         accumulated = torch.zeros(
             x.shape[0], x.shape[1], dtype=out_dtype, device=x.device,
         )
 
-        for group_idx, (grp_experts, grp_scales) in enumerate(dispatches):
+        # --- Stream overlap path: BF16 GEMM || FP4 quantization ---
+        # Identify BF16 and NVFP4 groups for potential overlap.
+        bf16_group_idx = None
+        fp4_group_idx = None
+        if len(dispatches) >= 2 and do_multi_stream():
+            for group_idx in range(len(dispatches)):
+                desc = self._group_descs[group_idx]
+                if desc.quant_algo is None and bf16_group_idx is None:
+                    bf16_group_idx = group_idx
+                elif desc.quant_algo == QuantAlgo.NVFP4 and fp4_group_idx is None:
+                    fp4_group_idx = group_idx
 
-            desc = self._group_descs[group_idx]
+        if bf16_group_idx is not None and fp4_group_idx is not None:
+            # Overlap: launch FP4 quant on aux stream while BF16 GEMM
+            # runs on main stream.  FP4 quant reads BF16 input x which
+            # is already materialized — no dependency on BF16 GEMM output.
+            fp4_ws = self._heter_weight_sets[fp4_group_idx]
+            aux_stream = self._ensure_heter_quant_stream()
+            main_stream = torch.cuda.current_stream()
 
-            # -- Resolve weight source --
-            ws = self._heter_weight_sets[group_idx]
-            if ws is not None:
-                src_w3_w1 = ws.w3_w1_weight
-                src_w2 = ws.w2_weight
-                src_w3_w1_bias = ws.w3_w1_bias
-                src_w2_bias = ws.w2_bias
-                src_quant_scales = ws.quant_scales
-                src_weight_dtype = ws.weight_dtype
-            else:
-                src_w3_w1 = self.w3_w1_weight
-                src_w2 = self.w2_weight
-                src_w3_w1_bias = self.w3_w1_bias
-                src_w2_bias = self.w2_bias
-                src_quant_scales = self.quant_scales
-                src_weight_dtype = self.w3_w1_weight.dtype
+            # Launch FP4 quantization on aux stream
+            aux_stream.wait_stream(main_stream)
+            with torch.cuda.stream(aux_stream):
+                fp4_qi = _quantize_input_for_group(
+                    x,
+                    self._group_descs[fp4_group_idx].quant_algo,
+                    fp4_ws,
+                )
 
-            # -- Per-group input quantisation --
-            qi = _quantize_input_for_group(x, desc.quant_algo, ws)
-
-            group_result = torch.ops.trtllm.fused_moe(
-                qi.x,
-                grp_experts,
-                grp_scales,
-                src_w3_w1.view(src_weight_dtype),
-                src_w3_w1_bias,
-                src_w2.view(src_weight_dtype),
-                src_w2_bias,
-                output_dtype,
-                quant_scales=src_quant_scales,
-                input_sf=qi.x_sf,
-                swizzled_input_sf=qi.is_sf_swizzled,
-                swiglu_alpha=self.swiglu_alpha,
-                swiglu_beta=self.swiglu_beta,
-                swiglu_limit=self.swiglu_limit,
-                tp_size=self.tp_size,
-                tp_rank=self.tp_rank,
-                ep_size=self.ep_size,
-                ep_rank=self.ep_rank,
-                cluster_size=self.cluster_size,
-                cluster_rank=self.cluster_rank,
-                enable_alltoall=enable_alltoall,
-                use_deepseek_fp8_block_scale=False,
-                use_w4_group_scaling=False,
-                use_int8_woq_per_channel=False,
-                use_mxfp8_act_scaling=False,
-                min_latency_mode=False,
-                use_fused_finalize=self.use_fused_finalize,
-                tune_max_num_tokens=self.tune_max_num_tokens,
+            # Concurrently run BF16 GEMM on main stream
+            bf16_grp_experts, bf16_grp_scales = dispatches[bf16_group_idx]
+            bf16_qi = _quantize_input_for_group(
+                x, None, None,  # BF16 = no quantization
+            )
+            bf16_result = self._run_one_group(
+                bf16_qi,
+                bf16_grp_experts,
+                bf16_grp_scales,
+                self._heter_weight_sets[bf16_group_idx],
+                out_dtype,
                 tuner_num_tokens=tuner_num_tokens,
                 tuner_top_k=tuner_top_k,
-                activation_type=self.activation_type,
-                unpadded_hidden_size=self.unpadded_hidden_size,
-                out_tensor=None,
-            )[0]
+                enable_alltoall=enable_alltoall,
+            )
+            accumulated += bf16_result
 
-            accumulated += group_result
+            # Wait for FP4 quantization, then run FP4 GEMM
+            main_stream.wait_stream(aux_stream)
+            fp4_grp_experts, fp4_grp_scales = dispatches[fp4_group_idx]
+            fp4_result = self._run_one_group(
+                fp4_qi,
+                fp4_grp_experts,
+                fp4_grp_scales,
+                fp4_ws,
+                out_dtype,
+                tuner_num_tokens=tuner_num_tokens,
+                tuner_top_k=tuner_top_k,
+                enable_alltoall=enable_alltoall,
+            )
+            accumulated += fp4_result
 
+            # Run any remaining groups sequentially
+            handled = {bf16_group_idx, fp4_group_idx}
+            for group_idx, (grp_experts, grp_scales) in enumerate(dispatches):
+                if group_idx in handled:
+                    continue
+                accumulated += self._run_one_group_with_qi(
+                    x, group_idx, grp_experts, grp_scales, out_dtype,
+                    tuner_num_tokens=tuner_num_tokens,
+                    tuner_top_k=tuner_top_k,
+                    enable_alltoall=enable_alltoall,
+                )
+        else:
+            # --- Sequential fallback ---
+            for group_idx, (grp_experts, grp_scales) in enumerate(dispatches):
+                accumulated += self._run_one_group_with_qi(
+                    x, group_idx, grp_experts, grp_scales, out_dtype,
+                    tuner_num_tokens=tuner_num_tokens,
+                    tuner_top_k=tuner_top_k,
+                    enable_alltoall=enable_alltoall,
+                )
         if moe_output is not None:
             moe_output.copy_(accumulated)
             return moe_output
