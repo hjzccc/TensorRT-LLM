@@ -90,6 +90,7 @@ from .fused_moe_cutlass import CutlassFusedMoE
 from .quantization import NVFP4CutlassFusedMoEMethod, UnquantizedFusedMoEMethod
 from .policy import HeterDispatchPolicy, resolve_dispatch_policy
 from .routing import BaseMoeRoutingMethod
+from ..multi_stream_utils import do_multi_stream
 
 # Quantization algorithms supported by the HETER backend.
 # None means unquantized (BF16/FP16).
@@ -814,7 +815,7 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             src_w3_w1_bias = self.w3_w1_bias
             src_w2_bias = self.w2_bias
             src_quant_scales = self.quant_scales
-                src_weight_dtype = self.w3_w1_weight.dtype
+            src_weight_dtype = self.w3_w1_weight.dtype
         return torch.ops.trtllm.fused_moe(
             qi.x,
             grp_experts,
@@ -924,15 +925,21 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
             )
         if enable_alltoall is None:
             enable_alltoall = self.enable_alltoall
-        accumulated = torch.zeros(
-            x.shape[0], x.shape[1], dtype=out_dtype, device=x.device,
-        )
+
+        # --- Prepare output accumulation buffer (cudagraph compatibility) ---
+        if moe_output is not None:
+            accumulated = moe_output
+            accumulated.zero_()
+        else:
+            accumulated = torch.zeros(
+                x.shape[0], x.shape[1], dtype=output_dtype, device=x.device,
+            )
 
         # --- Stream overlap path: BF16 GEMM || FP4 quantization ---
         # Identify BF16 and NVFP4 groups for potential overlap.
         bf16_group_idx = None
         fp4_group_idx = None
-        if len(dispatches) >= 2 and do_multi_stream():
+        if len(dispatches) == 2 and do_multi_stream():
             for group_idx in range(len(dispatches)):
                 desc = self._group_descs[group_idx]
                 if desc.quant_algo is None and bf16_group_idx is None:
@@ -967,7 +974,7 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
                 bf16_grp_experts,
                 bf16_grp_scales,
                 self._heter_weight_sets[bf16_group_idx],
-                out_dtype,
+                output_dtype,
                 tuner_num_tokens=tuner_num_tokens,
                 tuner_top_k=tuner_top_k,
                 enable_alltoall=enable_alltoall,
@@ -982,34 +989,20 @@ class HeterCutlassFusedMoE(CutlassFusedMoE):
                 fp4_grp_experts,
                 fp4_grp_scales,
                 fp4_ws,
-                out_dtype,
+                output_dtype,
                 tuner_num_tokens=tuner_num_tokens,
                 tuner_top_k=tuner_top_k,
                 enable_alltoall=enable_alltoall,
             )
             accumulated += fp4_result
 
-            # Run any remaining groups sequentially
-            handled = {bf16_group_idx, fp4_group_idx}
-            for group_idx, (grp_experts, grp_scales) in enumerate(dispatches):
-                if group_idx in handled:
-                    continue
-                accumulated += self._run_one_group_with_qi(
-                    x, group_idx, grp_experts, grp_scales, out_dtype,
-                    tuner_num_tokens=tuner_num_tokens,
-                    tuner_top_k=tuner_top_k,
-                    enable_alltoall=enable_alltoall,
-                )
         else:
             # --- Sequential fallback ---
             for group_idx, (grp_experts, grp_scales) in enumerate(dispatches):
                 accumulated += self._run_one_group_with_qi(
-                    x, group_idx, grp_experts, grp_scales, out_dtype,
+                    x, group_idx, grp_experts, grp_scales, output_dtype,
                     tuner_num_tokens=tuner_num_tokens,
                     tuner_top_k=tuner_top_k,
                     enable_alltoall=enable_alltoall,
                 )
-        if moe_output is not None:
-            moe_output.copy_(accumulated)
-            return moe_output
         return accumulated
