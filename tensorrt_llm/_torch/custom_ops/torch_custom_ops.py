@@ -340,6 +340,182 @@ def _(input: torch.Tensor,
         return [input.new_empty([seq_len, hidden_size], dtype=output_dtype)]
 
 
+# NEW: Fused mixed-precision MoE custom op — handles bf16 (hot) + nvfp4 (cold) expert groups
+# in a single C++ kernel call, eliminating redundant routing/sorting overhead.
+@torch.library.custom_op("trtllm::fused_moe_mixed_precision", mutates_args=())
+def fused_moe_mixed_precision(
+    input: torch.Tensor,
+    token_selected_experts: torch.Tensor,
+    token_final_scales: torch.Tensor,
+    # bf16 group weights
+    fc1_expert_weights_bf16: torch.Tensor,
+    fc2_expert_weights_bf16: torch.Tensor,
+    # fp4 group weights (dtype=torch.int64, packed nvfp4)
+    fc1_expert_weights_fp4: torch.Tensor,
+    fc2_expert_weights_fp4: torch.Tensor,
+    # Biases (optional, shared across groups — indexed by expert ID)
+    fc1_expert_biases: Optional[torch.Tensor],
+    fc2_expert_biases: Optional[torch.Tensor],
+    # fp4 quant scales (6 tensors for NVFP4)
+    fp4_quant_scales: List[torch.Tensor],
+    # Number of top-loaded experts assigned to bf16
+    num_high_precision_experts: int,
+    # Activation params
+    swiglu_alpha: Optional[torch.Tensor] = None,
+    swiglu_beta: Optional[torch.Tensor] = None,
+    swiglu_limit: Optional[torch.Tensor] = None,
+    # Parallelism
+    tp_size: int = 1,
+    tp_rank: int = 0,
+    ep_size: int = 1,
+    ep_rank: int = 0,
+    enable_alltoall: bool = False,
+    # Fused finalize
+    use_fused_finalize: bool = True,
+    # Auto-tuning params (for bf16 primary runner)
+    tune_max_num_tokens: int = 8192,
+    activation_type: int = int(ActivationType.Swiglu),
+    unpadded_hidden_size: Optional[int] = None,
+    out_tensor: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
+    """Fused mixed-precision MoE: bf16 (hot experts) + nvfp4 (cold experts) in one kernel call.
+
+    The primary runner is CutlassMoeFCRunner<bf16, bf16>. An fp4 runner is lazily created
+    inside the C++ FusedMoeRunner. Both precision groups share one routing/sorting pass,
+    one activation call, and write to the same output buffer.
+
+    Args:
+        input: [num_tokens, hidden_size] bf16 activations
+        token_selected_experts: [num_tokens, top_k] int32 expert assignments
+        token_final_scales: [num_tokens, top_k] float32 router scales
+        fc1_expert_weights_bf16: [num_experts, inter_size*2, hidden_size] bf16
+        fc2_expert_weights_bf16: [num_experts, hidden_size, inter_size] bf16
+        fc1_expert_weights_fp4: [num_experts, inter_size*2, hidden_size/16] int64 packed nvfp4
+        fc2_expert_weights_fp4: [num_experts, hidden_size, inter_size/16] int64 packed nvfp4
+        fc1_expert_biases: optional [num_experts, inter_size*2] bf16
+        fc2_expert_biases: optional [num_experts, hidden_size] bf16
+        fp4_quant_scales: 6 tensors for NVFP4 quantization
+        num_high_precision_experts: how many top-loaded experts use bf16
+    """
+    tuner = AutoTuner.get()
+    top_k = token_selected_experts.size(1)
+
+    # Create a bf16×bf16 primary runner (the fp4 runner is created inside C++)
+    moe_runner = MoERunner(
+        x_dtype=torch.bfloat16,
+        weight_dtype=torch.bfloat16,
+        output_dtype=torch.bfloat16,
+        top_k=top_k,
+        tp_size=tp_size,
+        tp_rank=tp_rank,
+        ep_size=ep_size,
+        ep_rank=ep_rank,
+        cluster_size=1,  # No cluster parallelism for mixed precision
+        cluster_rank=0,
+        use_deepseek_fp8_block_scale=False,
+        use_w4_group_scaling=False,
+        use_int8_woq_per_channel=False,
+        use_mxfp8_act_scaling=False,
+        min_latency_mode=False,
+        use_fused_finalize=use_fused_finalize,
+        activation_type=activation_type,
+        unpadded_hidden_size=unpadded_hidden_size,
+    )
+
+    MoERunner.tuning_config.tune_max_num_tokens = tune_max_num_tokens
+
+    # Auto-tune GEMM1 and GEMM2 for the bf16 primary runner
+    # (the fp4 runner shares tactics initially)
+    _, gemm_tactic_1 = tuner.choose_one(
+        "trtllm::fused_moe_mixed_precision::gemm1",
+        [moe_runner],
+        MoERunner.tuning_config,
+        [
+            input, fc1_expert_weights_bf16, fc1_expert_biases,
+            fc2_expert_weights_bf16, fc2_expert_biases
+        ],
+        gemm_idx=1,
+    )
+
+    _, gemm_tactic_2 = tuner.choose_one(
+        "trtllm::fused_moe_mixed_precision::gemm2",
+        [moe_runner],
+        MoERunner.tuning_config,
+        [
+            input, fc1_expert_weights_bf16, fc1_expert_biases,
+            fc2_expert_weights_bf16, fc2_expert_biases
+        ],
+        gemm_idx=2,
+    )
+
+    # Call the fused mixed-precision MoE C++ kernel
+    output = moe_runner.fused_moe_runner.run_mixed_precision_moe(
+        input,
+        token_selected_experts,
+        token_final_scales,
+        fc1_expert_weights_bf16,
+        fc2_expert_weights_bf16,
+        fc1_expert_weights_fp4,
+        fc2_expert_weights_fp4,
+        fc1_expert_biases,
+        fc2_expert_biases,
+        fp4_quant_scales,
+        num_high_precision_experts,
+        swiglu_alpha,
+        swiglu_beta,
+        swiglu_limit,
+        tp_size,
+        tp_rank,
+        ep_size,
+        ep_rank,
+        enable_alltoall,
+        [gemm_tactic_1, gemm_tactic_2],
+        activation_type,
+        unpadded_hidden_size,
+        None,  # num_valid_tokens (use all tokens)
+        out_tensor,
+    )
+
+    # When out_tensor is provided, result is written in-place
+    if out_tensor is not None:
+        return out_tensor
+
+    return output
+
+
+@torch.library.register_fake("trtllm::fused_moe_mixed_precision")
+def _(
+    input: torch.Tensor,
+    token_selected_experts: torch.Tensor,
+    token_final_scales: torch.Tensor,
+    fc1_expert_weights_bf16: torch.Tensor,
+    fc2_expert_weights_bf16: torch.Tensor,
+    fc1_expert_weights_fp4: torch.Tensor,
+    fc2_expert_weights_fp4: torch.Tensor,
+    fc1_expert_biases: Optional[torch.Tensor],
+    fc2_expert_biases: Optional[torch.Tensor],
+    fp4_quant_scales: List[torch.Tensor],
+    num_high_precision_experts: int,
+    swiglu_alpha: Optional[torch.Tensor] = None,
+    swiglu_beta: Optional[torch.Tensor] = None,
+    swiglu_limit: Optional[torch.Tensor] = None,
+    tp_size: int = 1,
+    tp_rank: int = 0,
+    ep_size: int = 1,
+    ep_rank: int = 0,
+    enable_alltoall: bool = False,
+    use_fused_finalize: bool = True,
+    tune_max_num_tokens: int = 8192,
+    activation_type: int = int(ActivationType.Swiglu),
+    unpadded_hidden_size: Optional[int] = None,
+    out_tensor: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
+    seq_len = input.shape[0]
+    hidden_size = fc2_expert_weights_bf16.shape[1]
+    if unpadded_hidden_size is not None and unpadded_hidden_size > 0:
+        hidden_size = unpadded_hidden_size
+    return input.new_empty([seq_len, hidden_size], dtype=torch.bfloat16)
+
 class FP8RowwiseGemmRunner(TunableRunner):
     runner_dict = dict()
     tuning_config = TuningConfig(

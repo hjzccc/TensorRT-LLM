@@ -2726,3 +2726,514 @@ TEST_F(MixtureOfExpertsProfilerTest, TestGeneratedProfilerDistribution)
         }
     }
 }
+
+// ============================== BEGIN Mixed-Precision MoE Tests ==============================
+//
+// NEW: Unit tests for the fused mixed-precision MoE kernels:
+//  1. sortExpertsByTokenCount   — verify precision assignment & per-group offset arrays
+//  2. expandInputRowsMixedPrecision — verify dual-buffer copy/quantize split
+//  3. runMixedPrecisionMoe     — end-to-end orchestrator test
+//
+// These tests exercise the new functions added for the mixed-precision MoE feature
+// (bf16 hot experts + nvfp4 cold experts in a single kernel call).
+// ===========================================================================================
+
+#if defined(ENABLE_BF16) && defined(ENABLE_FP4)
+
+#include "tensorrt_llm/kernels/cutlass_kernels/include/moe_util_kernels.h"
+
+// ---------------------------------------------------------------------------
+// Test fixture for mixed-precision MoE kernels
+// ---------------------------------------------------------------------------
+class MixedPrecisionMoETest : public ::testing::Test
+{
+protected:
+    static BufferManager::CudaStreamPtr sStream;
+    static std::unique_ptr<BufferManager> sBufferManager;
+    static int sDeviceCount;
+
+    std::vector<BufferManager::IBufferPtr> managed_buffers_;
+
+    static bool shouldSkip()
+    {
+        // Mixed-precision MoE requires SM >= 100 (Blackwell) for FP4 support
+        return sDeviceCount <= 0 || getSMVersion() < 100;
+    }
+
+    static void SetUpTestCase()
+    {
+        sDeviceCount = getDeviceCount();
+        if (shouldSkip())
+        {
+            GTEST_SKIP() << "Skipping MixedPrecisionMoE: no GPU or SM < 100";
+        }
+        sStream = std::make_shared<CudaStream>();
+        sBufferManager = std::make_unique<BufferManager>(sStream);
+    }
+
+    static void TearDownTestCase()
+    {
+        sBufferManager.reset();
+        sStream.reset();
+    }
+
+    void SetUp() override
+    {
+        if (shouldSkip())
+        {
+            GTEST_SKIP() << "Skipping MixedPrecisionMoE: no GPU or SM < 100";
+        }
+    }
+
+    void TearDown() override
+    {
+        managed_buffers_.clear();
+        if (sStream)
+        {
+            ASSERT_EQ(cudaStreamSynchronize(sStream->get()), cudaSuccess);
+            ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
+            ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+        }
+    }
+
+    template <class T>
+    T* allocBuffer(size_t count)
+    {
+        size_t size_bytes = count * sizeof(T);
+        managed_buffers_.emplace_back(sBufferManager->gpu(size_bytes));
+        EXPECT_EQ(cudaGetLastError(), cudaSuccess);
+        T* ptr = static_cast<T*>(managed_buffers_.back()->data());
+        check_cuda_error(cudaMemsetAsync(ptr, 0, size_bytes, sStream->get()));
+        return ptr;
+    }
+
+    template <class T>
+    std::vector<T> getDataFromDevice(T const* device_ptr, size_t count)
+    {
+        std::vector<T> host_data(count);
+        check_cuda_error(cudaMemcpy(host_data.data(), device_ptr, count * sizeof(T), cudaMemcpyDeviceToHost));
+        return host_data;
+    }
+};
+
+BufferManager::CudaStreamPtr MixedPrecisionMoETest::sStream = nullptr;
+std::unique_ptr<BufferManager> MixedPrecisionMoETest::sBufferManager = nullptr;
+int MixedPrecisionMoETest::sDeviceCount = 0;
+
+// ---------------------------------------------------------------------------
+// Test 1: sortExpertsByTokenCount — verify precision assignment
+//
+// Mental experiment:
+//   Given E=8 experts, num_high_precision=3, and token counts:
+//     expert_first_token_offset = [0, 10, 25, 30, 80, 85, 90, 120, 128]
+//   Token counts per expert: [10, 15, 5, 50, 5, 5, 30, 8]
+//   Top 3 by token count: expert 3(50), expert 6(30), expert 1(15)
+//   → bf16 assignment for experts {3, 6, 1}
+//   → fp4 assignment for experts {0, 2, 4, 5, 7}
+//   → expert_precision_assignment[e] = 1 for bf16, 0 for fp4
+//   → bf16_expert_first_token_offset reindexes bf16 experts contiguously
+//   → fp4_expert_first_token_offset reindexes fp4 experts contiguously
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, SortExpertsByTokenCount_Basic)
+{
+    int const num_experts = 8;
+    int const num_high_precision = 3;
+    auto stream = sStream->get();
+
+    // expert_first_token_offset: cumulative token counts [E+1]
+    // Token counts per expert: [10, 15, 5, 50, 5, 5, 30, 8]
+    std::vector<int64_t> h_efto = {0, 10, 25, 30, 80, 85, 90, 120, 128};
+
+    auto* d_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_precision_assignment = allocBuffer<int>(num_experts);
+    auto* d_bf16_indices = allocBuffer<int>(num_experts);
+    auto* d_fp4_indices = allocBuffer<int>(num_experts);
+    auto* d_bf16_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_fp4_efto = allocBuffer<int64_t>(num_experts + 1);
+
+    check_cuda_error(
+        cudaMemcpyAsync(d_efto, h_efto.data(), (num_experts + 1) * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    CUTLASS_MOE_GEMM_KERNELS_NAMESPACE::sortExpertsByTokenCount(
+        d_efto, num_experts, num_high_precision,
+        d_precision_assignment, d_bf16_indices, d_fp4_indices,
+        d_bf16_efto, d_fp4_efto, stream);
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    // Retrieve results
+    auto h_precision = getDataFromDevice(d_precision_assignment, num_experts);
+    auto h_bf16_indices = getDataFromDevice(d_bf16_indices, num_experts);
+    auto h_fp4_indices = getDataFromDevice(d_fp4_indices, num_experts);
+    auto h_bf16_efto = getDataFromDevice(d_bf16_efto, num_experts + 1);
+    auto h_fp4_efto = getDataFromDevice(d_fp4_efto, num_experts + 1);
+
+    // Verify: top-3 experts by token count get bf16 (precision=1)
+    // Expert 3 (50 tokens), expert 6 (30 tokens), expert 1 (15 tokens)
+    int bf16_count = 0;
+    int fp4_count = 0;
+    for (int e = 0; e < num_experts; e++)
+    {
+        if (h_precision[e] == 1)
+        {
+            bf16_count++;
+        }
+        else
+        {
+            ASSERT_EQ(h_precision[e], 0) << "Expert " << e << " has invalid precision assignment";
+            fp4_count++;
+        }
+    }
+    ASSERT_EQ(bf16_count, num_high_precision) << "Expected " << num_high_precision << " bf16 experts";
+    ASSERT_EQ(fp4_count, num_experts - num_high_precision) << "Expected " << (num_experts - num_high_precision) << " fp4 experts";
+
+    // Verify the top-3 experts are indeed the ones with most tokens
+    // Experts: {3:50, 6:30, 1:15} should be bf16
+    EXPECT_EQ(h_precision[3], 1) << "Expert 3 (50 tokens) should be bf16";
+    EXPECT_EQ(h_precision[6], 1) << "Expert 6 (30 tokens) should be bf16";
+    EXPECT_EQ(h_precision[1], 1) << "Expert 1 (15 tokens) should be bf16";
+
+    // Verify fp4 experts
+    EXPECT_EQ(h_precision[0], 0) << "Expert 0 (10 tokens) should be fp4";
+    EXPECT_EQ(h_precision[2], 0) << "Expert 2 (5 tokens) should be fp4";
+    EXPECT_EQ(h_precision[4], 0) << "Expert 4 (5 tokens) should be fp4";
+    EXPECT_EQ(h_precision[5], 0) << "Expert 5 (5 tokens) should be fp4";
+    EXPECT_EQ(h_precision[7], 0) << "Expert 7 (8 tokens) should be fp4";
+
+    // Verify per-group offset arrays are monotonically increasing
+    for (int i = 0; i < num_experts; i++)
+    {
+        EXPECT_LE(h_bf16_efto[i], h_bf16_efto[i + 1])
+            << "bf16_expert_first_token_offset not monotonic at index " << i;
+        EXPECT_LE(h_fp4_efto[i], h_fp4_efto[i + 1])
+            << "fp4_expert_first_token_offset not monotonic at index " << i;
+    }
+
+    // Verify total tokens across both groups equals total tokens
+    int64_t total_bf16_tokens = h_bf16_efto[num_experts];
+    int64_t total_fp4_tokens = h_fp4_efto[num_experts];
+    ASSERT_EQ(total_bf16_tokens + total_fp4_tokens, 128)
+        << "Total tokens across groups (" << total_bf16_tokens << " + " << total_fp4_tokens
+        << ") should equal 128";
+
+    // Verify bf16 group tokens: experts {3,6,1} have 50+30+15=95 tokens
+    EXPECT_EQ(total_bf16_tokens, 95) << "bf16 group should have 95 tokens";
+    EXPECT_EQ(total_fp4_tokens, 33) << "fp4 group should have 33 tokens";
+}
+
+// ---------------------------------------------------------------------------
+// Test 2: sortExpertsByTokenCount — edge case: all experts bf16
+//
+// Mental experiment:
+//   When num_high_precision >= num_experts, ALL experts should be bf16.
+//   fp4 group should be empty (all offsets = 0).
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, SortExpertsByTokenCount_AllBF16)
+{
+    int const num_experts = 4;
+    int const num_high_precision = 4; // All bf16
+    auto stream = sStream->get();
+
+    std::vector<int64_t> h_efto = {0, 10, 20, 30, 40};
+
+    auto* d_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_precision_assignment = allocBuffer<int>(num_experts);
+    auto* d_bf16_indices = allocBuffer<int>(num_experts);
+    auto* d_fp4_indices = allocBuffer<int>(num_experts);
+    auto* d_bf16_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_fp4_efto = allocBuffer<int64_t>(num_experts + 1);
+
+    check_cuda_error(
+        cudaMemcpyAsync(d_efto, h_efto.data(), (num_experts + 1) * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    CUTLASS_MOE_GEMM_KERNELS_NAMESPACE::sortExpertsByTokenCount(
+        d_efto, num_experts, num_high_precision,
+        d_precision_assignment, d_bf16_indices, d_fp4_indices,
+        d_bf16_efto, d_fp4_efto, stream);
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    auto h_precision = getDataFromDevice(d_precision_assignment, num_experts);
+    auto h_bf16_efto = getDataFromDevice(d_bf16_efto, num_experts + 1);
+    auto h_fp4_efto = getDataFromDevice(d_fp4_efto, num_experts + 1);
+
+    // All experts should be bf16
+    for (int e = 0; e < num_experts; e++)
+    {
+        EXPECT_EQ(h_precision[e], 1) << "Expert " << e << " should be bf16 when all are high-precision";
+    }
+
+    // All tokens should be in bf16 group
+    EXPECT_EQ(h_bf16_efto[num_experts], 40) << "bf16 group should have all 40 tokens";
+    EXPECT_EQ(h_fp4_efto[num_experts], 0) << "fp4 group should have 0 tokens";
+}
+
+// ---------------------------------------------------------------------------
+// Test 3: sortExpertsByTokenCount — edge case: all experts fp4
+//
+// Mental experiment:
+//   When num_high_precision = 0, ALL experts should be fp4.
+//   bf16 group should be empty.
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, SortExpertsByTokenCount_AllFP4)
+{
+    int const num_experts = 4;
+    int const num_high_precision = 0; // All fp4
+    auto stream = sStream->get();
+
+    std::vector<int64_t> h_efto = {0, 5, 15, 20, 32};
+
+    auto* d_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_precision_assignment = allocBuffer<int>(num_experts);
+    auto* d_bf16_indices = allocBuffer<int>(num_experts);
+    auto* d_fp4_indices = allocBuffer<int>(num_experts);
+    auto* d_bf16_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_fp4_efto = allocBuffer<int64_t>(num_experts + 1);
+
+    check_cuda_error(
+        cudaMemcpyAsync(d_efto, h_efto.data(), (num_experts + 1) * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    CUTLASS_MOE_GEMM_KERNELS_NAMESPACE::sortExpertsByTokenCount(
+        d_efto, num_experts, num_high_precision,
+        d_precision_assignment, d_bf16_indices, d_fp4_indices,
+        d_bf16_efto, d_fp4_efto, stream);
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    auto h_precision = getDataFromDevice(d_precision_assignment, num_experts);
+    auto h_bf16_efto = getDataFromDevice(d_bf16_efto, num_experts + 1);
+    auto h_fp4_efto = getDataFromDevice(d_fp4_efto, num_experts + 1);
+
+    // All experts should be fp4
+    for (int e = 0; e < num_experts; e++)
+    {
+        EXPECT_EQ(h_precision[e], 0) << "Expert " << e << " should be fp4 when num_high_precision=0";
+    }
+
+    EXPECT_EQ(h_bf16_efto[num_experts], 0) << "bf16 group should have 0 tokens";
+    EXPECT_EQ(h_fp4_efto[num_experts], 32) << "fp4 group should have all 32 tokens";
+}
+
+// ---------------------------------------------------------------------------
+// Test 4: sortExpertsByTokenCount — tie-breaking
+//
+// Mental experiment:
+//   With equal token counts, any consistent tie-break is acceptable.
+//   We just verify the invariants: correct number of bf16/fp4, correct totals.
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, SortExpertsByTokenCount_TieBreaking)
+{
+    int const num_experts = 6;
+    int const num_high_precision = 2;
+    auto stream = sStream->get();
+
+    // All experts have exactly 10 tokens each
+    std::vector<int64_t> h_efto = {0, 10, 20, 30, 40, 50, 60};
+
+    auto* d_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_precision_assignment = allocBuffer<int>(num_experts);
+    auto* d_bf16_indices = allocBuffer<int>(num_experts);
+    auto* d_fp4_indices = allocBuffer<int>(num_experts);
+    auto* d_bf16_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_fp4_efto = allocBuffer<int64_t>(num_experts + 1);
+
+    check_cuda_error(
+        cudaMemcpyAsync(d_efto, h_efto.data(), (num_experts + 1) * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    CUTLASS_MOE_GEMM_KERNELS_NAMESPACE::sortExpertsByTokenCount(
+        d_efto, num_experts, num_high_precision,
+        d_precision_assignment, d_bf16_indices, d_fp4_indices,
+        d_bf16_efto, d_fp4_efto, stream);
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    auto h_precision = getDataFromDevice(d_precision_assignment, num_experts);
+    auto h_bf16_efto = getDataFromDevice(d_bf16_efto, num_experts + 1);
+    auto h_fp4_efto = getDataFromDevice(d_fp4_efto, num_experts + 1);
+
+    int bf16_count = 0;
+    for (int e = 0; e < num_experts; e++)
+    {
+        if (h_precision[e] == 1) bf16_count++;
+    }
+    ASSERT_EQ(bf16_count, num_high_precision);
+
+    // Each bf16 expert has 10 tokens → 20 total bf16, 40 total fp4
+    EXPECT_EQ(h_bf16_efto[num_experts], 20);
+    EXPECT_EQ(h_fp4_efto[num_experts], 40);
+    EXPECT_EQ(h_bf16_efto[num_experts] + h_fp4_efto[num_experts], 60);
+}
+
+// ---------------------------------------------------------------------------
+// Test 5: sortExpertsByTokenCount — empty experts (zero tokens)
+//
+// Mental experiment:
+//   Some experts may have 0 tokens. The sort should still assign them
+//   to a precision group (bf16 or fp4) and produce valid offset arrays.
+//   Token counts: [0, 100, 0, 0, 50, 0, 0, 0] with num_high_precision=2
+//   Top-2: expert 1(100), expert 4(50) → bf16
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, SortExpertsByTokenCount_EmptyExperts)
+{
+    int const num_experts = 8;
+    int const num_high_precision = 2;
+    auto stream = sStream->get();
+
+    // Token counts: [0, 100, 0, 0, 50, 0, 0, 0]
+    std::vector<int64_t> h_efto = {0, 0, 100, 100, 100, 150, 150, 150, 150};
+
+    auto* d_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_precision_assignment = allocBuffer<int>(num_experts);
+    auto* d_bf16_indices = allocBuffer<int>(num_experts);
+    auto* d_fp4_indices = allocBuffer<int>(num_experts);
+    auto* d_bf16_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_fp4_efto = allocBuffer<int64_t>(num_experts + 1);
+
+    check_cuda_error(
+        cudaMemcpyAsync(d_efto, h_efto.data(), (num_experts + 1) * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    CUTLASS_MOE_GEMM_KERNELS_NAMESPACE::sortExpertsByTokenCount(
+        d_efto, num_experts, num_high_precision,
+        d_precision_assignment, d_bf16_indices, d_fp4_indices,
+        d_bf16_efto, d_fp4_efto, stream);
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    auto h_precision = getDataFromDevice(d_precision_assignment, num_experts);
+    auto h_bf16_efto = getDataFromDevice(d_bf16_efto, num_experts + 1);
+    auto h_fp4_efto = getDataFromDevice(d_fp4_efto, num_experts + 1);
+
+    // Expert 1 (100 tokens) and expert 4 (50 tokens) should be bf16
+    EXPECT_EQ(h_precision[1], 1) << "Expert 1 (100 tokens) should be bf16";
+    EXPECT_EQ(h_precision[4], 1) << "Expert 4 (50 tokens) should be bf16";
+
+    // Remaining experts (all 0 tokens) should be fp4
+    for (int e : {0, 2, 3, 5, 6, 7})
+    {
+        EXPECT_EQ(h_precision[e], 0) << "Expert " << e << " (0 tokens) should be fp4";
+    }
+
+    // Totals
+    EXPECT_EQ(h_bf16_efto[num_experts], 150) << "bf16 should have 150 tokens";
+    EXPECT_EQ(h_fp4_efto[num_experts], 0) << "fp4 should have 0 tokens (all zero-token experts)";
+    EXPECT_EQ(h_bf16_efto[num_experts] + h_fp4_efto[num_experts], 150);
+}
+
+// ---------------------------------------------------------------------------
+// Test 6: sortExpertsByTokenCount — DeepSeek-V3-like configuration
+//
+// Mental experiment:
+//   E=256, num_high_precision=12 (as in the design doc).
+//   With synthetic Zipf-like distribution, verify invariants hold.
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, SortExpertsByTokenCount_DeepSeekV3Scale)
+{
+    int const num_experts = 256;
+    int const num_high_precision = 12;
+    auto stream = sStream->get();
+
+    // Generate Zipf-like token distribution: expert e gets floor(1000 / (e+1)) tokens
+    std::vector<int64_t> h_efto(num_experts + 1, 0);
+    for (int e = 0; e < num_experts; e++)
+    {
+        int64_t token_count = 1000 / (e + 1);
+        h_efto[e + 1] = h_efto[e] + token_count;
+    }
+    int64_t total_tokens = h_efto[num_experts];
+
+    auto* d_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_precision_assignment = allocBuffer<int>(num_experts);
+    auto* d_bf16_indices = allocBuffer<int>(num_experts);
+    auto* d_fp4_indices = allocBuffer<int>(num_experts);
+    auto* d_bf16_efto = allocBuffer<int64_t>(num_experts + 1);
+    auto* d_fp4_efto = allocBuffer<int64_t>(num_experts + 1);
+
+    check_cuda_error(
+        cudaMemcpyAsync(d_efto, h_efto.data(), (num_experts + 1) * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    CUTLASS_MOE_GEMM_KERNELS_NAMESPACE::sortExpertsByTokenCount(
+        d_efto, num_experts, num_high_precision,
+        d_precision_assignment, d_bf16_indices, d_fp4_indices,
+        d_bf16_efto, d_fp4_efto, stream);
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    auto h_precision = getDataFromDevice(d_precision_assignment, num_experts);
+    auto h_bf16_efto = getDataFromDevice(d_bf16_efto, num_experts + 1);
+    auto h_fp4_efto = getDataFromDevice(d_fp4_efto, num_experts + 1);
+
+    // Verify: exactly num_high_precision experts are bf16
+    int bf16_count = 0;
+    for (int e = 0; e < num_experts; e++)
+    {
+        if (h_precision[e] == 1) bf16_count++;
+    }
+    ASSERT_EQ(bf16_count, num_high_precision);
+
+    // Verify: bf16 experts should be the ones with most tokens
+    // Compute token counts, find the top-K
+    std::vector<std::pair<int64_t, int>> token_counts; // (count, expert_id)
+    for (int e = 0; e < num_experts; e++)
+    {
+        token_counts.emplace_back(h_efto[e + 1] - h_efto[e], e);
+    }
+    std::sort(token_counts.begin(), token_counts.end(), std::greater<>());
+
+    // Top-K experts should all be bf16
+    for (int i = 0; i < num_high_precision; i++)
+    {
+        int expert_id = token_counts[i].second;
+        EXPECT_EQ(h_precision[expert_id], 1)
+            << "Expert " << expert_id << " (" << token_counts[i].first
+            << " tokens, rank " << i << ") should be bf16";
+    }
+
+    // Verify token conservation
+    EXPECT_EQ(h_bf16_efto[num_experts] + h_fp4_efto[num_experts], total_tokens)
+        << "Token conservation violated";
+
+    // Verify monotonicity of per-group offsets
+    for (int i = 0; i < num_experts; i++)
+    {
+        EXPECT_LE(h_bf16_efto[i], h_bf16_efto[i + 1]);
+        EXPECT_LE(h_fp4_efto[i], h_fp4_efto[i + 1]);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Test 7: Workspace size for mixed-precision MoE
+//
+// Mental experiment:
+//   getMixedPrecisionWorkspaceSize() should return a value strictly larger
+//   than the standard workspace (due to dual buffers). Verify non-zero
+//   and that it's > getWorkspaceSize().
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, WorkspaceSize_LargerThanStandard)
+{
+    // Use the bf16 runner to compare standard vs mixed-precision workspace
+    CutlassMoeFCRunner<__nv_bfloat16, __nv_bfloat16, __nv_bfloat16> runner;
+
+    int64_t const num_tokens = 128;
+    int64_t const hidden_size = 512; // Must be multiple of 128 for alignment
+    int64_t const inter_size = 512;
+    int64_t const num_experts = 8;
+    int64_t const k = 2;
+    ActivationType act_type = ActivationType::Swiglu;
+
+    size_t standard_ws = runner.getWorkspaceSize(
+        num_tokens, hidden_size, inter_size, num_experts, k, act_type,
+        MOEParallelismConfig{}, false, false, false, false);
+
+    size_t mixed_prec_ws = runner.getMixedPrecisionWorkspaceSize(
+        num_tokens, hidden_size, inter_size, num_experts, k, act_type,
+        MOEParallelismConfig{});
+
+    EXPECT_GT(mixed_prec_ws, 0) << "Mixed-precision workspace should be non-zero";
+    EXPECT_GT(mixed_prec_ws, standard_ws)
+        << "Mixed-precision workspace (" << mixed_prec_ws
+        << ") should be larger than standard (" << standard_ws << ")";
+}
+
+#endif // defined(ENABLE_BF16) && defined(ENABLE_FP4)
+
+// ============================== END Mixed-Precision MoE Tests ==============================

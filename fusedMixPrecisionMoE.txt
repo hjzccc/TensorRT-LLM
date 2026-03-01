@@ -1,0 +1,92 @@
+this file covers the design of a fused mix precision moe
+
+the ultimate goal is to have a mixed precision moe ( one with nvfp4 one with bf 16 )
+please refer to huanchen-twoGemmMoE branch for more motivation in the .agent design docs
+
+mainly the motivation is that Arithmetic Intensity AI is different for different experts:
+    for hot experts, the AI is high
+    for cold experts, the AI is very low, and the precision gain from loading weights is diminishing
+so we aim to have lower precision for cold experts.
+
+the naive scheme we are working towards is to have nvfp4 for cold experts and bf16 for hot experts
+because the token distributio might change throughput the serving process, we simply keep two versions
+of model weight in memory, please refer to the test files in huanchne-twoGemmMoe for more details
+on what the ultimate outcome looks like.
+    note that the tests are constructed in that way because we can only simuilate one layer on 5070
+    the ultimate evaluation benchmark will be using rtx 6000 pro, we finish impl first before we 
+    move on to testing
+
+within one simple moe layer, we aim to have two precision gemms
+because the fused groupgemm requries the expert weights to be contiguous, we simply store weights 
+with the same precision together. so the layout of bf16 experts are contiguous and so does the layout 
+for nvfp4 experts.
+
+the compute of fused moe involves the following steps @moe_kernels.cu
+1. sorting the expert-token index (prep for expand input)
+2. expand input (and optionally fused with quantization)
+3. gemm1
+4. swiglu activation (cannot be fused due to glu) (and optionally fused with quantization)
+5. gemm2 (and fused with finalize (combining results from different experts together))
+
+essentially we want to have a mixed precision runmoe function that augment upon the current runmoe
+
+0. arguments:
+    there should be extra arguments for the store of both expert weights (one bf16 the other nvfp4)
+    there should also be extra artument for how many experts are selected as high precision
+
+1. sorting keeps the same, but added with another step:
+    sorting the experts based on token count per expert: we can reuse the radix helper function
+    since the number of experts is fixed, the output should contain extra info of expert precision assignments
+    for example,
+        if there are A tokens and K for topK and E for num_experts, there will be a total of AK tokens
+        the original prefix list will have [E+1] elements
+        let there be 4 experts in total and AK=16, the prefix list might be [0, 4, 6, 10, 16(or 15 i don't know detail)]
+        we can easily compute the number of tokens per expert with the prefixes [4, 2, 4, 6]
+        we categorize these into two groups, DEPENDING ON THE EXTRA INPUT ARGUMENT OF THE 
+        FUSEDMIXPRESISION MOE FUNCTION , for example, we only have top 1/4 experts seleted as high
+        precision, then the output should have [0, 0, 0, 1] as output, indicating only the last expert
+        is assigned with high precision and the first three will be using the nvfp4 experts
+        another thing to keep in mind is that this requires you also be able to inversely combine back
+        the scores from different experts to the final output tensor
+2. expand input fusion with quantization
+    essentially this needs to handle extra work as the output of this function will be writing to 
+    two buffers, the size of each buffer is the same as before because we need to prepare for the 
+    worst case of routing. and the work this function does is also more complexed.
+    iterating throught the prefix as before but this time this is done twice, once a pass on bf16 experts 
+    and write to the output buffer prepared for bf16; the other for nvfp4
+    it requires the extra output of the previous change to know which expert is of which precision
+    i guess the quantizatio step here is almost fully memory bound as well even for nvfp4, but be creative
+    about potential solutions to optimize the step
+    the eventual output of this step is simply one large buffer with an index indicating the boundary of the
+    two different groups
+        reason if it could be benefitial to store the index along within the buffer or within other buffer
+        instead of as a separate integer
+        also note that there will be other data like scaling factor for nvfp4 quantization, i didn't stress
+        that for sake of simplicity, but you need to take care of it... same for the quantization step afterwards
+3. because each expert only gets one precision, and we do gemm one by one: i.e. perform the groupgemm of bf16
+    and then the groupgemm of nvfp4. when doing this kind of groupgemm, it can never be that both groupgemm
+    activates the majority of experts
+    there exists a short pass -- min latency --  for sparsely activated moe, release the condition to <=128 
+    for nvfp4 compute: i.e. if the total batch size is as low as 128, use short pass for nvfp4, 
+    however this could lead to potential nauces so we can defer this logit to future implementation
+    the overall output of two gemms should be writing to the same large buffer, with an index indicating the boundary,
+    which can be precomputed way ahead even before the groupgemm starts, with the input information
+4. the activation of both bf16 gemm1 output and nvfp4 gemm1 output could potentially be merged together.
+    this is simply because the output are casted to bf16 even if the computation is in nvfp4.
+    It seems to be the end of this part, but unfortunately we still need to prepare for the precision of 
+    gemm2, specifically, we need to quantize the output of activations to nvfp4 for the nvfp4 group.
+    As indicated by the buffer index from the previous step, we know what to quantize, similar to step2 the output
+    is also one large buffer with a boundary index
+5. gemm2 is almost the same as gemm1, the only difference is that you need also to take care of the finalize
+    or the combination of scores. again because the case of nvfp4 --> bf16 is within the epilogue of groupgemm,
+    you don't need to explicitly worry about it. however you should take care of writing from two different
+    groups all to the corresponding position of the output tensor
+
+the eventual benefit of having such a complex workflow is to:
+1. having one fused activation call
+2. minimize the impact of quantization. 
+
+throughout the implementation you should be highly aware of efficiency:
+1. for sure minimal requirement is that the code is compatible with cudagraph: always use preallocated buffer
+2. compilation compatible
+3. keep the PDL awareness throughout the function

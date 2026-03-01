@@ -759,6 +759,233 @@ public:
         mProfiler->runProfiler(num_rows, profile, mProfileWorkspace, expert_weights_ptr, stream);
     }
 
+    /**
+     * NEW: Fused mixed-precision MoE — handles bf16 (hot) and nvfp4 (cold) expert groups in one call.
+     *
+     * The primary mKernelRunner must be CutlassMoeFCRunner<bf16, bf16>. An fp4 runner is lazily created
+     * internally as CutlassMoeFCRunner<bf16, fp4_e2m1> and passed to the C++ kernel.
+     *
+     * bf16 group: uses empty QuantParams (no quantization).
+     * fp4 group:  uses QuantParams::FP4(...) built from fp4_quant_scales (6 tensors).
+     */
+    torch::Tensor runMixedPrecisionMoe(torch::Tensor const& input,
+        torch::Tensor const& token_selected_experts,
+        torch::optional<torch::Tensor> const& token_final_scales,
+        // bf16 group weights
+        torch::Tensor const& fc1_expert_weights_bf16,
+        torch::Tensor const& fc2_expert_weights_bf16,
+        // fp4 group weights (dtype=Long/INT64, packed nvfp4)
+        torch::Tensor const& fc1_expert_weights_fp4,
+        torch::Tensor const& fc2_expert_weights_fp4,
+        // Biases (optional, shared across groups — indexed by expert ID)
+        torch::optional<torch::Tensor> const& fc1_expert_biases,
+        torch::optional<torch::Tensor> const& fc2_expert_biases,
+        // fp4 quant scales (6 tensors for NVFP4: fc1_act_global, fc1_weight_block, fc1_global,
+        //                    fc2_act_global, fc2_weight_block, fc2_global)
+        c10::ArrayRef<torch::Tensor> const& fp4_quant_scales,
+        // Number of experts assigned to bf16 (top-loaded by token count)
+        int64_t const num_high_precision_experts,
+        // Activation params
+        torch::optional<torch::Tensor> const& swiglu_alpha,
+        torch::optional<torch::Tensor> const& swiglu_beta,
+        torch::optional<torch::Tensor> const& swiglu_limit,
+        // Parallelism config
+        int64_t const tp_size, int64_t const tp_rank,
+        int64_t const ep_size, int64_t const ep_rank,
+        bool const enable_alltoall,
+        // Optional overrides
+        torch::optional<c10::ArrayRef<int64_t>> const& profile_ids,
+        torch::optional<int64_t> const& activation_type,
+        torch::optional<int64_t> const& unpadded_hidden_size,
+        torch::optional<int64_t> const& num_valid_tokens,
+        torch::optional<torch::Tensor> const& out_tensor)
+    {
+#ifdef ENABLE_BF16
+#ifdef ENABLE_FP4
+        std::lock_guard<std::mutex> lock(mMutex);
+        // Free the profile workspace to save memory
+        freeProfileWorkspace();
+
+        // --- Input validation ---
+        CHECK_INPUT(input, c10::ScalarType::BFloat16)
+        CHECK_INPUT(token_selected_experts, at::ScalarType::Int)
+        if (token_final_scales)
+        {
+            CHECK_INPUT(token_final_scales.value(), at::ScalarType::Float)
+        }
+        // bf16 weights must be BFloat16
+        CHECK_INPUT(fc1_expert_weights_bf16, c10::ScalarType::BFloat16)
+        CHECK_INPUT(fc2_expert_weights_bf16, c10::ScalarType::BFloat16)
+        // fp4 weights must be Long (INT64 packed nvfp4)
+        CHECK_INPUT(fc1_expert_weights_fp4, c10::ScalarType::Long)
+        CHECK_INPUT(fc2_expert_weights_fp4, c10::ScalarType::Long)
+
+        TORCH_CHECK(input.dim() == 2, "input must be 2D.");
+        TORCH_CHECK(token_selected_experts.dim() == 2, "token_selected_experts must be 2D.");
+        TORCH_CHECK(fc1_expert_weights_bf16.dim() == 3, "fc1_expert_weights_bf16 must be 3D.");
+        TORCH_CHECK(fc2_expert_weights_bf16.dim() == 3, "fc2_expert_weights_bf16 must be 3D.");
+        TORCH_CHECK(fc1_expert_weights_fp4.dim() == 3, "fc1_expert_weights_fp4 must be 3D.");
+        TORCH_CHECK(fc2_expert_weights_fp4.dim() == 3, "fc2_expert_weights_fp4 must be 3D.");
+
+        // bf16 and fp4 weight sets must have the same number of experts
+        TORCH_CHECK(fc1_expert_weights_bf16.sizes()[0] == fc2_expert_weights_bf16.sizes()[0],
+            "bf16 fc1 and fc2 must have the same number of experts.");
+        TORCH_CHECK(fc1_expert_weights_fp4.sizes()[0] == fc2_expert_weights_fp4.sizes()[0],
+            "fp4 fc1 and fc2 must have the same number of experts.");
+        TORCH_CHECK(fc1_expert_weights_bf16.sizes()[0] == fc1_expert_weights_fp4.sizes()[0],
+            "bf16 and fp4 weight sets must have the same number of experts.");
+
+        TORCH_CHECK(num_high_precision_experts >= 0
+                && num_high_precision_experts <= fc1_expert_weights_bf16.sizes()[0],
+            "num_high_precision_experts must be in [0, num_experts_on_rank].");
+
+        if (fc1_expert_biases.has_value() || fc2_expert_biases.has_value())
+        {
+            CHECK_INPUT(fc1_expert_biases.value(), c10::ScalarType::BFloat16);
+            CHECK_INPUT(fc2_expert_biases.value(), c10::ScalarType::BFloat16);
+            TORCH_CHECK(fc1_expert_biases.value().dim() == 2, "fc1_expert_biases must be 2D.");
+            TORCH_CHECK(fc2_expert_biases.value().dim() == 2, "fc2_expert_biases must be 2D.");
+        }
+
+        TORCH_CHECK(input.sizes()[0] == token_selected_experts.sizes()[0],
+            "input and token_selected_experts must have the same num tokens.");
+        if (token_final_scales)
+        {
+            TORCH_CHECK(token_final_scales.value().dim() == 2, "token_final_scales must be 2D.");
+            TORCH_CHECK(input.sizes()[0] == token_final_scales.value().sizes()[0],
+                "input and token_final_scales must have the same num tokens.");
+            TORCH_CHECK(token_selected_experts.sizes()[1] == token_final_scales.value().sizes()[1],
+                "token_selected_experts and token_final_scales must have the same k.");
+        }
+
+        // fp4 quant scales: 6 tensors for NVFP4
+        TORCH_CHECK(fp4_quant_scales.size() == 6, "Expecting 6 quant scales for nvfp4 group.");
+
+        // --- Derive dimensions from bf16 weights ---
+        // bf16 weights: fc2 shape = [num_experts, hidden_size, inter_size]
+        int const experts_per_token = token_selected_experts.sizes()[1];
+        int64_t const num_rows = input.sizes()[0];
+        int64_t const hidden_size = fc2_expert_weights_bf16.sizes()[1];
+        int64_t const unpadded_hidden_size_val
+            = unpadded_hidden_size.has_value() ? unpadded_hidden_size.value() : hidden_size;
+        int64_t const inter_size = fc2_expert_weights_bf16.sizes()[2];
+
+        int const num_experts_on_rank = fc1_expert_weights_bf16.sizes()[0];
+        auto const num_experts_total = static_cast<int>(num_experts_on_rank * ep_size);
+        auto parallelism_config = kernels::MOEParallelismConfig(tp_size, tp_rank, ep_size, ep_rank);
+
+        // --- Activation params ---
+        ActivationType base_activation_type = activation_type.has_value()
+            ? static_cast<ActivationType>(activation_type.value())
+            : ActivationType::Swiglu;
+        if (swiglu_alpha.has_value())
+        {
+            CHECK_INPUT(swiglu_alpha.value(), at::ScalarType::Float);
+            base_activation_type = ActivationType::SwigluBias;
+        }
+        if (swiglu_beta.has_value())
+        {
+            CHECK_INPUT(swiglu_beta.value(), at::ScalarType::Float);
+            base_activation_type = ActivationType::SwigluBias;
+        }
+        if (swiglu_limit.has_value())
+        {
+            CHECK_INPUT(swiglu_limit.value(), at::ScalarType::Float);
+            base_activation_type = ActivationType::SwigluBias;
+        }
+        auto activation_params = ActivationParams(base_activation_type,
+            reinterpret_cast<float const*>(
+                swiglu_alpha.has_value() ? swiglu_alpha.value().const_data_ptr() : nullptr),
+            reinterpret_cast<float const*>(
+                swiglu_beta.has_value() ? swiglu_beta.value().const_data_ptr() : nullptr),
+            reinterpret_cast<float const*>(
+                swiglu_limit.has_value() ? swiglu_limit.value().const_data_ptr() : nullptr));
+
+        setRunnerProfiles(profile_ids);
+
+        auto stream = at::cuda::getCurrentCUDAStream(input.get_device());
+
+        // --- Output tensor ---
+        std::vector<int64_t> output_shape = {num_rows, unpadded_hidden_size_val};
+        torch::Tensor output;
+        if (out_tensor.has_value())
+        {
+            auto const& provided = out_tensor.value();
+            CHECK_INPUT(provided, c10::ScalarType::BFloat16);
+            TORCH_CHECK(provided.sizes() == output_shape,
+                "Provided out tensor has incorrect shape.");
+            output = provided;
+        }
+        else
+        {
+            output = torch::empty(output_shape, input.options().dtype(c10::ScalarType::BFloat16));
+        }
+
+        // --- Lazily create the fp4 runner ---
+        if (!mFp4Runner)
+        {
+            mFp4Runner = std::make_shared<
+                kernels::CutlassMoeFCRunner<__nv_bfloat16, __nv_fp4_e2m1, __nv_bfloat16, __nv_bfloat16>>();
+            mFp4Runner->use_fused_finalize_ = mUseFusedFinalize;
+        }
+        // Share GEMM tactics with the fp4 runner
+        // (fp4 runner uses same tile configs initially; separate profiling can be added later)
+        mFp4Runner->setTactic(mGemm1Profiles.front(), mGemm2Profiles.front());
+
+        // --- Workspace ---
+        WorkspaceInfo const& workspace_info = getMixedPrecWorkspaceInfo(
+            num_rows, hidden_size, inter_size, num_experts_total,
+            experts_per_token, base_activation_type, parallelism_config, stream);
+
+        // --- Build quant params ---
+        // bf16 group: no quantization needed
+        auto const quant_params_bf16 = kernels::QuantParams{};
+        // fp4 group: NVFP4 quantization
+        auto const quant_params_fp4 = buildFp4QuantParams(num_experts_on_rank, fp4_quant_scales);
+
+        // --- Call the fused C++ kernel ---
+        mKernelRunner->runMixedPrecisionMoe(input.const_data_ptr(),
+            /* input_sf */ nullptr,  // No block scaling for bf16 primary runner
+            /* swizzled_input_sf */ false,
+            reinterpret_cast<int const*>(token_selected_experts.const_data_ptr()),
+            token_final_scales.has_value()
+                ? reinterpret_cast<float const*>(token_final_scales.value().const_data_ptr())
+                : nullptr,
+            fc1_expert_weights_bf16.const_data_ptr(),
+            fc2_expert_weights_bf16.const_data_ptr(),
+            fc1_expert_weights_fp4.const_data_ptr(),
+            fc2_expert_weights_fp4.const_data_ptr(),
+            fc1_expert_biases.has_value() ? fc1_expert_biases.value().const_data_ptr() : nullptr,
+            fc2_expert_biases.has_value() ? fc2_expert_biases.value().const_data_ptr() : nullptr,
+            quant_params_bf16,
+            quant_params_fp4,
+            static_cast<int>(num_high_precision_experts),
+            activation_params,
+            num_rows,
+            num_valid_tokens.has_value() ? num_valid_tokens.value() : num_rows,
+            hidden_size,
+            unpadded_hidden_size_val,
+            inter_size,
+            num_experts_total,
+            experts_per_token,
+            static_cast<char*>(workspace_info.workspace.data_ptr()),
+            output.data_ptr(),
+            static_cast<int*>(workspace_info.src_to_dest_map),
+            parallelism_config,
+            enable_alltoall,
+            mFp4Runner.get(),
+            stream);
+
+        return output;
+#else
+        TORCH_CHECK(false, "runMixedPrecisionMoe requires ENABLE_FP4 to be defined.");
+        return torch::Tensor{};
+#endif
+#else
+        TORCH_CHECK(false, "runMixedPrecisionMoe requires ENABLE_BF16 to be defined.");
+        return torch::Tensor{};
+#endif
+    }
 private:
     struct WorkspaceInfo
     {
@@ -777,6 +1004,10 @@ private:
     int64_t mInnerDimMultiplier;
     char* mProfileWorkspace = nullptr;
     std::map<cudaStream_t, WorkspaceInfo> mStreamWorkspaces;
+
+    // NEW: Mixed-precision MoE members
+    std::shared_ptr<kernels::CutlassMoeFCRunnerInterface> mFp4Runner;
+    std::map<cudaStream_t, WorkspaceInfo> mMixedPrecStreamWorkspaces;
 
     bool mUseDeepSeekFP8BlockScaling = false;
     bool mUseW4GroupScaling = false;
@@ -862,6 +1093,103 @@ private:
             = common::nextWorkspacePtr(static_cast<int8_t*>(workspace_info.workspace.data_ptr()), moe_workspace_size);
 
         return workspace_info;
+    }
+
+    /**
+     * NEW: Workspace management for mixed-precision MoE.
+     * Calls getMixedPrecisionWorkspaceSize() on the primary runner.
+     * Layout: [mixed_prec_workspace | src_to_dest_map]
+     */
+    WorkspaceInfo const& getMixedPrecWorkspaceInfo(int64_t const num_rows, int64_t const hidden_size,
+        int64_t const inter_size, int num_experts, int experts_per_token, ActivationType activation_type,
+        kernels::MOEParallelismConfig const& parallelismConfig, cudaStream_t stream)
+    {
+        size_t moe_workspace_size = mKernelRunner->getMixedPrecisionWorkspaceSize(
+            num_rows, hidden_size, inter_size, num_experts, experts_per_token, activation_type, parallelismConfig);
+        size_t src_to_dest_map_size = experts_per_token * num_rows * sizeof(int);
+        auto& workspace_info = mMixedPrecStreamWorkspaces[stream];
+
+        std::vector<size_t> workspaces{moe_workspace_size, src_to_dest_map_size};
+
+        int64_t const total_workspace_size
+            = common::calculateTotalWorkspaceSize(workspaces.data(), workspaces.size());
+
+        bool is_capturing = tensorrt_llm::common::isCapturing(stream);
+        // Always allocate workspace when capturing cuda graph to avoid illegal memory access during replay
+        if (is_capturing || workspace_info.workspace.numel() < total_workspace_size)
+        {
+            if (is_capturing)
+            {
+                TLLM_LOG_DEBUG("Allocating mixed-prec MoE workspace with %ld bytes during cuda graph capture",
+                    total_workspace_size);
+            }
+            else
+            {
+                TLLM_LOG_DEBUG(
+                    "Mixed-prec MoE workspace size not enough, increase from %ld bytes to %ld bytes",
+                    workspace_info.workspace.numel(), total_workspace_size);
+            }
+            // Release memory first to avoid OOM.
+            workspace_info = WorkspaceInfo();
+            workspace_info.workspace = torch::empty({static_cast<long>(total_workspace_size)},
+                torch::dtype(torch::kInt8).device(torch::kCUDA).requires_grad(false));
+        }
+        workspace_info.src_to_dest_map
+            = common::nextWorkspacePtr(static_cast<int8_t*>(workspace_info.workspace.data_ptr()), moe_workspace_size);
+
+        return workspace_info;
+    }
+
+    /**
+     * NEW: Build NVFP4 QuantParams from 6 quant scale tensors for the fp4 precision group.
+     * Tensor order: [fc1_act_global, fc1_weight_block, fc1_global,
+     *                fc2_act_global, fc2_weight_block, fc2_global]
+     */
+    kernels::QuantParams buildFp4QuantParams(
+        int64_t const num_experts_on_rank, c10::ArrayRef<torch::Tensor> const& fp4_quant_scales) const
+    {
+        TORCH_CHECK(fp4_quant_scales.size() == 6, "Expecting 6 quant scales for NVFP4.");
+
+        auto const fc1_act_global = fp4_quant_scales[0];
+        auto const fc1_weight_block = fp4_quant_scales[1];
+        auto const fc1_global = fp4_quant_scales[2];
+        auto const fc2_act_global = fp4_quant_scales[3];
+        auto const fc2_weight_block = fp4_quant_scales[4];
+        auto const fc2_global = fp4_quant_scales[5];
+
+        // Type checks
+        CHECK_INPUT(fc1_act_global, c10::ScalarType::Float);
+        CHECK_INPUT(fc1_weight_block, c10::ScalarType::Int);
+        CHECK_INPUT(fc1_global, c10::ScalarType::Float);
+        CHECK_INPUT(fc2_act_global, c10::ScalarType::Float);
+        CHECK_INPUT(fc2_weight_block, c10::ScalarType::Int);
+        CHECK_INPUT(fc2_global, c10::ScalarType::Float);
+
+        // Rank checks
+        TORCH_CHECK(fc1_act_global.dim() == 0 || fc1_act_global.dim() == 1,
+            "fc1 act global must be a scalar or 1-D tensor");
+        TORCH_CHECK(fc1_weight_block.dim() == 3, "fc1 weight block must be 3D");
+        TORCH_CHECK(fc1_global.dim() == 1, "fc1 global must be 1D");
+        TORCH_CHECK(fc2_act_global.dim() == 0 || fc2_act_global.dim() == 1,
+            "fc2 act global must be a scalar or 1-D tensor");
+        TORCH_CHECK(fc2_weight_block.dim() == 3, "fc2 weight block must be 3D");
+        TORCH_CHECK(fc2_global.dim() == 1, "fc2 global must be 1D");
+
+        // Shape checks (simplified — the C++ kernel does its own validation)
+        TORCH_CHECK(fc1_global.sizes()[0] == num_experts_on_rank,
+            "fc1 global size must be (num_experts_on_rank,)");
+        TORCH_CHECK(fc2_global.sizes()[0] == num_experts_on_rank,
+            "fc2 global size must be (num_experts_on_rank,)");
+
+        return kernels::QuantParams::FP4(
+            static_cast<float const*>(fc1_act_global.data_ptr()),
+            static_cast<TmaWarpSpecializedGroupedGemmInput::ElementSF*>(fc1_weight_block.data_ptr()),
+            static_cast<float const*>(fc1_global.data_ptr()),
+            static_cast<float const*>(fc2_act_global.data_ptr()),
+            static_cast<TmaWarpSpecializedGroupedGemmInput::ElementSF*>(fc2_weight_block.data_ptr()),
+            static_cast<float const*>(fc2_global.data_ptr()),
+            fc1_act_global.dim() == 1,
+            fc2_act_global.dim() == 1);
     }
 
     kernels::QuantParams getQuantParams(int64_t const num_experts_on_rank, int64_t const hidden_size,
@@ -1210,5 +1538,7 @@ TORCH_LIBRARY(trtllm, m)
         .def("run_gemm_profile", &tensorrt_llm::torch_ext::FusedMoeRunner::runGemmProfile)
         .def("get_tactic_num", &tensorrt_llm::torch_ext::FusedMoeRunner::getTacticNum)
         .def("run_moe", &tensorrt_llm::torch_ext::FusedMoeRunner::runMoe)
-        .def("run_moe_min_latency", &tensorrt_llm::torch_ext::FusedMoeRunner::runMoeMinLantency);
+        .def("run_moe_min_latency", &tensorrt_llm::torch_ext::FusedMoeRunner::runMoeMinLantency)
+        // NEW: Fused mixed-precision MoE (bf16 + nvfp4 expert groups in one call)
+        .def("run_mixed_precision_moe", &tensorrt_llm::torch_ext::FusedMoeRunner::runMixedPrecisionMoe);
 }

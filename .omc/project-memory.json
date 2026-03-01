@@ -1,0 +1,570 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1771551569572,
+  "projectRoot": "/home/huanchen/TensorRT-LLM",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pyproject.toml",
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "pip",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "pytest",
+    "lintCommand": "ruff check",
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "examples",
+      "scripts",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [
+    {
+      "timestamp": 1772189966557,
+      "source": "manual",
+      "category": "note",
+      "content": "noop"
+    }
+  ],
+  "directoryMap": {
+    "3rdparty": {
+      "path": "3rdparty",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1771551569561,
+      "keyFiles": [
+        "CMakeLists.txt",
+        "README.md",
+        "cpp-thirdparty.md",
+        "py-thirdparty.md"
+      ]
+    },
+    "__pycache__": {
+      "path": "__pycache__",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1771551569562,
+      "keyFiles": [
+        "test_simulated.cpython-312-pytest-9.0.2.pyc",
+        "test_simulated_offline.cpython-312-pytest-9.0.2.pyc"
+      ]
+    },
+    "benchmarks": {
+      "path": "benchmarks",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1771551569564,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "cpp": {
+      "path": "cpp",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1771551569564,
+      "keyFiles": [
+        "CMakeLists.txt",
+        "CMakeUserPresets.json",
+        "conan.lock",
+        "conandata.yml",
+        "conanfile.py"
+      ]
+    },
+    "docker": {
+      "path": "docker",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1771551569564,
+      "keyFiles": [
+        "Dockerfile.multi",
+        "Dockerfile.user",
+        "Makefile",
+        "README.md",
+        "detect_rootless.sh"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 5,
+      "lastAccessed": 1771551569565,
+      "keyFiles": [
+        "Doxygen",
+        "Makefile",
+        "README.md",
+        "make.bat",
+        "requirements.txt"
+      ]
+    },
+    "enroot": {
+      "path": "enroot",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1771551569565,
+      "keyFiles": [
+        "Makefile"
+      ]
+    },
+    "examples": {
+      "path": "examples",
+      "purpose": "Example code",
+      "fileCount": 10,
+      "lastAccessed": 1771551569565,
+      "keyFiles": [
+        "__init__.py",
+        "constraints.txt",
+        "eval_long_context.py",
+        "generate_checkpoint_config.py",
+        "generate_xgrammar_tokenizer_info.py"
+      ]
+    },
+    "jenkins": {
+      "path": "jenkins",
+      "purpose": null,
+      "fileCount": 9,
+      "lastAccessed": 1771551569566,
+      "keyFiles": [
+        "Build.groovy",
+        "BuildDockerImage.groovy",
+        "L0_MergeRequest.groovy",
+        "L0_Test.groovy",
+        "TensorRT_LLM_PLC.groovy"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 19,
+      "lastAccessed": 1771551569566,
+      "keyFiles": [
+        "bandit.yaml",
+        "build_cpp_examples.py",
+        "build_wheel.py",
+        "check_test_list.py",
+        "dco_check.py"
+      ]
+    },
+    "security_scanning": {
+      "path": "security_scanning",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1771551569566,
+      "keyFiles": [
+        "metadata.json",
+        "poetry.lock",
+        "pyproject.toml"
+      ]
+    },
+    "tensorrt_llm": {
+      "path": "tensorrt_llm",
+      "purpose": null,
+      "fileCount": 34,
+      "lastAccessed": 1771551569567,
+      "keyFiles": [
+        "__init__.py",
+        "_common.py",
+        "_dlpack_utils.py",
+        "_ipc_utils.py",
+        "_mnnvl_utils.py"
+      ]
+    },
+    "tensorrt_llm.egg-info": {
+      "path": "tensorrt_llm.egg-info",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1771551569567,
+      "keyFiles": [
+        "PKG-INFO",
+        "SOURCES.txt",
+        "dependency_links.txt",
+        "entry_points.txt",
+        "requires.txt"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 1,
+      "lastAccessed": 1771551569568,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "triton_backend": {
+      "path": "triton_backend",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1771551569568,
+      "keyFiles": [
+        "requirements.txt"
+      ]
+    },
+    "triton_kernels": {
+      "path": "triton_kernels",
+      "purpose": null,
+      "fileCount": 15,
+      "lastAccessed": 1771551569568,
+      "keyFiles": [
+        "LICENSE",
+        "README.md",
+        "VERSION",
+        "__init__.py",
+        "compaction.py"
+      ]
+    },
+    "cpp/build": {
+      "path": "cpp/build",
+      "purpose": "Build output",
+      "fileCount": 7,
+      "lastAccessed": 1771551569569,
+      "keyFiles": [
+        "CMakeCache.txt",
+        "CTestTestfile.cmake",
+        "Makefile"
+      ]
+    },
+    "security_scanning/docs": {
+      "path": "security_scanning/docs",
+      "purpose": "Documentation",
+      "fileCount": 2,
+      "lastAccessed": 1771551569570,
+      "keyFiles": [
+        "poetry.lock",
+        "pyproject.toml"
+      ]
+    },
+    "security_scanning/examples": {
+      "path": "security_scanning/examples",
+      "purpose": "Example code",
+      "fileCount": 0,
+      "lastAccessed": 1771551569571,
+      "keyFiles": []
+    },
+    "security_scanning/tests": {
+      "path": "security_scanning/tests",
+      "purpose": "Test files",
+      "fileCount": 0,
+      "lastAccessed": 1771551569571,
+      "keyFiles": []
+    },
+    "tests/scripts": {
+      "path": "tests/scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1771551569571,
+      "keyFiles": [
+        "iteration_log_parser.py"
+      ]
+    },
+    "triton_backend/scripts": {
+      "path": "triton_backend/scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1771551569572,
+      "keyFiles": [
+        "launch_triton_server.py"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "tests/unittest/_torch/modules/moe/test_heter_moe.py",
+      "accessCount": 34,
+      "lastAccessed": 1771624344379,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/policy/heter_dispatch.py",
+      "accessCount": 32,
+      "lastAccessed": 1771624874427,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/fused_moe_heter.py",
+      "accessCount": 19,
+      "lastAccessed": 1771624352082,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 15,
+      "lastAccessed": 1771576777296,
+      "type": "directory"
+    },
+    {
+      "path": ".agent/TODOs.md",
+      "accessCount": 9,
+      "lastAccessed": 1771576710052,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels/moe_gemm/moe_kernels.cu",
+      "accessCount": 9,
+      "lastAccessed": 1771576788351,
+      "type": "file"
+    },
+    {
+      "path": ".agent/FileChange.md",
+      "accessCount": 8,
+      "lastAccessed": 1771576779782,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe",
+      "accessCount": 8,
+      "lastAccessed": 1771624229316,
+      "type": "directory"
+    },
+    {
+      "path": "cpp/tensorrt_llm/thop/moeOp.cpp",
+      "accessCount": 7,
+      "lastAccessed": 1771572402685,
+      "type": "file"
+    },
+    {
+      "path": ".agent/cuda_dispatch_kernel_proposal.md",
+      "accessCount": 7,
+      "lastAccessed": 1771581862016,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/policy/__init__.py",
+      "accessCount": 5,
+      "lastAccessed": 1771624233133,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels",
+      "accessCount": 4,
+      "lastAccessed": 1771576772794,
+      "type": "directory"
+    },
+    {
+      "path": "AGENTS.md",
+      "accessCount": 2,
+      "lastAccessed": 1771552583630,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/fused_moe_cutlass.py",
+      "accessCount": 2,
+      "lastAccessed": 1771554104437,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch",
+      "accessCount": 2,
+      "lastAccessed": 1771555375861,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/compilation/backend.py",
+      "accessCount": 2,
+      "lastAccessed": 1771555387152,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/pyexecutor/model_engine.py",
+      "accessCount": 2,
+      "lastAccessed": 1771555396183,
+      "type": "directory"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels/include/moe_gemm_kernels.h",
+      "accessCount": 2,
+      "lastAccessed": 1771572406822,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels/include/moe_kernels.h",
+      "accessCount": 2,
+      "lastAccessed": 1771572420090,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/quantization.py",
+      "accessCount": 1,
+      "lastAccessed": 1771553923373,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/pyexecutor/cuda_graph_runner.py",
+      "accessCount": 1,
+      "lastAccessed": 1771555381044,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/compilation/piecewise_optimizer.py",
+      "accessCount": 1,
+      "lastAccessed": 1771555381763,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/compilation",
+      "accessCount": 1,
+      "lastAccessed": 1771555389851,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/compilation/utils.py",
+      "accessCount": 1,
+      "lastAccessed": 1771555397311,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/custom_ops",
+      "accessCount": 1,
+      "lastAccessed": 1771572367241,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/custom_ops/torch_custom_ops.py",
+      "accessCount": 1,
+      "lastAccessed": 1771572367625,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/fusedMoeCommKernels.h",
+      "accessCount": 1,
+      "lastAccessed": 1771572370640,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/customMoeRoutingKernels.cu",
+      "accessCount": 1,
+      "lastAccessed": 1771572376740,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/moe_utils.cuh",
+      "accessCount": 1,
+      "lastAccessed": 1771572377080,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/moeTopKFuncs.cuh",
+      "accessCount": 1,
+      "lastAccessed": 1771572377478,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/cutlass_extensions/include/cutlass_extensions/gemm/kernel/fused_moe_kernel.cuh",
+      "accessCount": 1,
+      "lastAccessed": 1771572377768,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/cutlass_extensions/include/cutlass_extensions/gemm/kernel/fused_moe_kernel_routine.cuh",
+      "accessCount": 1,
+      "lastAccessed": 1771572382282,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/cutlass_extensions/include/cutlass_extensions/gemm/kernel/fused_moe_kernel_traits.cuh",
+      "accessCount": 1,
+      "lastAccessed": 1771572382346,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/cutlass_extensions/include/cutlass_extensions/gemm/kernel/moe_cute_util.cuh",
+      "accessCount": 1,
+      "lastAccessed": 1771572382677,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/thop/fp8BlockScaleMoe.cpp",
+      "accessCount": 1,
+      "lastAccessed": 1771572384815,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/moePrepareKernels.cu",
+      "accessCount": 1,
+      "lastAccessed": 1771572388977,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels/moe_gemm/moe_kernels.cuh",
+      "accessCount": 1,
+      "lastAccessed": 1771572390383,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/ops/moe_op.py",
+      "accessCount": 1,
+      "lastAccessed": 1771572401539,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/trtllmGenKernels/blockScaleMoe/RoutingKernel.cuh",
+      "accessCount": 1,
+      "lastAccessed": 1771576766896,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/topkLastDim.cu",
+      "accessCount": 1,
+      "lastAccessed": 1771576767502,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels/include/moe_util_kernels.h",
+      "accessCount": 1,
+      "lastAccessed": 1771576773355,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cuteDslKernels/moeUtils.cu",
+      "accessCount": 1,
+      "lastAccessed": 1771576778375,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/thop/moeUtilOp.cpp",
+      "accessCount": 1,
+      "lastAccessed": 1771576779194,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels",
+      "accessCount": 1,
+      "lastAccessed": 1771576784762,
+      "type": "directory"
+    },
+    {
+      "path": "tests",
+      "accessCount": 1,
+      "lastAccessed": 1771624230052,
+      "type": "directory"
+    }
+  ],
+  "userDirectives": []
+}

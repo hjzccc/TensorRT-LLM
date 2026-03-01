@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2023, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2020-2026, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -449,6 +449,25 @@ struct MoeMinLatencyParams
     }
 };
 
+/**
+ * \brief NEW: State for mixed-precision MoE execution.
+ *
+ * Holds per-expert precision assignment and per-group metadata computed
+ * by sortExpertsByTokenCount(). All pointer members point into MoE workspace.
+ */
+struct MixedPrecisionMoeState
+{
+    int* expert_precision_assignment = nullptr;  // [E]: 0=fp4, 1=bf16
+    int* bf16_expert_indices = nullptr;          // global expert IDs assigned to bf16
+    int* fp4_expert_indices = nullptr;           // global expert IDs assigned to fp4
+    int num_bf16_experts = 0;
+    int num_fp4_experts = 0;
+    int64_t bf16_token_count = 0;                // total tokens routed to bf16 experts
+    int64_t fp4_token_count = 0;                 // total tokens routed to fp4 experts
+    int64_t* bf16_expert_first_token_offset = nullptr;  // [E+1]: per-group offset array
+    int64_t* fp4_expert_first_token_offset = nullptr;   // [E+1]: per-group offset array
+};
+
 class CutlassMoeFCRunnerInterface
 {
 public:
@@ -472,6 +491,32 @@ public:
         MOEParallelismConfig parallelism_config, bool const enable_alltoall, bool use_lora, LoraParams& lora_params,
         bool use_deepseek_fp8_block_scale, bool min_latency_mode, MoeMinLatencyParams& min_latency_params,
         cudaStream_t stream)
+        = 0;
+
+    /**
+     * \brief NEW: Fused mixed-precision MoE execution.
+     *
+     * Handles both bf16 (hot experts) and nvfp4 (cold experts) precision groups
+     * in one fused call. See fusedMixPrecisionMoE_plan.md for design details.
+     *
+     * \param fp4_runner Secondary runner for fp4 group GEMMs.
+     */
+    virtual void runMixedPrecisionMoe(void const* input_activations, void const* input_sf,
+        bool const swizzled_input_sf, int const* token_selected_experts, float const* token_final_scales,
+        void const* fc1_expert_weights_bf16, void const* fc2_expert_weights_bf16,
+        void const* fc1_expert_weights_fp4, void const* fc2_expert_weights_fp4,
+        void const* fc1_expert_biases, void const* fc2_expert_biases, QuantParams quant_params_bf16,
+        QuantParams quant_params_fp4, int const num_high_precision_experts, ActivationParams fc1_activation_type,
+        int64_t const num_rows, int64_t const num_valid_rows, int64_t const hidden_size,
+        int64_t const unpadded_hidden_size, int64_t const inter_size, int const num_experts,
+        int const experts_per_token, char* workspace_ptr, void* final_output,
+        int* unpermuted_row_to_permuted_row, MOEParallelismConfig parallelism_config, bool const enable_alltoall,
+        CutlassMoeFCRunnerInterface* fp4_runner, cudaStream_t stream)
+        = 0;
+
+    virtual size_t getMixedPrecisionWorkspaceSize(int64_t const num_rows, int64_t const hidden_size,
+        int64_t const inter_size, int const num_experts, int const experts_per_token,
+        ActivationType activation_type, MOEParallelismConfig parallelism_config)
         = 0;
 
     // Aliases for profiling the gemms
@@ -631,6 +676,23 @@ public:
         MOEParallelismConfig parallelism_config, bool const enable_alltoall, bool use_lora, LoraParams& lora_params,
         bool use_deepseek_fp8_block_scale, bool min_latency_mode, MoeMinLatencyParams& min_latency_params,
         cudaStream_t stream) override;
+
+    // NEW: Fused mixed-precision MoE — handles dual precision groups in one call
+    void runMixedPrecisionMoe(void const* input_activations, void const* input_sf, bool const swizzled_input_sf,
+        int const* token_selected_experts, float const* token_final_scales,
+        void const* fc1_expert_weights_bf16, void const* fc2_expert_weights_bf16,
+        void const* fc1_expert_weights_fp4, void const* fc2_expert_weights_fp4,
+        void const* fc1_expert_biases, void const* fc2_expert_biases, QuantParams quant_params_bf16,
+        QuantParams quant_params_fp4, int const num_high_precision_experts, ActivationParams fc1_activation_type,
+        int64_t const num_rows, int64_t const num_valid_rows, int64_t const hidden_size,
+        int64_t const unpadded_hidden_size, int64_t const inter_size, int const num_experts,
+        int const experts_per_token, char* workspace_ptr, void* final_output,
+        int* unpermuted_row_to_permuted_row, MOEParallelismConfig parallelism_config, bool const enable_alltoall,
+        CutlassMoeFCRunnerInterface* fp4_runner, cudaStream_t stream) override;
+
+    size_t getMixedPrecisionWorkspaceSize(int64_t const num_rows, int64_t const hidden_size,
+        int64_t const inter_size, int const num_experts, int const experts_per_token,
+        ActivationType activation_type, MOEParallelismConfig parallelism_config) override;
 
     // We make these GEMM1 & GEMM2 static because they need to be stateless for the profiler to work
     static void gemm1(MoeGemmRunner<T, WeightType, OutputType, ScaleBiasType>& gemm_runner,
@@ -806,6 +868,14 @@ private:
         MOEParallelismConfig parallelism_config, bool use_lora, bool use_deepseek_fp8_block_scale,
         bool min_latency_mode, bool use_awq);
 
+    // NEW: Mixed-precision workspace management
+    std::map<std::string, std::pair<size_t, size_t>> getWorkspaceDeviceBufferSizesMixedPrecision(
+        int64_t const num_rows, int64_t const hidden_size, int64_t const inter_size,
+        int const num_experts_per_node, int const experts_per_token, ActivationType activation_type);
+    void configureWsPtrsMixedPrecision(char* ws_ptr, int64_t const num_rows, int64_t const hidden_size,
+        int64_t const inter_size, int const num_experts_per_node, int const experts_per_token,
+        ActivationType activation_type, MOEParallelismConfig parallelism_config);
+
 private:
     static bool useAwq(cutlass_kernels::QuantParams const& quant_params)
     {
@@ -916,6 +986,30 @@ private:
 
     TmaWarpSpecializedGroupedGemmInput tma_ws_grouped_gemm1_input_;
     TmaWarpSpecializedGroupedGemmInput tma_ws_grouped_gemm2_input_;
+
+    // ========== NEW: Mixed-Precision MoE workspace pointers ==========
+    // Populated by configureWsPtrsMixedPrecision()
+    MixedPrecisionMoeState mixed_prec_state_{};
+    int* bf16_permuted_row_to_unpermuted_row_{};
+    int* fp4_permuted_row_to_unpermuted_row_{};
+    void* bf16_expanded_data_{};           // bf16 group expanded input
+    void* fp4_expanded_data_{};            // fp4 group expanded input (quantized)
+    TmaWarpSpecializedGroupedGemmInput::ElementSF* fp4_expanded_sf_{};
+    void* bf16_gemm1_output_{};            // bf16 GEMM1 output (bf16)
+    void* fp4_gemm1_output_{};             // fp4 GEMM1 output (bf16 after epilogue cast)
+    void* bf16_activation_output_{};       // bf16 group activation output
+    void* fp4_activation_output_{};        // fp4 group activation output (quantized for gemm2)
+    TmaWarpSpecializedGroupedGemmInput::ElementSF* fp4_gemm2_act_sf_{};
+    void* bf16_gemm2_scratch_{};           // bf16 GEMM2 scratch (before finalize)
+    void* fp4_gemm2_scratch_{};            // fp4 GEMM2 scratch (before finalize)
+    float* bf16_permuted_scales_{};        // bf16 group permuted router scales
+    float* fp4_permuted_scales_{};         // fp4 group permuted router scales
+    void* mixed_prec_glu_inter_result_{};  // shared GLU intermediate (sequential GEMM execution)
+    void* mixed_prec_final_output_scratch_{};
+    TmaWarpSpecializedGroupedGemmInput mixed_fp4_tma_ws_grouped_gemm1_input_;
+    TmaWarpSpecializedGroupedGemmInput mixed_fp4_tma_ws_grouped_gemm2_input_;
+    size_t mixed_gemm_workspace_size_{};
+    // ========== END Mixed-Precision MoE workspace pointers ==========
 
     struct HostLoraWorkspace
     {

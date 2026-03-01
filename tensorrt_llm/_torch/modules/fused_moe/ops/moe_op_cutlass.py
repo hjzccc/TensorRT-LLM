@@ -292,3 +292,96 @@ class CutlassMoEOp(MoEOp):
                                 tuner_num_tokens=tuner_num_tokens,
                                 tuner_top_k=tuner_top_k,
                                 **kwargs)
+
+
+class CutlassMixedPrecisionMoEOp:
+    """NEW: Fused mixed-precision MoE op using torch.ops.trtllm.fused_moe_mixed_precision.
+
+    Handles bf16 (hot experts) and nvfp4 (cold experts) in a single C++ kernel call.
+    Unlike CutlassMoEOp which uses MoEOp interface, this has a different signature
+    (dual weight sets, fp4 quant scales, num_high_precision_experts).
+
+    The primary runner is CutlassMoeFCRunner<bf16, bf16>. The fp4 runner is
+    lazily created inside the C++ layer.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.moe_runner = None
+        self.gemm_tactics = None
+
+    def compute_mixed_precision_moe(
+        self,
+        module: 'MoE',
+        x: torch.Tensor,
+        token_selected_slots: torch.Tensor,
+        token_final_scales: Optional[torch.Tensor],
+        # bf16 group weights
+        fc1_expert_weights_bf16: torch.Tensor,
+        fc2_expert_weights_bf16: torch.Tensor,
+        # fp4 group weights (dtype=torch.int64, packed nvfp4)
+        fc1_expert_weights_fp4: torch.Tensor,
+        fc2_expert_weights_fp4: torch.Tensor,
+        # Biases (optional)
+        fc1_expert_biases: Optional[torch.Tensor],
+        fc2_expert_biases: Optional[torch.Tensor],
+        # fp4 quant scales (6 tensors for NVFP4)
+        fp4_quant_scales: List[torch.Tensor],
+        # Number of top-loaded experts assigned to bf16
+        num_high_precision_experts: int,
+        # Optional
+        use_fused_finalize: bool = True,
+        unpadded_hidden_size: Optional[int] = None,
+        out_tensor: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Compute the mixed-precision MoE using the fused C++ kernel.
+
+        This calls torch.ops.trtllm.fused_moe_mixed_precision which handles
+        both bf16 and fp4 expert groups in a single kernel call with:
+        - One routing/sorting pass
+        - Dual expand (bf16 copy + fp4 quantize)
+        - Dual gemm1 + fused activation + dual gemm2
+        - Fused finalize to output
+        """
+        from ....custom_ops import torch_custom_ops
+
+        # Extract module parameters
+        tp_size = module.tp_size
+        tp_rank = module.tp_rank
+        ep_size = module.ep_size
+        ep_rank = module.ep_rank
+        swiglu_alpha = module.swiglu_alpha
+        swiglu_beta = module.swiglu_beta
+        swiglu_limit = module.swiglu_limit
+        activation_type = module.activation_type
+        enable_alltoall = False  # Mixed precision doesn't support alltoall
+
+        unpadded_hidden_size_val = unpadded_hidden_size if unpadded_hidden_size is not None else x.shape[1]
+
+        output = torch_custom_ops.fused_moe_mixed_precision(
+            input=x,
+            token_selected_experts=token_selected_slots,
+            token_final_scales=token_final_scales,
+            fc1_expert_weights_bf16=fc1_expert_weights_bf16,
+            fc2_expert_weights_bf16=fc2_expert_weights_bf16,
+            fc1_expert_weights_fp4=fc1_expert_weights_fp4,
+            fc2_expert_weights_fp4=fc2_expert_weights_fp4,
+            fc1_expert_biases=fc1_expert_biases,
+            fc2_expert_biases=fc2_expert_biases,
+            fp4_quant_scales=fp4_quant_scales,
+            num_high_precision_experts=num_high_precision_experts,
+            swiglu_alpha=swiglu_alpha,
+            swiglu_beta=swiglu_beta,
+            swiglu_limit=swiglu_limit,
+            tp_size=tp_size,
+            tp_rank=tp_rank,
+            ep_size=ep_size,
+            ep_rank=ep_rank,
+            enable_alltoall=enable_alltoall,
+            use_fused_finalize=use_fused_finalize,
+            activation_type=activation_type,
+            unpadded_hidden_size=unpadded_hidden_size_val,
+            out_tensor=out_tensor,
+        )
+
+        return output

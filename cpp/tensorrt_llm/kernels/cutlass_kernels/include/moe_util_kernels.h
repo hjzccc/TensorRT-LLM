@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2025, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2020-2026, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +72,58 @@ void finalizeMoeRoutingKernelLauncher(GemmOutputType const* expanded_permuted_ro
     int64_t const padded_cols, int64_t const unpadded_cols, int64_t const experts_per_token,
     int64_t const num_experts_per_node, MOEParallelismConfig parallelism_config, bool const enable_alltoall,
     cudaStream_t stream);
+
+// ========== NEW: Mixed-Precision MoE utility kernels ==========
+
+/**
+ * \brief NEW: Assign precision (bf16 vs fp4) to each expert based on token load.
+ *
+ * Computes tokens_per_expert from expert_first_token_offset, sorts by count
+ * descending, assigns top num_high_precision_experts to bf16, rest to fp4.
+ * Also builds per-group expert_first_token_offset arrays.
+ */
+void sortExpertsByTokenCount(
+    int64_t const* expert_first_token_offset,  // [E+1] from existing sort
+    int const num_experts_per_node,
+    int const num_high_precision_experts,       // top-N experts get bf16
+    int* expert_precision_assignment,           // output: [E] -> {0=fp4, 1=bf16}
+    int* bf16_expert_indices,                   // output: sorted list of bf16 expert IDs
+    int* fp4_expert_indices,                    // output: sorted list of fp4 expert IDs
+    int64_t* bf16_expert_first_token_offset,    // output: [E+1] per-group offset
+    int64_t* fp4_expert_first_token_offset,     // output: [E+1] per-group offset
+    cudaStream_t stream);
+
+/**
+ * \brief NEW: Dual-buffer expand for mixed-precision MoE.
+ *
+ * Iterates over permuted tokens, writes bf16-expert rows to bf16 output buffer
+ * and fp4-expert rows to fp4 output buffer (with quantization + scaling factors).
+ */
+template <class InputActivationsType>
+void expandInputRowsMixedPrecisionKernelLauncher(
+    InputActivationsType const* unpermuted_input,
+    void* bf16_expanded_output,                  // bf16 group output buffer
+    void* fp4_expanded_output,                   // fp4 group output buffer (quantized)
+    int* bf16_permuted_row_to_unpermuted_row,
+    int* fp4_permuted_row_to_unpermuted_row,
+    float const* unpermuted_scales,
+    float* bf16_permuted_scales,
+    float* fp4_permuted_scales,
+    TmaWarpSpecializedGroupedGemmInput::ElementSF* fp4_act_sf,  // fp4 act scaling factors
+    int const* permuted_row_to_unpermuted_row,
+    int const* expert_precision_assignment,       // [E]: 0=fp4, 1=bf16
+    int64_t const* expert_first_token_offset,     // [E+1] global offsets
+    int64_t const* bf16_expert_first_token_offset, // [E+1] per-group offsets for bf16
+    int64_t const* fp4_expert_first_token_offset,  // [E+1] per-group offsets for fp4
+    int64_t const num_rows,
+    int64_t const hidden_size,
+    int const experts_per_token,
+    int const num_experts_per_node,
+    float const* fc1_act_global_scale,            // fp4 quantization global scale
+    bool use_per_expert_act_scale,
+    cudaStream_t stream);
+
+// ========== END Mixed-Precision MoE utility kernels ==========
 
 } // namespace cutlass_kernels
 } // namespace kernels

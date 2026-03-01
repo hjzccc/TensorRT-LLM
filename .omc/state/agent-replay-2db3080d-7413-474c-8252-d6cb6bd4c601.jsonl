@@ -1,0 +1,10 @@
+{"t":0,"agent":"system","event":"skill_invoked","skill_name":"hud"}
+{"t":0,"agent":"system","event":"skill_invoked","skill_name":"mcp-setup"}
+{"t":0,"agent":"a5ccc36","agent_type":"unknown","event":"agent_stop","success":true}
+{"t":0,"agent":"system","event":"keyword_detected","keyword":"team"}
+{"t":0,"agent":"system","event":"mode_change","mode_from":"none","mode_to":"team"}
+{"t":0,"agent":"system","event":"keyword_detected","keyword":"team"}
+{"t":0,"agent":"system","event":"mode_change","mode_from":"none","mode_to":"team"}
+{"t":0,"agent":"acc7c26","agent_type":"unknown","event":"agent_stop","success":true}
+{"t":0,"agent":"system","event":"keyword_detected","keyword":"team"}
+{"t":0,"agent":"system","event":"mode_change","mode_from":"none","mode_to":"team"}

@@ -918,6 +918,135 @@ void threeStepBuildExpertMapsSortFirstToken(int const* token_selected_experts, i
         num_experts_per_node, num_tokens_per_block, num_blocks_per_seq, stream);
 }
 
+// ============================== NEW: Mixed-Precision Sort ==============================
+// Assigns precision (bf16 vs fp4) to each expert based on token load.
+// Single-thread kernel — E is small (typically 8-256), runs in microseconds.
+__global__ void sortExpertsByTokenCountKernel(
+    int64_t const* __restrict__ expert_first_token_offset,
+    int const num_experts_per_node,
+    int const num_high_precision_experts,
+    int* __restrict__ expert_precision_assignment,
+    int* __restrict__ bf16_expert_indices,
+    int* __restrict__ fp4_expert_indices,
+    int64_t* __restrict__ bf16_expert_first_token_offset,
+    int64_t* __restrict__ fp4_expert_first_token_offset)
+{
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900))
+    cudaGridDependencySynchronize();
+#endif
+
+    if (threadIdx.x != 0 || blockIdx.x != 0)
+        return;
+
+    int const E = num_experts_per_node;
+    int const K = min(num_high_precision_experts, E);
+
+    // Use dynamic shared memory for tokens_per_expert and selection flag
+    extern __shared__ char smem[];
+    int64_t* tokens_per_expert = reinterpret_cast<int64_t*>(smem);
+    bool* selected = reinterpret_cast<bool*>(tokens_per_expert + E);
+
+    // Step 1: Compute tokens per expert
+    for (int e = 0; e < E; e++)
+    {
+        tokens_per_expert[e] = expert_first_token_offset[e + 1] - expert_first_token_offset[e];
+        selected[e] = false;
+    }
+
+    // Step 2: Top-K selection — find K experts with highest token count → bf16
+    int bf16_count = 0;
+    for (int k = 0; k < K; k++)
+    {
+        int best = -1;
+        int64_t best_count = -1;
+        for (int e = 0; e < E; e++)
+        {
+            if (!selected[e] && tokens_per_expert[e] > best_count)
+            {
+                best_count = tokens_per_expert[e];
+                best = e;
+            }
+        }
+        if (best >= 0)
+        {
+            selected[best] = true;
+            expert_precision_assignment[best] = 1; // bf16
+            bf16_expert_indices[bf16_count] = best;
+            bf16_count++;
+        }
+    }
+
+    // Step 3: Remaining experts → fp4
+    int fp4_count = 0;
+    for (int e = 0; e < E; e++)
+    {
+        if (!selected[e])
+        {
+            expert_precision_assignment[e] = 0; // fp4
+            fp4_expert_indices[fp4_count] = e;
+            fp4_count++;
+        }
+    }
+
+    // Step 4: Build per-group expert_first_token_offset arrays
+    // Each array has E+1 entries. Non-group experts contribute zero tokens,
+    // so the cumulative sum stays flat at those positions.
+    int64_t bf16_cumsum = 0;
+    int64_t fp4_cumsum = 0;
+    bf16_expert_first_token_offset[0] = 0;
+    fp4_expert_first_token_offset[0] = 0;
+    for (int e = 0; e < E; e++)
+    {
+        if (expert_precision_assignment[e] == 1) // bf16
+        {
+            bf16_cumsum += tokens_per_expert[e];
+        }
+        else // fp4
+        {
+            fp4_cumsum += tokens_per_expert[e];
+        }
+        bf16_expert_first_token_offset[e + 1] = bf16_cumsum;
+        fp4_expert_first_token_offset[e + 1] = fp4_cumsum;
+    }
+
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900))
+    cudaTriggerProgrammaticLaunchCompletion();
+#endif
+}
+
+// NEW: Launcher for sortExpertsByTokenCount — uses cudaLaunchKernelEx for PDL support
+void sortExpertsByTokenCount(
+    int64_t const* expert_first_token_offset,
+    int const num_experts_per_node,
+    int const num_high_precision_experts,
+    int* expert_precision_assignment,
+    int* bf16_expert_indices,
+    int* fp4_expert_indices,
+    int64_t* bf16_expert_first_token_offset,
+    int64_t* fp4_expert_first_token_offset,
+    cudaStream_t stream)
+{
+    // Shared memory: int64_t[E] for token counts + bool[E] for selection flags
+    int const smem_size = num_experts_per_node * (sizeof(int64_t) + sizeof(bool));
+
+    cudaLaunchConfig_t launch_config;
+    launch_config.gridDim = 1;
+    launch_config.blockDim = 1;
+    launch_config.dynamicSmemBytes = smem_size;
+    launch_config.stream = stream;
+    cudaLaunchAttribute attrs[1];
+    attrs[0].id = cudaLaunchAttributeProgrammaticStreamSerialization;
+    attrs[0].val.programmaticStreamSerializationAllowed = tensorrt_llm::common::getEnvEnablePDL();
+    launch_config.numAttrs = 1;
+    launch_config.attrs = attrs;
+
+    cudaLaunchKernelEx(&launch_config, sortExpertsByTokenCountKernel,
+        expert_first_token_offset, num_experts_per_node, num_high_precision_experts,
+        expert_precision_assignment, bf16_expert_indices, fp4_expert_indices,
+        bf16_expert_first_token_offset, fp4_expert_first_token_offset);
+}
+// ============================== END Mixed-Precision Sort ==============================
+
 // ============================== Infer GEMM sizes =================================
 
 template <class T>
@@ -1691,6 +1820,316 @@ INSTANTIATE_EXPAND_INPUT_ROWS(half, half);
 #ifdef ENABLE_BF16
 INSTANTIATE_EXPAND_INPUT_ROWS(__nv_bfloat16, __nv_bfloat16);
 #endif
+
+// ============================== NEW: Mixed-Precision Expand ==============================
+// Dual-buffer expand for mixed-precision MoE. Routes each permuted row to either
+// a bf16 output buffer (direct copy) or an fp4 output buffer (with quantization).
+// The precision of each expert is determined by expert_precision_assignment[].
+//
+// Template parameter InputActivationsType is expected to be __nv_bfloat16 (or half).
+// bf16 experts: rows are copied as-is to bf16_expanded_output.
+// fp4 experts: rows are quantized to nvfp4 and written to fp4_expanded_output
+//              along with per-16-element-group scaling factors in fp4_act_sf.
+//
+// Per-group row position: For permuted_row belonging to expert e,
+//   group_row = group_expert_first_token_offset[e] + (permuted_row - global_expert_first_token_offset[e])
+// This works because rows within an expert are contiguous in the permutation output.
+template <class InputActivationsType>
+__global__ void expandInputRowsMixedPrecisionKernel(
+    InputActivationsType const* __restrict__ unpermuted_input,
+    InputActivationsType* __restrict__ bf16_expanded_output,
+    void* __restrict__ fp4_expanded_output,                        // __nv_fp4_e2m1 packed
+    int* __restrict__ bf16_permuted_row_to_unpermuted_row,
+    int* __restrict__ fp4_permuted_row_to_unpermuted_row,
+    float const* __restrict__ unpermuted_scales,
+    float* __restrict__ bf16_permuted_scales,
+    float* __restrict__ fp4_permuted_scales,
+    TmaWarpSpecializedGroupedGemmInput::ElementSF* __restrict__ fp4_act_sf,
+    int const* __restrict__ permuted_row_to_unpermuted_row,
+    int const* __restrict__ expert_precision_assignment,           // [E]: 0=fp4, 1=bf16
+    int64_t const* __restrict__ expert_first_token_offset,        // [E+1] global
+    int64_t const* __restrict__ bf16_expert_first_token_offset,   // [E+1] per-group
+    int64_t const* __restrict__ fp4_expert_first_token_offset,    // [E+1] per-group
+    int64_t const num_tokens,
+    int64_t const hidden_size,
+    int64_t const k,
+    int64_t const num_experts_per_node,
+    float const* __restrict__ fc1_act_global_scale,               // fp4 quantization global scale
+    bool use_per_expert_act_scale)
+{
+#ifdef ENABLE_FP4
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900))
+    cudaGridDependencySynchronize();
+#endif
+
+    // Constants for the bf16 plain-copy path
+    constexpr int64_t BF16_ELEM_PER_THREAD = 128 / sizeof_bits<InputActivationsType>::value;
+    using BF16DataElem = cutlass::Array<InputActivationsType, BF16_ELEM_PER_THREAD>;
+
+    // Constants for the fp4 quantization path
+    constexpr int FP4_VecSize = TmaWarpSpecializedGroupedGemmInput::NVFP4BlockScaleVectorSize; // 16
+    constexpr int64_t FP4_ELEM_PER_THREAD = CVT_ELTS_PER_THREAD; // 8
+    constexpr int64_t FP4_min_k_dim_alignment = TmaWarpSpecializedGroupedGemmInput::MinKDimAlignmentNVFP4;
+    int64_t const padded_hidden_size
+        = TmaWarpSpecializedGroupedGemmInput::alignToSfDim(hidden_size, FP4_min_k_dim_alignment);
+
+    int64_t const num_valid_tokens = expert_first_token_offset[num_experts_per_node];
+
+    for (int64_t permuted_row = blockIdx.x; permuted_row < num_valid_tokens; permuted_row += gridDim.x)
+    {
+        int64_t const unpermuted_row = permuted_row_to_unpermuted_row[permuted_row];
+        int64_t const source_k_rank = unpermuted_row / num_tokens;
+        int64_t const source_row = unpermuted_row % num_tokens;
+
+        // Find which expert this row belongs to
+        int64_t expert = findTotalEltsLessThanTarget(
+                             expert_first_token_offset, num_experts_per_node, (int64_t) permuted_row + 1)
+            - 1;
+
+        int64_t const start_offset = threadIdx.x;
+        int64_t const stride = EXPAND_THREADS_PER_BLOCK;
+
+        if (expert_precision_assignment[expert] == 1)
+        {
+            // ======= BF16 path: direct copy =======
+            // Compute position within bf16 group buffer
+            int64_t const global_expert_start = expert_first_token_offset[expert];
+            int64_t const group_expert_start = bf16_expert_first_token_offset[expert];
+            int64_t const group_row = group_expert_start + (permuted_row - global_expert_start);
+
+            if (bf16_permuted_row_to_unpermuted_row && threadIdx.x == 0)
+            {
+                bf16_permuted_row_to_unpermuted_row[group_row] = static_cast<int>(unpermuted_row);
+            }
+
+            auto const* source_row_ptr
+                = reinterpret_cast<BF16DataElem const*>(unpermuted_input + source_row * hidden_size);
+            auto* dest_row_ptr
+                = reinterpret_cast<BF16DataElem*>(bf16_expanded_output) + group_row * hidden_size / BF16_ELEM_PER_THREAD;
+
+            int64_t const num_elems_in_col = hidden_size / BF16_ELEM_PER_THREAD;
+            assert(hidden_size % BF16_ELEM_PER_THREAD == 0);
+
+            for (int64_t elem_index = start_offset; elem_index < num_elems_in_col; elem_index += stride)
+            {
+                dest_row_ptr[elem_index] = source_row_ptr[elem_index];
+            }
+
+            // Write permuted scale for bf16 group
+            if (bf16_permuted_scales && threadIdx.x == 0)
+            {
+                int64_t const source_k_idx = source_row * k + source_k_rank;
+                bf16_permuted_scales[group_row] = unpermuted_scales ? unpermuted_scales[source_k_idx] : 1.0f;
+            }
+        }
+        else
+        {
+            // ======= FP4 path: quantize input to nvfp4 =======
+            // Compute position within fp4 group buffer
+            int64_t const global_expert_start = expert_first_token_offset[expert];
+            int64_t const group_expert_start = fp4_expert_first_token_offset[expert];
+            int64_t const group_row = group_expert_start + (permuted_row - global_expert_start);
+
+            if (fp4_permuted_row_to_unpermuted_row && threadIdx.x == 0)
+            {
+                fp4_permuted_row_to_unpermuted_row[group_row] = static_cast<int>(unpermuted_row);
+            }
+
+            // Source row pointer — read as bf16 elements in chunks of FP4_ELEM_PER_THREAD
+            using FP4DataElem = cutlass::Array<InputActivationsType, FP4_ELEM_PER_THREAD>;
+            auto const* source_row_ptr
+                = reinterpret_cast<FP4DataElem const*>(unpermuted_input + source_row * hidden_size);
+            // Destination: packed fp4 output — fp4 is sub-byte, use uint32_t for 8 fp4 elements
+            auto* dest_row_ptr
+                = reinterpret_cast<uint32_t*>(fp4_expanded_output) + group_row * hidden_size / FP4_ELEM_PER_THREAD;
+
+            int64_t const num_elems_in_col = hidden_size / FP4_ELEM_PER_THREAD;
+            assert(hidden_size % FP4_ELEM_PER_THREAD == 0);
+            assert(hidden_size % FP4_VecSize == 0);
+
+            // Quantization global scale for fp4
+            size_t act_scale_idx = use_per_expert_act_scale ? expert : 0;
+            float global_scale_val = fc1_act_global_scale ? fc1_act_global_scale[act_scale_idx] : 1.0f;
+            int64_t group_expert_start_for_sf = fp4_expert_first_token_offset[expert];
+
+            for (int64_t elem_index = start_offset; elem_index < num_elems_in_col; elem_index += stride)
+            {
+                auto in_vec = source_row_ptr[elem_index];
+                // Quantize bf16 → nvfp4 and write scaling factors
+                auto res = quantizePackedFPXValue<InputActivationsType, __nv_fp4_e2m1, FP4DataElem, FP4_VecSize>(
+                    in_vec, global_scale_val, group_expert_start_for_sf, expert, group_row, elem_index,
+                    padded_hidden_size, fp4_act_sf,
+                    TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::NVFP4);
+                static_assert(
+                    sizeof(res) == sizeof(*dest_row_ptr), "Quantized value must be the same size as the output");
+                dest_row_ptr[elem_index] = res;
+            }
+
+            // Pad zeros in the extra SFs along the K dimension
+            size_t padding_start_offset = hidden_size / FP4_VecSize + start_offset;
+            size_t padding_elems_in_col = padded_hidden_size / FP4_VecSize;
+            for (int64_t elem_index = padding_start_offset; elem_index < (int64_t) padding_elems_in_col;
+                 elem_index += stride)
+            {
+                writeSF<FP4_VecSize, FP4_VecSize>(group_expert_start_for_sf, expert, /*source_row*/ -1,
+                    group_row, elem_index, padded_hidden_size, fp4_act_sf,
+                    /* input_sf */ nullptr); // Pass nullptr so we write 0
+            }
+
+            // Write permuted scale for fp4 group
+            if (fp4_permuted_scales && threadIdx.x == 0)
+            {
+                int64_t const source_k_idx = source_row * k + source_k_rank;
+                fp4_permuted_scales[group_row] = unpermuted_scales ? unpermuted_scales[source_k_idx] : 1.0f;
+            }
+        }
+    }
+
+    // Pad zeros in the extra SFs along the N dimension for fp4 group
+    // (Same pattern as existing expandInputRowsKernel N-dimension padding)
+    {
+        int64_t const start_pad_offset = threadIdx.x;
+        int64_t const pad_stride = EXPAND_THREADS_PER_BLOCK;
+        int64_t const padded_num_elems_in_col = padded_hidden_size / FP4_VecSize;
+        assert(padded_hidden_size % FP4_VecSize == 0);
+
+        constexpr int min_num_tokens_alignment = TmaWarpSpecializedGroupedGemmInput::MinNDimAlignmentNVFP4;
+        static_assert((min_num_tokens_alignment & (min_num_tokens_alignment - 1)) == 0,
+            "Min num tokens alignment must be a power of two");
+        int64_t num_padding_tokens = min_num_tokens_alignment * num_experts_per_node;
+
+        for (int64_t padding_token = blockIdx.x; padding_token < num_padding_tokens; padding_token += gridDim.x)
+        {
+            int64_t pad_expert = padding_token / min_num_tokens_alignment;
+            // Only pad for fp4 experts
+            if (expert_precision_assignment[pad_expert] != 0)
+                continue;
+            int64_t num_tokens_before_expert_in_group = fp4_expert_first_token_offset[pad_expert];
+            int64_t num_tokens_after_expert_in_group = fp4_expert_first_token_offset[pad_expert + 1];
+            int64_t tokens_to_expert = num_tokens_after_expert_in_group - num_tokens_before_expert_in_group;
+            int64_t padding_to_expert
+                = TmaWarpSpecializedGroupedGemmInput::alignToSfDim(tokens_to_expert, min_num_tokens_alignment)
+                - tokens_to_expert;
+            int64_t expert_pad_idx = padding_token % min_num_tokens_alignment;
+            if (expert_pad_idx < padding_to_expert)
+            {
+                for (int64_t elem_index = start_pad_offset; elem_index < padded_num_elems_in_col;
+                     elem_index += pad_stride)
+                {
+                    writeSF<FP4_VecSize, FP4_VecSize>(num_tokens_before_expert_in_group, pad_expert,
+                        /*source_row*/ -1, num_tokens_after_expert_in_group + expert_pad_idx,
+                        elem_index, padded_hidden_size, fp4_act_sf,
+                        /* input_sf */ nullptr); // Pass nullptr so we write 0
+                }
+            }
+        }
+    }
+
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900))
+    cudaTriggerProgrammaticLaunchCompletion();
+#endif
+#endif // ENABLE_FP4
+}
+
+// NEW: Launcher for expandInputRowsMixedPrecisionKernel
+template <class InputActivationsType>
+void expandInputRowsMixedPrecisionKernelLauncher(
+    InputActivationsType const* unpermuted_input,
+    void* bf16_expanded_output,
+    void* fp4_expanded_output,
+    int* bf16_permuted_row_to_unpermuted_row,
+    int* fp4_permuted_row_to_unpermuted_row,
+    float const* unpermuted_scales,
+    float* bf16_permuted_scales,
+    float* fp4_permuted_scales,
+    TmaWarpSpecializedGroupedGemmInput::ElementSF* fp4_act_sf,
+    int const* permuted_row_to_unpermuted_row,
+    int const* expert_precision_assignment,
+    int64_t const* expert_first_token_offset,
+    int64_t const* bf16_expert_first_token_offset,
+    int64_t const* fp4_expert_first_token_offset,
+    int64_t const num_rows,
+    int64_t const hidden_size,
+    int const experts_per_token,
+    int const num_experts_per_node,
+    float const* fc1_act_global_scale,
+    bool use_per_expert_act_scale,
+    cudaStream_t stream)
+{
+#ifdef ENABLE_FP4
+    constexpr int min_num_tokens_alignment = TmaWarpSpecializedGroupedGemmInput::MinNDimAlignmentNVFP4;
+    int64_t num_padding_tokens = min_num_tokens_alignment * num_experts_per_node;
+
+    auto func = &expandInputRowsMixedPrecisionKernel<InputActivationsType>;
+
+    static int32_t const smCount = tensorrt_llm::common::getMultiProcessorCount();
+    int32_t const maxBlocksPerSM = tensorrt_llm::common::getMaxActiveBlocksPerSM(func, EXPAND_THREADS_PER_BLOCK, 0);
+    int32_t const blocks
+        = std::min(smCount * maxBlocksPerSM,
+            static_cast<int32_t>(std::max(num_rows * experts_per_token, num_padding_tokens)));
+    int32_t const threads = EXPAND_THREADS_PER_BLOCK;
+
+    cudaLaunchConfig_t launch_config;
+    launch_config.gridDim = blocks;
+    launch_config.blockDim = threads;
+    launch_config.dynamicSmemBytes = 0;
+    launch_config.stream = stream;
+    cudaLaunchAttribute attrs[1];
+    attrs[0].id = cudaLaunchAttributeProgrammaticStreamSerialization;
+    attrs[0].val.programmaticStreamSerializationAllowed = tensorrt_llm::common::getEnvEnablePDL();
+    launch_config.numAttrs = 1;
+    launch_config.attrs = attrs;
+
+    cudaLaunchKernelEx(&launch_config, func,
+        unpermuted_input,
+        reinterpret_cast<InputActivationsType*>(bf16_expanded_output),
+        fp4_expanded_output,
+        bf16_permuted_row_to_unpermuted_row,
+        fp4_permuted_row_to_unpermuted_row,
+        unpermuted_scales,
+        bf16_permuted_scales,
+        fp4_permuted_scales,
+        fp4_act_sf,
+        permuted_row_to_unpermuted_row,
+        expert_precision_assignment,
+        expert_first_token_offset,
+        bf16_expert_first_token_offset,
+        fp4_expert_first_token_offset,
+        num_rows,
+        hidden_size,
+        static_cast<int64_t>(experts_per_token),
+        static_cast<int64_t>(num_experts_per_node),
+        fc1_act_global_scale,
+        use_per_expert_act_scale);
+#else
+    TLLM_THROW("expandInputRowsMixedPrecisionKernelLauncher requires ENABLE_FP4");
+#endif // ENABLE_FP4
+}
+
+// Explicit template instantiations for expandInputRowsMixedPrecisionKernelLauncher
+#ifdef ENABLE_BF16
+template void expandInputRowsMixedPrecisionKernelLauncher<__nv_bfloat16>(
+    __nv_bfloat16 const* unpermuted_input, void* bf16_expanded_output, void* fp4_expanded_output,
+    int* bf16_permuted_row_to_unpermuted_row, int* fp4_permuted_row_to_unpermuted_row,
+    float const* unpermuted_scales, float* bf16_permuted_scales, float* fp4_permuted_scales,
+    TmaWarpSpecializedGroupedGemmInput::ElementSF* fp4_act_sf,
+    int const* permuted_row_to_unpermuted_row, int const* expert_precision_assignment,
+    int64_t const* expert_first_token_offset, int64_t const* bf16_expert_first_token_offset,
+    int64_t const* fp4_expert_first_token_offset, int64_t const num_rows, int64_t const hidden_size,
+    int const experts_per_token, int const num_experts_per_node, float const* fc1_act_global_scale,
+    bool use_per_expert_act_scale, cudaStream_t stream);
+#endif
+template void expandInputRowsMixedPrecisionKernelLauncher<half>(
+    half const* unpermuted_input, void* bf16_expanded_output, void* fp4_expanded_output,
+    int* bf16_permuted_row_to_unpermuted_row, int* fp4_permuted_row_to_unpermuted_row,
+    float const* unpermuted_scales, float* bf16_permuted_scales, float* fp4_permuted_scales,
+    TmaWarpSpecializedGroupedGemmInput::ElementSF* fp4_act_sf,
+    int const* permuted_row_to_unpermuted_row, int const* expert_precision_assignment,
+    int64_t const* expert_first_token_offset, int64_t const* bf16_expert_first_token_offset,
+    int64_t const* fp4_expert_first_token_offset, int64_t const num_rows, int64_t const hidden_size,
+    int const experts_per_token, int const num_experts_per_node, float const* fc1_act_global_scale,
+    bool use_per_expert_act_scale, cudaStream_t stream);
+// ============================== END Mixed-Precision Expand ==============================
 
 enum class ScaleMode : int
 {
@@ -2469,6 +2908,49 @@ void doActivation(T* output, GemmOutputType const* gemm_result, float const* fp8
     }
 }
 
+template <typename T>
+__global__ void accumulateMixedPrecisionOutputKernel(T* output, T const* partial_output, int64_t num_elements)
+{
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900))
+    cudaGridDependencySynchronize();
+#endif
+
+    int64_t const tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    int64_t const stride = static_cast<int64_t>(gridDim.x) * blockDim.x;
+    for (int64_t idx = tid; idx < num_elements; idx += stride)
+    {
+        float const value = static_cast<float>(output[idx]) + static_cast<float>(partial_output[idx]);
+        output[idx] = static_cast<T>(value);
+    }
+
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900))
+    cudaTriggerProgrammaticLaunchCompletion();
+#endif
+}
+
+template <typename T>
+void accumulateMixedPrecisionOutput(T* output, T const* partial_output, int64_t num_elements, cudaStream_t stream)
+{
+    int32_t const threads = 256;
+    int32_t const sm_count = tensorrt_llm::common::getMultiProcessorCount();
+    int64_t const max_blocks = static_cast<int64_t>(sm_count) * 4;
+    int32_t const blocks = static_cast<int32_t>(std::max<int64_t>(1,
+        std::min<int64_t>(tensorrt_llm::common::ceilDiv(num_elements, static_cast<int64_t>(threads)), max_blocks)));
+
+    cudaLaunchConfig_t config;
+    config.gridDim = blocks;
+    config.blockDim = threads;
+    config.dynamicSmemBytes = 0;
+    config.stream = stream;
+    cudaLaunchAttribute attrs[1];
+    attrs[0].id = cudaLaunchAttributeProgrammaticStreamSerialization;
+    attrs[0].val.programmaticStreamSerializationAllowed = tensorrt_llm::common::getEnvEnablePDL();
+    config.numAttrs = 1;
+    config.attrs = attrs;
+
+    cudaLaunchKernelEx(&config, accumulateMixedPrecisionOutputKernel<T>, output, partial_output, num_elements);
+}
+
 // ============================== Lora Add Bias =================================
 constexpr static int LORA_KERNELS_THREADS_PER_BLOCK = 256;
 
@@ -2820,6 +3302,153 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::
 }
 
 template <class T, class WeightType, class OutputType, class InputType, class BackBoneType, class Enable>
+std::map<std::string, std::pair<size_t, size_t>>
+CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::
+    getWorkspaceDeviceBufferSizesMixedPrecision(int64_t const num_rows, int64_t const hidden_size,
+        int64_t const inter_size, int const num_experts_per_node, int const experts_per_token,
+        ActivationType activation_type)
+{
+    size_t const expanded_rows = num_rows * experts_per_token;
+    size_t const expanded_elems = expanded_rows * hidden_size;
+    size_t const inter_elems = expanded_rows * inter_size;
+    size_t const gated_inter_elems = isGatedActivation(activation_type) ? inter_elems * 2 : inter_elems;
+
+    int64_t const num_tokens_per_block = computeNumTokensPerBlock(num_rows, num_experts_per_node);
+    int64_t const num_blocks_per_seq = tensorrt_llm::common::ceilDiv(num_rows, num_tokens_per_block);
+
+    size_t const permuted_row_to_unpermuted_row_size = expanded_rows * sizeof(int);
+    size_t const permuted_token_selected_experts_size = expanded_rows * sizeof(int);
+    size_t const blocked_expert_counts_size = num_experts_per_node * num_blocks_per_seq * sizeof(int);
+    size_t const blocked_expert_counts_cumsum_size = blocked_expert_counts_size;
+    size_t const blocked_row_to_unpermuted_row_size = num_experts_per_node * num_rows * sizeof(int);
+    size_t const expert_first_token_offset_size = (num_experts_per_node + 1) * sizeof(int64_t);
+
+    size_t const expert_precision_assignment_size = num_experts_per_node * sizeof(int);
+    size_t const bf16_expert_indices_size = num_experts_per_node * sizeof(int);
+    size_t const fp4_expert_indices_size = num_experts_per_node * sizeof(int);
+    size_t const bf16_expert_first_token_offset_size = (num_experts_per_node + 1) * sizeof(int64_t);
+    size_t const fp4_expert_first_token_offset_size = (num_experts_per_node + 1) * sizeof(int64_t);
+    size_t const mixed_prec_state_size = sizeof(MixedPrecisionMoeState);
+
+    size_t const bf16_permuted_row_to_unpermuted_row_size = expanded_rows * sizeof(int);
+    size_t const fp4_permuted_row_to_unpermuted_row_size = expanded_rows * sizeof(int);
+
+    size_t const bf16_expanded_data_size = expanded_elems * sizeof(T);
+    size_t const fp4_expanded_data_size = tensorrt_llm::common::ceilDiv(expanded_elems, static_cast<size_t>(2));
+
+    auto const act_sf_rows = std::min(expanded_rows, static_cast<size_t>(num_rows * num_experts_per_node));
+    size_t const fp4_expanded_sf_size = getOffsetActivationSF(num_experts_per_node, act_sf_rows, hidden_size,
+        TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::NVFP4)
+        * sizeof(TmaWarpSpecializedGroupedGemmInput::NVFP4ElementSF);
+
+    size_t const bf16_gemm1_output_size = inter_elems * sizeof(BackBoneType);
+    size_t const fp4_gemm1_output_size = inter_elems * sizeof(BackBoneType);
+    size_t const mixed_prec_glu_inter_result_size = gated_inter_elems * sizeof(BackBoneType);
+
+    size_t const bf16_activation_output_size = inter_elems * sizeof(BackBoneType);
+    size_t const fp4_activation_output_size = tensorrt_llm::common::ceilDiv(inter_elems, static_cast<size_t>(2));
+    size_t const fp4_gemm2_act_sf_size = getOffsetActivationSF(num_experts_per_node, act_sf_rows, inter_size,
+        TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::NVFP4)
+        * sizeof(TmaWarpSpecializedGroupedGemmInput::NVFP4ElementSF);
+
+    size_t const bf16_gemm2_scratch_size = expanded_rows * hidden_size * sizeof(BackBoneType);
+    size_t const fp4_gemm2_scratch_size = expanded_rows * hidden_size * sizeof(BackBoneType);
+    size_t const mixed_prec_final_output_scratch_size = num_rows * hidden_size * sizeof(OutputType);
+
+    size_t const bf16_permuted_scales_size = expanded_rows * sizeof(float);
+    size_t const fp4_permuted_scales_size = expanded_rows * sizeof(float);
+
+    size_t const alpha_scale_ptr_array_size = num_experts_per_node * sizeof(float*);
+
+    size_t const bf16_tma_ws_size = moe_gemm_runner_.supportsTmaWarpSpecialized()
+        ? TmaWarpSpecializedGroupedGemmInput::workspaceSize(num_experts_per_node, getScalingType())
+        : 0;
+    size_t const fp4_tma_ws_size = moe_gemm_runner_.supportsTmaWarpSpecialized()
+        ? TmaWarpSpecializedGroupedGemmInput::workspaceSize(
+            num_experts_per_node, TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::NVFP4)
+        : 0;
+    size_t const mixed_gemm_workspace_size = 2 * moe_gemm_runner_.getMaxWorkspaceSize(num_experts_per_node);
+
+    size_t map_offset = 0;
+    std::map<std::string, std::pair<size_t, size_t>> out_map;
+
+#define ADD_NAME(name, size)                                                                                           \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        auto aligned_size = tensorrt_llm::common::alignSize(size, tensorrt_llm::common::kCudaMemAlign);                \
+        out_map[#name] = std::pair{aligned_size, map_offset};                                                          \
+        map_offset += aligned_size;                                                                                    \
+    } while (false)
+#define ADD(name) ADD_NAME(name, name##_size)
+
+    ADD(permuted_row_to_unpermuted_row);
+    ADD(permuted_token_selected_experts);
+    ADD(blocked_expert_counts);
+    ADD(blocked_expert_counts_cumsum);
+    ADD(blocked_row_to_unpermuted_row);
+    ADD(expert_first_token_offset);
+
+    ADD(expert_precision_assignment);
+    ADD(bf16_expert_indices);
+    ADD(fp4_expert_indices);
+    ADD(bf16_expert_first_token_offset);
+    ADD(fp4_expert_first_token_offset);
+    ADD(mixed_prec_state);
+
+    ADD(bf16_permuted_row_to_unpermuted_row);
+    ADD(fp4_permuted_row_to_unpermuted_row);
+
+    ADD(bf16_expanded_data);
+    ADD(fp4_expanded_data);
+    ADD(fp4_expanded_sf);
+
+    ADD(bf16_gemm1_output);
+    ADD(fp4_gemm1_output);
+    ADD(mixed_prec_glu_inter_result);
+
+    ADD(bf16_activation_output);
+    ADD(fp4_activation_output);
+    ADD(fp4_gemm2_act_sf);
+
+    ADD(bf16_gemm2_scratch);
+    ADD(fp4_gemm2_scratch);
+    ADD(mixed_prec_final_output_scratch);
+
+    ADD(bf16_permuted_scales);
+    ADD(fp4_permuted_scales);
+
+    ADD_NAME(alpha_scale_ptr_array_fc1, alpha_scale_ptr_array_size);
+    ADD_NAME(alpha_scale_ptr_array_fc2, alpha_scale_ptr_array_size);
+
+    ADD_NAME(mixed_tma_ws_gemm1_workspace, bf16_tma_ws_size);
+    ADD_NAME(mixed_tma_ws_gemm2_workspace, bf16_tma_ws_size);
+    ADD_NAME(mixed_fp4_tma_ws_gemm1_workspace, fp4_tma_ws_size);
+    ADD_NAME(mixed_fp4_tma_ws_gemm2_workspace, fp4_tma_ws_size);
+    ADD_NAME(mixed_gemm_workspace, mixed_gemm_workspace_size);
+
+    return out_map;
+
+#undef ADD_NAME
+#undef ADD
+}
+
+template <class T, class WeightType, class OutputType, class InputType, class BackBoneType, class Enable>
+size_t CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::getMixedPrecisionWorkspaceSize(
+    int64_t const num_rows, int64_t const hidden_size, int64_t const inter_size, int const num_experts,
+    int const experts_per_token, ActivationType activation_type, MOEParallelismConfig parallelism_config)
+{
+    int const ep_size = parallelism_config.ep_size;
+    TLLM_CHECK_WITH_INFO(num_experts % ep_size == 0, "Number of experts must be a multiple of ep size");
+    auto sizes_map = getWorkspaceDeviceBufferSizesMixedPrecision(
+        num_rows, hidden_size, inter_size, num_experts / ep_size, experts_per_token, activation_type);
+    std::vector<size_t> sizes(sizes_map.size());
+    std::transform(sizes_map.begin(), sizes_map.end(), sizes.begin(), [](auto& v) { return v.second.first; });
+    size_t size = tensorrt_llm::common::calculateTotalWorkspaceSize(sizes.data(), sizes.size());
+    TLLM_LOG_TRACE("Mixture Of Experts Mixed Precision requires workspace of %2f MiB", size / 1024.f / 1024.f);
+    return size;
+}
+
+template <class T, class WeightType, class OutputType, class InputType, class BackBoneType, class Enable>
 size_t CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::getWorkspaceSize(
     int64_t const num_rows, int64_t const hidden_size, int64_t const inter_size, int const num_experts,
     int const experts_per_token, ActivationType activation_type, MOEParallelismConfig parallelism_config, bool use_lora,
@@ -2947,6 +3576,92 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
     if (use_awq)
     {
         smoothed_act_ = getWsPtr(int8_t{}, "smoothed_act");
+    }
+}
+
+template <class T, class WeightType, class OutputType, class InputType, class BackBoneType, class Enable>
+void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::configureWsPtrsMixedPrecision(
+    char* ws_ptr, int64_t const num_rows, int64_t const hidden_size, int64_t const inter_size,
+    int const num_experts_per_node, int const experts_per_token, ActivationType activation_type,
+    MOEParallelismConfig parallelism_config)
+{
+    static_cast<void>(parallelism_config);
+    auto workspaces = getWorkspaceDeviceBufferSizesMixedPrecision(
+        num_rows, hidden_size, inter_size, num_experts_per_node, experts_per_token, activation_type);
+
+    auto getWsPtr = [&](auto type, std::string const& name)
+    {
+        return workspaces.at(name).first ? reinterpret_cast<decltype(type)*>(ws_ptr + workspaces.at(name).second)
+                                         : nullptr;
+    };
+
+    permuted_row_to_unpermuted_row_ = getWsPtr(int{}, "permuted_row_to_unpermuted_row");
+    permuted_token_selected_experts_ = getWsPtr(int{}, "permuted_token_selected_experts");
+    blocked_expert_counts_ = getWsPtr(int{}, "blocked_expert_counts");
+    blocked_expert_counts_cumsum_ = getWsPtr(int{}, "blocked_expert_counts_cumsum");
+    blocked_row_to_unpermuted_row_ = getWsPtr(int{}, "blocked_row_to_unpermuted_row");
+    expert_first_token_offset_ = getWsPtr(int64_t{}, "expert_first_token_offset");
+
+    mixed_prec_state_.expert_precision_assignment = getWsPtr(int{}, "expert_precision_assignment");
+    mixed_prec_state_.bf16_expert_indices = getWsPtr(int{}, "bf16_expert_indices");
+    mixed_prec_state_.fp4_expert_indices = getWsPtr(int{}, "fp4_expert_indices");
+    mixed_prec_state_.bf16_expert_first_token_offset = getWsPtr(int64_t{}, "bf16_expert_first_token_offset");
+    mixed_prec_state_.fp4_expert_first_token_offset = getWsPtr(int64_t{}, "fp4_expert_first_token_offset");
+    mixed_prec_state_.num_bf16_experts = 0;
+    mixed_prec_state_.num_fp4_experts = 0;
+    mixed_prec_state_.bf16_token_count = 0;
+    mixed_prec_state_.fp4_token_count = 0;
+
+    auto* mixed_state_ws = getWsPtr(MixedPrecisionMoeState{}, "mixed_prec_state");
+    static_cast<void>(mixed_state_ws);
+
+    bf16_permuted_row_to_unpermuted_row_ = getWsPtr(int{}, "bf16_permuted_row_to_unpermuted_row");
+    fp4_permuted_row_to_unpermuted_row_ = getWsPtr(int{}, "fp4_permuted_row_to_unpermuted_row");
+
+    bf16_expanded_data_ = getWsPtr(int8_t{}, "bf16_expanded_data");
+    fp4_expanded_data_ = getWsPtr(int8_t{}, "fp4_expanded_data");
+    fp4_expanded_sf_ = getWsPtr(TmaWarpSpecializedGroupedGemmInput::ElementSF{}, "fp4_expanded_sf");
+
+    bf16_gemm1_output_ = getWsPtr(int8_t{}, "bf16_gemm1_output");
+    fp4_gemm1_output_ = getWsPtr(int8_t{}, "fp4_gemm1_output");
+    mixed_prec_glu_inter_result_ = getWsPtr(int8_t{}, "mixed_prec_glu_inter_result");
+
+    bf16_activation_output_ = getWsPtr(int8_t{}, "bf16_activation_output");
+    fp4_activation_output_ = getWsPtr(int8_t{}, "fp4_activation_output");
+    fp4_gemm2_act_sf_ = getWsPtr(TmaWarpSpecializedGroupedGemmInput::ElementSF{}, "fp4_gemm2_act_sf");
+
+    bf16_gemm2_scratch_ = getWsPtr(int8_t{}, "bf16_gemm2_scratch");
+    fp4_gemm2_scratch_ = getWsPtr(int8_t{}, "fp4_gemm2_scratch");
+    mixed_prec_final_output_scratch_ = getWsPtr(int8_t{}, "mixed_prec_final_output_scratch");
+
+    bf16_permuted_scales_ = getWsPtr(float{}, "bf16_permuted_scales");
+    fp4_permuted_scales_ = getWsPtr(float{}, "fp4_permuted_scales");
+
+    alpha_scale_ptr_array_fc1_ = getWsPtr((float const*) (nullptr), "alpha_scale_ptr_array_fc1");
+    alpha_scale_ptr_array_fc2_ = getWsPtr((float const*) (nullptr), "alpha_scale_ptr_array_fc2");
+
+    mixed_gemm_workspace_size_ = workspaces.at("mixed_gemm_workspace").first;
+
+    tma_ws_grouped_gemm1_input_ = {};
+    tma_ws_grouped_gemm2_input_ = {};
+    mixed_fp4_tma_ws_grouped_gemm1_input_ = {};
+    mixed_fp4_tma_ws_grouped_gemm2_input_ = {};
+    if (moe_gemm_runner_.supportsTmaWarpSpecialized())
+    {
+        auto* mixed_gemm_workspace = getWsPtr(int8_t{}, "mixed_gemm_workspace");
+        tma_ws_grouped_gemm1_input_.configureWorkspace(getWsPtr(int8_t{}, "mixed_tma_ws_gemm1_workspace"),
+            num_experts_per_node, mixed_gemm_workspace, mixed_gemm_workspace_size_, getScalingType());
+        tma_ws_grouped_gemm2_input_.configureWorkspace(getWsPtr(int8_t{}, "mixed_tma_ws_gemm2_workspace"),
+            num_experts_per_node, mixed_gemm_workspace, mixed_gemm_workspace_size_, getScalingType());
+
+#ifdef ENABLE_FP4
+        mixed_fp4_tma_ws_grouped_gemm1_input_.configureWorkspace(
+            getWsPtr(int8_t{}, "mixed_fp4_tma_ws_gemm1_workspace"), num_experts_per_node, mixed_gemm_workspace,
+            mixed_gemm_workspace_size_, TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::NVFP4);
+        mixed_fp4_tma_ws_grouped_gemm2_input_.configureWorkspace(
+            getWsPtr(int8_t{}, "mixed_fp4_tma_ws_gemm2_workspace"), num_experts_per_node, mixed_gemm_workspace,
+            mixed_gemm_workspace_size_, TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::NVFP4);
+#endif
     }
 }
 
@@ -3902,6 +4617,244 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
             *gemm2_config_, false, nullptr, nullptr);
         sync_check_cuda_error(stream);
     }
+}
+
+template <class T, class WeightType, class OutputType, class InputType, class BackBoneType, class Enable>
+void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::runMixedPrecisionMoe(
+    void const* input_activations_void, void const* input_sf_void, bool const swizzled_input_sf,
+    int const* token_selected_experts, float const* token_final_scales, void const* fc1_expert_weights_bf16_void,
+    void const* fc2_expert_weights_bf16_void, void const* fc1_expert_weights_fp4_void,
+    void const* fc2_expert_weights_fp4_void, void const* fc1_expert_biases_void, void const* fc2_expert_biases_void,
+    QuantParams quant_params_bf16, QuantParams quant_params_fp4, int const num_high_precision_experts,
+    ActivationParams fc1_activation_type, int64_t const num_rows, int64_t const num_valid_rows,
+    int64_t const hidden_size, int64_t const unpadded_hidden_size, int64_t const inter_size,
+    int const full_num_experts, int const experts_per_token, char* workspace_ptr, void* final_output_void,
+    int* unpermuted_row_to_permuted_row, MOEParallelismConfig parallelism_config, bool const enable_alltoall,
+    CutlassMoeFCRunnerInterface* fp4_runner, cudaStream_t stream)
+{
+#if !defined(ENABLE_BF16) || !defined(ENABLE_FP4)
+    TLLM_THROW("runMixedPrecisionMoe requires ENABLE_BF16 and ENABLE_FP4");
+#else
+    if constexpr (!std::is_same_v<T, __nv_bfloat16> || !std::is_same_v<WeightType, __nv_bfloat16>)
+    {
+        TLLM_THROW(
+            "runMixedPrecisionMoe is only implemented for CutlassMoeFCRunner<__nv_bfloat16, __nv_bfloat16>");
+    }
+    else
+    {
+        bool constexpr use_lora = false;
+        bool constexpr min_latency_mode = false;
+        static_cast<void>(input_sf_void);
+        static_cast<void>(swizzled_input_sf);
+        TLLM_CHECK(!use_lora);
+        TLLM_CHECK(!min_latency_mode);
+
+        TLLM_CHECK(input_activations_void);
+        TLLM_CHECK(token_selected_experts);
+        TLLM_CHECK(workspace_ptr);
+        TLLM_CHECK(final_output_void);
+        TLLM_CHECK(unpermuted_row_to_permuted_row);
+        TLLM_CHECK(fp4_runner);
+        TLLM_CHECK(fc1_expert_weights_bf16_void);
+        TLLM_CHECK(fc2_expert_weights_bf16_void);
+        TLLM_CHECK(fc1_expert_weights_fp4_void);
+        TLLM_CHECK(fc2_expert_weights_fp4_void);
+        TLLM_CHECK_WITH_INFO(gemm1_config_, "MOE GEMM1 Config is not set");
+        TLLM_CHECK_WITH_INFO(gemm2_config_, "MOE GEMM2 Config is not set");
+        TLLM_CHECK_WITH_INFO(isGatedActivation(fc1_activation_type.activation_type),
+            "runMixedPrecisionMoe currently supports only gated activations");
+
+        int const ep_size = parallelism_config.ep_size;
+        TLLM_CHECK_WITH_INFO(full_num_experts % ep_size == 0, "Number of experts must be a multiple of ep size");
+        int const num_experts_per_node = full_num_experts / ep_size;
+        int const start_expert = num_experts_per_node * parallelism_config.ep_rank;
+        int const end_expert = start_expert + num_experts_per_node;
+
+        configureWsPtrsMixedPrecision(workspace_ptr, num_rows, hidden_size, inter_size, num_experts_per_node,
+            experts_per_token, fc1_activation_type.activation_type, parallelism_config);
+
+        bool fused_prologue_result = fusedBuildExpertMapsSortFirstToken(token_selected_experts,
+            permuted_row_to_unpermuted_row_, unpermuted_row_to_permuted_row, expert_first_token_offset_, num_rows,
+            num_experts_per_node, experts_per_token, start_expert, end_expert, stream);
+        if (!fused_prologue_result)
+        {
+            threeStepBuildExpertMapsSortFirstToken(token_selected_experts, permuted_token_selected_experts_,
+                permuted_row_to_unpermuted_row_,
+                unpermuted_row_to_permuted_row, expert_first_token_offset_, blocked_expert_counts_,
+                blocked_expert_counts_cumsum_, blocked_row_to_unpermuted_row_, num_rows, num_experts_per_node,
+                experts_per_token, start_expert, stream);
+        }
+        sync_check_cuda_error(stream);
+
+        sortExpertsByTokenCount(expert_first_token_offset_, num_experts_per_node, num_high_precision_experts,
+            mixed_prec_state_.expert_precision_assignment, mixed_prec_state_.bf16_expert_indices,
+            mixed_prec_state_.fp4_expert_indices, mixed_prec_state_.bf16_expert_first_token_offset,
+            mixed_prec_state_.fp4_expert_first_token_offset, stream);
+        sync_check_cuda_error(stream);
+
+        int64_t bf16_num_valid_tokens = 0;
+        int64_t fp4_num_valid_tokens = 0;
+        check_cuda_error(cudaMemcpyAsync(&bf16_num_valid_tokens,
+            mixed_prec_state_.bf16_expert_first_token_offset + num_experts_per_node, sizeof(int64_t),
+            cudaMemcpyDeviceToHost, stream));
+        check_cuda_error(cudaMemcpyAsync(&fp4_num_valid_tokens,
+            mixed_prec_state_.fp4_expert_first_token_offset + num_experts_per_node, sizeof(int64_t),
+            cudaMemcpyDeviceToHost, stream));
+        sync_check_cuda_error(stream);
+        mixed_prec_state_.bf16_token_count = bf16_num_valid_tokens;
+        mixed_prec_state_.fp4_token_count = fp4_num_valid_tokens;
+
+        auto const* input_activations = static_cast<InputType const*>(input_activations_void);
+
+        expandInputRowsMixedPrecisionKernelLauncher(input_activations, bf16_expanded_data_, fp4_expanded_data_,
+            bf16_permuted_row_to_unpermuted_row_, fp4_permuted_row_to_unpermuted_row_, token_final_scales,
+            bf16_permuted_scales_, fp4_permuted_scales_, fp4_expanded_sf_, permuted_row_to_unpermuted_row_,
+            mixed_prec_state_.expert_precision_assignment, expert_first_token_offset_,
+            mixed_prec_state_.bf16_expert_first_token_offset, mixed_prec_state_.fp4_expert_first_token_offset, num_rows,
+            hidden_size, experts_per_token, num_experts_per_node, quant_params_fp4.fp4.fc1.act_global_scale,
+            quant_params_fp4.fp4.fc1.use_per_expert_act_scale, stream);
+        sync_check_cuda_error(stream);
+
+        int64_t const expanded_num_rows = num_rows * experts_per_token;
+        int64_t const expected_tokens_per_expert
+            = (num_valid_rows * experts_per_token + full_num_experts - 1) / full_num_experts;
+        int64_t const fc1_out_size = isGatedActivation(fc1_activation_type.activation_type) ? inter_size * 2 : inter_size;
+
+        int64_t const* bf16_num_valid_tokens_ptr = mixed_prec_state_.bf16_expert_first_token_offset + num_experts_per_node;
+        int64_t const* fp4_num_valid_tokens_ptr = mixed_prec_state_.fp4_expert_first_token_offset + num_experts_per_node;
+
+        auto const* fc1_biases = static_cast<ScaleBiasType const*>(fc1_expert_biases_void);
+        auto const* fc2_biases = static_cast<ScaleBiasType const*>(fc2_expert_biases_void);
+        auto const* fc2_bias_rank0 = parallelism_config.tp_rank == 0 ? fc2_biases : nullptr;
+        auto* final_output = static_cast<OutputType*>(final_output_void);
+
+        bool const using_tma_ws_gemm2 = moe_gemm_runner_.isTmaWarpSpecialized(*gemm2_config_);
+        bool const using_fused_finalize = using_tma_ws_gemm2
+            && gemm2_config_->epilogue_fusion_type == cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE
+            && use_fused_finalize_;
+        TLLM_CHECK_WITH_INFO(using_fused_finalize,
+            "runMixedPrecisionMoe currently requires GEMM2 fused finalize on TMA warp-specialized kernels");
+        TLLM_CHECK_WITH_INFO(fp4_runner->getGemmWorkspaceSize(num_experts_per_node) <= mixed_gemm_workspace_size_,
+            "Workspace is insufficient for fp4 runner GEMM workspace");
+
+        auto bf16_gemm1_tma_ws_input = tma_ws_grouped_gemm1_input_;
+        auto bf16_gemm2_tma_ws_input = tma_ws_grouped_gemm2_input_;
+        bf16_gemm1_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE;
+        bf16_gemm2_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE;
+        bf16_gemm1_tma_ws_input.swap_ab = gemm1_config_->swap_ab;
+        bf16_gemm2_tma_ws_input.swap_ab = gemm2_config_->swap_ab;
+        bf16_gemm2_tma_ws_input.setFinalizeFusionParams(
+            mixed_prec_final_output_scratch_, unpadded_hidden_size, num_rows, expanded_num_rows > num_rows);
+
+        std::tie(bf16_gemm1_tma_ws_input, bf16_gemm2_tma_ws_input)
+            = this->computeStridesTmaWarpSpecializedDispatch(mixed_prec_state_.bf16_expert_first_token_offset,
+                bf16_gemm1_tma_ws_input, bf16_gemm2_tma_ws_input, num_rows, expanded_num_rows, fc1_out_size, hidden_size,
+                hidden_size, inter_size, num_experts_per_node, bf16_expanded_data_, bf16_activation_output_,
+                fc1_expert_weights_bf16_void, fc2_expert_weights_bf16_void, quant_params_bf16.fp8.dequant_fc1,
+                quant_params_bf16.fp8.dequant_fc2, nullptr, nullptr, quant_params_bf16, nullptr, fc2_bias_rank0,
+                mixed_prec_glu_inter_result_, bf16_gemm2_scratch_, bf16_permuted_scales_,
+                bf16_permuted_row_to_unpermuted_row_, stream);
+
+        this->gemm1(bf16_expanded_data_, bf16_gemm1_output_, mixed_prec_glu_inter_result_,
+            mixed_prec_state_.bf16_expert_first_token_offset, bf16_gemm1_tma_ws_input, fc1_expert_weights_bf16_void,
+            nullptr, bf16_num_valid_tokens_ptr, quant_params_bf16.wo.fc1_weight_scales, quant_params_bf16.fp8.dequant_fc1,
+            quant_params_bf16.fp8.quant_fc2, nullptr, nullptr, quant_params_bf16, num_rows, expanded_num_rows,
+            expected_tokens_per_expert, hidden_size, inter_size, num_experts_per_node, fc1_activation_type,
+            alpha_scale_ptr_array_fc1_, false, false, stream, *gemm1_config_, false, nullptr, nullptr);
+        sync_check_cuda_error(stream);
+
+        doActivation<__nv_bfloat16, UnfusedGemmOutputType>(static_cast<__nv_bfloat16*>(bf16_activation_output_),
+            static_cast<UnfusedGemmOutputType const*>(mixed_prec_glu_inter_result_), quant_params_bf16.fp8.quant_fc2,
+            fc1_biases, true, mixed_prec_state_.bf16_expert_first_token_offset, num_experts_per_node, inter_size,
+            bf16_num_valid_tokens, fc1_activation_type, quant_params_bf16, false, nullptr, stream);
+        sync_check_cuda_error(stream);
+
+        auto fp4_scaling_type = TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::NVFP4;
+        if (quant_params_fp4.mxfp8_mxfp4.fc1.weight_block_scale || quant_params_fp4.mxfp8_mxfp4.fc2.weight_block_scale
+            || quant_params_fp4.fp8_mxfp4.fc1.weight_block_scale || quant_params_fp4.fp8_mxfp4.fc2.weight_block_scale)
+        {
+            fp4_scaling_type = TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::MXFPX;
+        }
+
+        if (moe_gemm_runner_.supportsTmaWarpSpecialized())
+        {
+            auto workspaces = getWorkspaceDeviceBufferSizesMixedPrecision(num_rows, hidden_size, inter_size,
+                num_experts_per_node, experts_per_token, fc1_activation_type.activation_type);
+            auto* mixed_gemm_workspace = reinterpret_cast<int8_t*>(workspace_ptr + workspaces.at("mixed_gemm_workspace").second);
+            mixed_fp4_tma_ws_grouped_gemm1_input_.configureWorkspace(
+                reinterpret_cast<int8_t*>(workspace_ptr + workspaces.at("mixed_fp4_tma_ws_gemm1_workspace").second),
+                num_experts_per_node, mixed_gemm_workspace, mixed_gemm_workspace_size_, fp4_scaling_type);
+            mixed_fp4_tma_ws_grouped_gemm2_input_.configureWorkspace(
+                reinterpret_cast<int8_t*>(workspace_ptr + workspaces.at("mixed_fp4_tma_ws_gemm2_workspace").second),
+                num_experts_per_node, mixed_gemm_workspace, mixed_gemm_workspace_size_, fp4_scaling_type);
+        }
+
+        auto fp4_gemm1_tma_ws_input = mixed_fp4_tma_ws_grouped_gemm1_input_;
+        auto fp4_gemm2_tma_ws_input = mixed_fp4_tma_ws_grouped_gemm2_input_;
+        fp4_gemm1_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE;
+        fp4_gemm2_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE;
+        fp4_gemm1_tma_ws_input.swap_ab = gemm1_config_->swap_ab;
+        fp4_gemm2_tma_ws_input.swap_ab = gemm2_config_->swap_ab;
+        fp4_gemm2_tma_ws_input.setFinalizeFusionParams(
+            mixed_prec_final_output_scratch_, unpadded_hidden_size, num_rows, expanded_num_rows > num_rows);
+
+        std::tie(fp4_gemm1_tma_ws_input, fp4_gemm2_tma_ws_input)
+            = fp4_runner->computeStridesTmaWarpSpecializedDispatch(mixed_prec_state_.fp4_expert_first_token_offset,
+                fp4_gemm1_tma_ws_input, fp4_gemm2_tma_ws_input, num_rows, expanded_num_rows, fc1_out_size, hidden_size,
+                hidden_size, inter_size, num_experts_per_node, fp4_expanded_data_, fp4_activation_output_,
+                fc1_expert_weights_fp4_void, fc2_expert_weights_fp4_void, quant_params_fp4.fp8.dequant_fc1,
+                quant_params_fp4.fp8.dequant_fc2, fp4_expanded_sf_, fp4_gemm2_act_sf_, quant_params_fp4, nullptr,
+                fc2_bias_rank0, mixed_prec_glu_inter_result_, fp4_gemm2_scratch_, fp4_permuted_scales_,
+                fp4_permuted_row_to_unpermuted_row_, stream);
+
+        fp4_runner->gemm1(fp4_expanded_data_, fp4_gemm1_output_, mixed_prec_glu_inter_result_,
+            mixed_prec_state_.fp4_expert_first_token_offset, fp4_gemm1_tma_ws_input, fc1_expert_weights_fp4_void, nullptr,
+            fp4_num_valid_tokens_ptr, quant_params_fp4.wo.fc1_weight_scales, quant_params_fp4.fp8.dequant_fc1,
+            quant_params_fp4.fp8.quant_fc2, fp4_expanded_sf_, fp4_gemm2_act_sf_, quant_params_fp4, num_rows,
+            expanded_num_rows, expected_tokens_per_expert, hidden_size, inter_size, num_experts_per_node,
+            fc1_activation_type, alpha_scale_ptr_array_fc1_, false, false, stream, *gemm1_config_, false, nullptr,
+            nullptr);
+        sync_check_cuda_error(stream);
+
+        doActivation<__nv_fp4_e2m1, UnfusedGemmOutputType>(static_cast<__nv_fp4_e2m1*>(fp4_activation_output_),
+            static_cast<UnfusedGemmOutputType const*>(mixed_prec_glu_inter_result_), quant_params_fp4.fp8.quant_fc2,
+            fc1_biases, true, mixed_prec_state_.fp4_expert_first_token_offset, num_experts_per_node, inter_size,
+            fp4_num_valid_tokens, fc1_activation_type, quant_params_fp4,
+            quant_params_fp4.fp4.fc2.use_per_expert_act_scale, fp4_gemm2_act_sf_, stream);
+        sync_check_cuda_error(stream);
+
+        check_cuda_error(
+            cudaMemsetAsync(final_output, 0x0, sizeof(OutputType) * num_rows * unpadded_hidden_size, stream));
+
+        this->gemm2(bf16_activation_output_, bf16_gemm2_scratch_, mixed_prec_final_output_scratch_,
+            mixed_prec_state_.bf16_expert_first_token_offset, bf16_gemm2_tma_ws_input, fc2_expert_weights_bf16_void,
+            fc2_expert_biases_void, quant_params_bf16.wo.fc2_weight_scales, quant_params_bf16.fp8.dequant_fc2, nullptr,
+            quant_params_bf16, token_final_scales, bf16_permuted_scales_, unpermuted_row_to_permuted_row,
+            bf16_permuted_row_to_unpermuted_row_, token_selected_experts, bf16_num_valid_tokens_ptr, num_rows,
+            expanded_num_rows, expected_tokens_per_expert, hidden_size, unpadded_hidden_size, inter_size,
+            num_experts_per_node, experts_per_token, alpha_scale_ptr_array_fc2_, false, nullptr, false, stream,
+            parallelism_config, enable_alltoall, *gemm2_config_, false, nullptr, nullptr);
+        sync_check_cuda_error(stream);
+
+        accumulateMixedPrecisionOutput(final_output, static_cast<OutputType const*>(mixed_prec_final_output_scratch_),
+            num_rows * unpadded_hidden_size, stream);
+        sync_check_cuda_error(stream);
+
+        fp4_runner->gemm2(fp4_activation_output_, fp4_gemm2_scratch_, mixed_prec_final_output_scratch_,
+            mixed_prec_state_.fp4_expert_first_token_offset, fp4_gemm2_tma_ws_input, fc2_expert_weights_fp4_void,
+            fc2_expert_biases_void, quant_params_fp4.wo.fc2_weight_scales, quant_params_fp4.fp8.dequant_fc2,
+            fp4_gemm2_act_sf_, quant_params_fp4, token_final_scales, fp4_permuted_scales_, unpermuted_row_to_permuted_row,
+            fp4_permuted_row_to_unpermuted_row_, token_selected_experts, fp4_num_valid_tokens_ptr, num_rows,
+            expanded_num_rows, expected_tokens_per_expert, hidden_size, unpadded_hidden_size, inter_size,
+            num_experts_per_node, experts_per_token, alpha_scale_ptr_array_fc2_, false, nullptr, false, stream,
+            parallelism_config, enable_alltoall, *gemm2_config_, false, nullptr, nullptr);
+        sync_check_cuda_error(stream);
+
+        accumulateMixedPrecisionOutput(final_output, static_cast<OutputType const*>(mixed_prec_final_output_scratch_),
+            num_rows * unpadded_hidden_size, stream);
+        sync_check_cuda_error(stream);
+    }
+#endif
 }
 
 template <class T, class WeightType, class OutputType, class InputType, class BackBoneType, class Enable>
