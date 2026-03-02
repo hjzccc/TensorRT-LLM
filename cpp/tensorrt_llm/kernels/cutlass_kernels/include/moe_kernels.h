@@ -532,7 +532,8 @@ public:
         int64_t const hidden_size, int64_t const inter_size, int const num_experts_per_node,
         ActivationParams fc1_activation_type, float const** alpha_scale_ptr_array, bool bias_is_broadcast,
         bool use_deepseek_fp8_block_scale, cudaStream_t stream, cutlass_extensions::CutlassGemmConfig config,
-        bool min_latency_mode, int* num_active_experts_per, int* active_expert_global_ids)
+        bool min_latency_mode, int* num_active_experts_per, int* active_expert_global_ids,
+        bool skip_activation = false)
         = 0;
 
     virtual void gemm2(void const* const input, void* const gemm_output, void* const final_output,
@@ -724,7 +725,8 @@ public:
         int64_t const hidden_size, int64_t const inter_size, int const num_experts_per_node,
         ActivationParams fc1_activation_type, float const** alpha_scale_ptr_array, bool bias_is_broadcast,
         cudaStream_t stream, cutlass_extensions::CutlassGemmConfig config, bool min_latency_mode,
-        int* num_active_experts_per, int* active_expert_global_ids, void const* fc2_prequant_scale = nullptr);
+        int* num_active_experts_per, int* active_expert_global_ids, void const* fc2_prequant_scale = nullptr,
+        bool skip_activation = false);
 
     static void gemm2(MoeGemmRunner<T, WeightType, OutputType, ScaleBiasType>& gemm_runner,
         DeepSeekBlockScaleGemmRunner* fp8_blockscale_gemm_runner, T const* const input, void* const gemm_output,
@@ -754,7 +756,8 @@ public:
         int64_t const hidden_size, int64_t const inter_size, int const num_experts_per_node,
         ActivationParams fc1_activation_type, float const** alpha_scale_ptr_array, bool bias_is_broadcast,
         bool use_deepseek_fp8_block_scale, cudaStream_t stream, cutlass_extensions::CutlassGemmConfig config,
-        bool min_latency_mode, int* num_active_experts_per, int* active_expert_global_ids) override
+        bool min_latency_mode, int* num_active_experts_per, int* active_expert_global_ids,
+        bool skip_activation = false) override
     {
         auto* block_scale_gemm_runner = use_deepseek_fp8_block_scale ? getDeepSeekBlockScaleGemmRunner() : nullptr;
         return Self::gemm1(moe_gemm_runner_, block_scale_gemm_runner, static_cast<T const*>(input),
@@ -763,7 +766,8 @@ public:
             num_valid_tokens_ptr, static_cast<ScaleBiasType const*>(fc1_int_scales), fc1_fp8_dequant, fc2_fp8_quant,
             fc1_fp4_act_flat, fc2_fp4_act_flat, quant_params, num_rows, expanded_num_rows, expected_tokens_per_expert,
             hidden_size, inter_size, num_experts_per_node, fc1_activation_type, alpha_scale_ptr_array,
-            bias_is_broadcast, stream, config, min_latency_mode, num_active_experts_per, active_expert_global_ids);
+            bias_is_broadcast, stream, config, min_latency_mode, num_active_experts_per, active_expert_global_ids,
+            /*fc2_prequant_scale=*/nullptr, skip_activation);
     }
 
     void gemm2(void const* const input, void* const gemm_output, void* const final_output,
@@ -1007,13 +1011,14 @@ private:
     void* bf16_expanded_data_{};           // bf16 group expanded input
     void* fp4_expanded_data_{};            // fp4 group expanded input (quantized)
     TmaWarpSpecializedGroupedGemmInput::ElementSF* fp4_expanded_sf_{};
-    void* bf16_gemm1_output_{};            // bf16 GEMM1 output (bf16)
-    void* fp4_gemm1_output_{};             // fp4 GEMM1 output (bf16 after epilogue cast)
+    // Removed: bf16_gemm1_output_ and fp4_gemm1_output_ were dead —
+    // doActivation inside gemm1() wrote to them, but doMixedPrecisionActivation
+    // re-reads from mixed_prec_glu_inter_result_ directly.
     void* bf16_activation_output_{};       // bf16 group activation output
     void* fp4_activation_output_{};        // fp4 group activation output (quantized for gemm2)
     TmaWarpSpecializedGroupedGemmInput::ElementSF* fp4_gemm2_act_sf_{};
-    void* bf16_gemm2_scratch_{};           // bf16 GEMM2 scratch (before finalize)
-    void* fp4_gemm2_scratch_{};            // fp4 GEMM2 scratch (before finalize)
+    void* gemm2_scratch_{};
+    // merged GEMM2 scratch (sized to max of bf16/fp4), sequential execution
     float* bf16_permuted_scales_{};        // bf16 group permuted router scales
     float* fp4_permuted_scales_{};         // fp4 group permuted router scales
     void* mixed_prec_glu_inter_result_{};  // shared GLU intermediate (sequential GEMM execution)

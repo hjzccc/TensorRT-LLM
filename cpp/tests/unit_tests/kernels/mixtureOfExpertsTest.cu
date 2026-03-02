@@ -3611,6 +3611,587 @@ TEST_F(MixedPrecisionMoETest, AccumulateOutput_BasicAdd)
     }
 }
 
+// ---------------------------------------------------------------------------
+// Test 12: expandInputRowsMixedPrecisionKernelLauncher — all experts fp4
+//
+// Mental experiment:
+//   Mirror of Test 9 (AllBF16). Set expert_precision_assignment = [0,0,0,0].
+//   All expanded rows must land in the fp4 buffer (quantized), while the bf16
+//   output buffer must remain zero-initialized. Routing weights for every fp4
+//   row must match the corresponding source routing weight.
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, ExpandInputRows_AllFP4)
+{
+    int64_t const num_tokens = 4;
+    int const experts_per_token = 2;
+    int const num_experts_per_node = 4;
+    int64_t const hidden_size = 128;
+    int64_t const num_rows = num_tokens;
+    auto stream = sStream->get();
+
+    // Input: each row has constant value = (row+1) * 0.5
+    std::vector<__nv_bfloat16> h_input(num_tokens * hidden_size);
+    for (int64_t row = 0; row < num_tokens; ++row)
+    {
+        for (int64_t col = 0; col < hidden_size; ++col)
+        {
+            h_input[row * hidden_size + col] = __float2bfloat16(static_cast<float>(row + 1) * 0.5f);
+        }
+    }
+
+    std::vector<int> h_permuted_row_to_unpermuted_row = {0, 7, 1, 4, 2, 5, 3, 6};
+    std::vector<int> h_expert_precision_assignment = {0, 0, 0, 0}; // ALL fp4
+    std::vector<int64_t> h_expert_first_token_offset = {0, 2, 4, 6, 8};
+    std::vector<int64_t> h_bf16_expert_first_token_offset = {0, 0, 0, 0, 0}; // empty
+    std::vector<int64_t> h_fp4_expert_first_token_offset = {0, 2, 4, 6, 8};  // all rows
+    std::vector<float> h_unpermuted_scales = {1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f};
+
+    int64_t const bf16_rows = h_bf16_expert_first_token_offset[num_experts_per_node]; // 0
+    int64_t const fp4_rows = h_fp4_expert_first_token_offset[num_experts_per_node];   // 8
+    int64_t const fp4_packed_elements = fp4_rows * hidden_size / 8;
+    int64_t const padded_hidden_size = TmaWarpSpecializedGroupedGemmInput::alignToSfDim(
+        hidden_size, TmaWarpSpecializedGroupedGemmInput::MinKDimAlignmentNVFP4);
+    int64_t const fp4_sf_rows = num_experts_per_node * TmaWarpSpecializedGroupedGemmInput::MinNDimAlignmentNVFP4;
+    int64_t const fp4_sf_elements
+        = fp4_sf_rows * padded_hidden_size / TmaWarpSpecializedGroupedGemmInput::NVFP4BlockScaleVectorSize;
+    float const h_fc1_act_global_scale = 1.0f;
+
+    auto* d_input = allocBuffer<__nv_bfloat16>(h_input.size());
+    auto* d_bf16_expanded_output = allocBuffer<__nv_bfloat16>(1); // empty group
+    auto* d_fp4_expanded_output = allocBuffer<uint32_t>(fp4_packed_elements);
+    auto* d_bf16_permuted_row_to_unpermuted_row = allocBuffer<int>(1);
+    auto* d_fp4_permuted_row_to_unpermuted_row = allocBuffer<int>(fp4_rows);
+    auto* d_unpermuted_scales = allocBuffer<float>(h_unpermuted_scales.size());
+    auto* d_bf16_permuted_scales = allocBuffer<float>(1);
+    auto* d_fp4_permuted_scales = allocBuffer<float>(fp4_rows);
+    auto* d_fp4_act_sf = allocBuffer<TmaWarpSpecializedGroupedGemmInput::ElementSF>(fp4_sf_elements);
+    auto* d_permuted_row_to_unpermuted_row = allocBuffer<int>(h_permuted_row_to_unpermuted_row.size());
+    auto* d_expert_precision_assignment = allocBuffer<int>(h_expert_precision_assignment.size());
+    auto* d_expert_first_token_offset = allocBuffer<int64_t>(h_expert_first_token_offset.size());
+    auto* d_bf16_expert_first_token_offset = allocBuffer<int64_t>(h_bf16_expert_first_token_offset.size());
+    auto* d_fp4_expert_first_token_offset = allocBuffer<int64_t>(h_fp4_expert_first_token_offset.size());
+    auto* d_fc1_act_global_scale = allocBuffer<float>(1);
+
+    check_cuda_error(cudaMemcpyAsync(
+        d_input, h_input.data(), h_input.size() * sizeof(__nv_bfloat16), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_permuted_row_to_unpermuted_row, h_permuted_row_to_unpermuted_row.data(),
+        h_permuted_row_to_unpermuted_row.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_expert_precision_assignment, h_expert_precision_assignment.data(),
+        h_expert_precision_assignment.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_expert_first_token_offset, h_expert_first_token_offset.data(),
+        h_expert_first_token_offset.size() * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_bf16_expert_first_token_offset, h_bf16_expert_first_token_offset.data(),
+        h_bf16_expert_first_token_offset.size() * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_fp4_expert_first_token_offset, h_fp4_expert_first_token_offset.data(),
+        h_fp4_expert_first_token_offset.size() * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_unpermuted_scales, h_unpermuted_scales.data(),
+        h_unpermuted_scales.size() * sizeof(float), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(
+        cudaMemcpyAsync(d_fc1_act_global_scale, &h_fc1_act_global_scale, sizeof(float), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    CUTLASS_MOE_GEMM_KERNELS_NAMESPACE::expandInputRowsMixedPrecisionKernelLauncher<__nv_bfloat16>(
+        d_input, d_bf16_expanded_output, d_fp4_expanded_output, d_bf16_permuted_row_to_unpermuted_row,
+        d_fp4_permuted_row_to_unpermuted_row, d_unpermuted_scales, d_bf16_permuted_scales, d_fp4_permuted_scales,
+        d_fp4_act_sf, d_permuted_row_to_unpermuted_row, d_expert_precision_assignment, d_expert_first_token_offset,
+        d_bf16_expert_first_token_offset, d_fp4_expert_first_token_offset, num_rows, hidden_size, experts_per_token,
+        num_experts_per_node, d_fc1_act_global_scale, false, stream);
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    auto h_fp4_output = getDataFromDevice(d_fp4_expanded_output, fp4_packed_elements);
+    auto h_fp4_row_map = getDataFromDevice(d_fp4_permuted_row_to_unpermuted_row, fp4_rows);
+    auto h_fp4_scales = getDataFromDevice(d_fp4_permuted_scales, fp4_rows);
+    auto h_fp4_act_sf = getDataFromDevice(d_fp4_act_sf, fp4_sf_elements);
+    auto h_bf16_output = getDataFromDevice(d_bf16_expanded_output, 1);
+
+    // All permuted rows should map to fp4 group (same order as original)
+    for (int64_t i = 0; i < fp4_rows; ++i)
+    {
+        EXPECT_EQ(h_fp4_row_map[i], h_permuted_row_to_unpermuted_row[i])
+            << "FP4 row " << i << " mapping mismatch";
+    }
+
+    // Routing weights should be permuted correctly
+    for (int64_t fp4_row = 0; fp4_row < fp4_rows; ++fp4_row)
+    {
+        int const unpermuted_row = h_fp4_row_map[fp4_row];
+        int64_t const source_row = unpermuted_row % num_tokens;
+        int64_t const source_k_rank = unpermuted_row / num_tokens;
+        int64_t const source_k_idx = source_row * experts_per_token + source_k_rank;
+        EXPECT_FLOAT_EQ(h_fp4_scales[fp4_row], h_unpermuted_scales[source_k_idx])
+            << "Routing weight mismatch at fp4 row " << fp4_row;
+    }
+
+    // FP4 buffer should have non-zero quantized data
+    EXPECT_TRUE(std::any_of(h_fp4_output.begin(), h_fp4_output.end(), [](uint32_t x) { return x != 0U; }));
+
+    // FP4 scaling factors should be populated
+    EXPECT_TRUE(std::any_of(h_fp4_act_sf.begin(), h_fp4_act_sf.end(),
+        [](TmaWarpSpecializedGroupedGemmInput::ElementSF x) { return x != 0U; }));
+
+    // bf16 output buffer (1 element allocated) should still be zero
+    EXPECT_EQ(__bfloat162float(h_bf16_output[0]), 0.0f);
+}
+
+// ---------------------------------------------------------------------------
+// Test 13: doMixedPrecisionActivation — BF16 numerical correctness
+//
+// Mental experiment:
+//   Verify actual SwiGLU computation: output = linear * SiLU(gate)
+//   where SiLU(x) = x * sigmoid(x) = x / (1 + exp(-x)).
+//   Use all-bf16 rows (boundary_index == total_rows) to isolate bf16 path.
+//   Per-row constant values make CPU reference computation trivial:
+//     Row 0: linear=1.0, gate=1.0  → 1.0 * silu(1.0) ≈ 0.7311
+//     Row 1: linear=2.0, gate=1.0  → 2.0 * silu(1.0) ≈ 1.4621
+//     Row 2: linear=1.0, gate=2.0  → 1.0 * silu(2.0) ≈ 1.7616
+//     Row 3: linear=2.0, gate=2.0  → 2.0 * silu(2.0) ≈ 3.5232
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, MixedPrecisionActivation_BF16NumericalCorrectness)
+{
+    int const num_experts_per_node = 2;
+    int64_t const inter_size = 128;
+    int64_t const total_rows = 4;
+    int64_t const boundary_index = 4; // all rows are bf16
+    int64_t const bf16_rows = boundary_index;
+    auto stream = sStream->get();
+
+    // SwiGLU input: [linear | gate] per row, each inter_size wide
+    float const linear_vals[] = {1.0f, 2.0f, 1.0f, 2.0f};
+    float const gate_vals[] = {1.0f, 1.0f, 2.0f, 2.0f};
+
+    int64_t const gemm1_elements = total_rows * inter_size * 2;
+    std::vector<__nv_bfloat16> h_gemm1_output(gemm1_elements);
+    for (int64_t row = 0; row < total_rows; ++row)
+    {
+        for (int64_t col = 0; col < inter_size; ++col)
+        {
+            h_gemm1_output[row * inter_size * 2 + col] = __float2bfloat16(linear_vals[row]);
+            h_gemm1_output[row * inter_size * 2 + inter_size + col] = __float2bfloat16(gate_vals[row]);
+        }
+    }
+
+    // 2 experts, 2 rows each in bf16 group, 0 in fp4 group
+    std::vector<int64_t> h_bf16_expert_first_token_offset = {0, 2, 4};
+    std::vector<int64_t> h_fp4_expert_first_token_offset = {0, 0, 0};
+
+    float const h_bf16_fp8_quant = 1.0f;
+    float const h_fp4_fp8_quant = 1.0f;
+    float const h_fp4_fc2_act_global_scale = 1.0f;
+
+    auto* d_gemm1_output = allocBuffer<__nv_bfloat16>(h_gemm1_output.size());
+    auto* d_bf16_activation_output = allocBuffer<__nv_bfloat16>(bf16_rows * inter_size);
+    auto* d_fp4_activation_output = allocBuffer<uint8_t>(1); // empty fp4 group
+    auto* d_fp4_act_sf = allocBuffer<TmaWarpSpecializedGroupedGemmInput::ElementSF>(1);
+    auto* d_bf16_expert_first_token_offset = allocBuffer<int64_t>(h_bf16_expert_first_token_offset.size());
+    auto* d_fp4_expert_first_token_offset = allocBuffer<int64_t>(h_fp4_expert_first_token_offset.size());
+    auto* d_bf16_fp8_quant = allocBuffer<float>(1);
+    auto* d_fp4_fp8_quant = allocBuffer<float>(1);
+    auto* d_fp4_fc2_act_global_scale = allocBuffer<float>(1);
+
+    check_cuda_error(cudaMemcpyAsync(d_gemm1_output, h_gemm1_output.data(),
+        h_gemm1_output.size() * sizeof(__nv_bfloat16), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_bf16_expert_first_token_offset, h_bf16_expert_first_token_offset.data(),
+        h_bf16_expert_first_token_offset.size() * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_fp4_expert_first_token_offset, h_fp4_expert_first_token_offset.data(),
+        h_fp4_expert_first_token_offset.size() * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_bf16_fp8_quant, &h_bf16_fp8_quant, sizeof(float), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_fp4_fp8_quant, &h_fp4_fp8_quant, sizeof(float), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(
+        d_fp4_fc2_act_global_scale, &h_fp4_fc2_act_global_scale, sizeof(float), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    ActivationParams activation_params{ActivationType::Swiglu};
+    __nv_bfloat16 const* bias_ptr = nullptr;
+    __nv_bfloat16 const* prequant_scale_fp4 = nullptr;
+
+    CUTLASS_MOE_GEMM_KERNELS_NAMESPACE::doMixedPrecisionActivation(d_bf16_activation_output,
+        reinterpret_cast<__nv_fp4_e2m1*>(d_fp4_activation_output), d_fp4_act_sf, d_gemm1_output, bias_ptr,
+        true, d_bf16_expert_first_token_offset, d_fp4_expert_first_token_offset, num_experts_per_node, inter_size,
+        boundary_index, total_rows, d_bf16_fp8_quant, d_fp4_fp8_quant, d_fp4_fc2_act_global_scale, false,
+        activation_params, prequant_scale_fp4, stream);
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    auto h_bf16_activation_output = getDataFromDevice(d_bf16_activation_output, bf16_rows * inter_size);
+
+    // Compute expected SwiGLU: output = linear * SiLU(gate)
+    // SiLU(x) = x / (1 + exp(-x))
+    auto silu = [](float x) -> float { return x / (1.0f + expf(-x)); };
+
+    for (int64_t row = 0; row < bf16_rows; ++row)
+    {
+        float const expected = linear_vals[row] * silu(gate_vals[row]);
+        for (int64_t col = 0; col < inter_size; ++col)
+        {
+            float const actual = __bfloat162float(h_bf16_activation_output[row * inter_size + col]);
+            EXPECT_NEAR(actual, expected, 0.05f)
+                << "Row " << row << ", Col " << col
+                << ": expected=" << expected << " actual=" << actual;
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// Test 14: expandInputRowsMixedPrecisionKernelLauncher - FP4 numerical correctness
+//
+// Mental experiment:
+//   Use the same routing as Test 8 (experts 0,2=bf16; 1,3=fp4) but fill input
+//   rows with the 8 exact FP4 E2M1 values [0, 0.5, 1, 1.5, 2, 3, 4, 6] repeated.
+//   With fc1_act_global_scale=1.0 the max in every 16-element block is 6.0, so
+//     SF = fp8_e4m3(1.0 * 6.0/6.0) = fp8(1.0) = 1.0 exactly
+//   Every value quantises losslessly to its E2M1 nibble, giving packed uint32_t
+//   pattern 0x76543210 for every group of 8 elements.
+//
+//   Verification:
+//     1. BF16 rows: each element == input (exact copy, same as Test 8).
+//     2. FP4 rows: decode every nibble with the E2M1 table and multiply by the
+//        SF (1.0), compare to the original bf16 input value.
+//     3. Row maps and routing scales: same checks as Test 8.
+//     4. Token count conservation: bf16_rows + fp4_rows == total expanded rows.
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, ExpandInputRows_FP4NumericalCorrectness)
+{
+    // E2M1 lookup table: nibble -> float
+    static constexpr float FP4_E2M1_TABLE[16] = {
+        0.0f, 0.5f, 1.0f, 1.5f, 2.0f, 3.0f, 4.0f, 6.0f,
+        -0.0f, -0.5f, -1.0f, -1.5f, -2.0f, -3.0f, -4.0f, -6.0f
+    };
+    // The 8 non-negative E2M1 representable values (all exact in bf16)
+    static constexpr float FP4_EXACT_VALUES[8] = {0.0f, 0.5f, 1.0f, 1.5f, 2.0f, 3.0f, 4.0f, 6.0f};
+
+    int64_t const num_tokens = 4;
+    int const experts_per_token = 2;
+    int const num_experts_per_node = 4;
+    int64_t const hidden_size = 128;
+    int64_t const num_rows = num_tokens;
+    auto stream = sStream->get();
+
+    // Fill input with FP4-exact pattern repeated every 8 columns
+    std::vector<__nv_bfloat16> h_input(num_tokens * hidden_size);
+    for (int64_t row = 0; row < num_tokens; ++row)
+    {
+        for (int64_t col = 0; col < hidden_size; ++col)
+        {
+            h_input[row * hidden_size + col] = __float2bfloat16(FP4_EXACT_VALUES[col % 8]);
+        }
+    }
+
+    // Same routing as Test 8: experts 0,2=bf16(1), experts 1,3=fp4(0)
+    std::vector<int> h_permuted_row_to_unpermuted_row = {0, 7, 1, 4, 2, 5, 3, 6};
+    std::vector<int> h_expert_precision_assignment = {1, 0, 1, 0};
+    std::vector<int64_t> h_expert_first_token_offset = {0, 2, 4, 6, 8};
+    std::vector<int64_t> h_bf16_expert_first_token_offset = {0, 2, 2, 4, 4};
+    std::vector<int64_t> h_fp4_expert_first_token_offset = {0, 0, 2, 2, 4};
+    std::vector<float> h_unpermuted_scales = {1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f};
+
+    int64_t const bf16_rows = h_bf16_expert_first_token_offset[num_experts_per_node]; // 4
+    int64_t const fp4_rows = h_fp4_expert_first_token_offset[num_experts_per_node];   // 4
+    int64_t const fp4_packed_elements = fp4_rows * hidden_size / 8;
+    int64_t const padded_hidden_size = TmaWarpSpecializedGroupedGemmInput::alignToSfDim(
+        hidden_size, TmaWarpSpecializedGroupedGemmInput::MinKDimAlignmentNVFP4);
+    int64_t const fp4_sf_rows = num_experts_per_node * TmaWarpSpecializedGroupedGemmInput::MinNDimAlignmentNVFP4;
+    int64_t const fp4_sf_elements
+        = fp4_sf_rows * padded_hidden_size / TmaWarpSpecializedGroupedGemmInput::NVFP4BlockScaleVectorSize;
+    float const h_fc1_act_global_scale = 1.0f;
+
+    // Token count conservation
+    EXPECT_EQ(bf16_rows + fp4_rows, static_cast<int64_t>(h_permuted_row_to_unpermuted_row.size()));
+
+    // Allocate device buffers
+    auto* d_input = allocBuffer<__nv_bfloat16>(h_input.size());
+    auto* d_bf16_expanded_output = allocBuffer<__nv_bfloat16>(bf16_rows * hidden_size);
+    auto* d_fp4_expanded_output = allocBuffer<uint32_t>(fp4_packed_elements);
+    auto* d_bf16_permuted_row_to_unpermuted_row = allocBuffer<int>(bf16_rows);
+    auto* d_fp4_permuted_row_to_unpermuted_row = allocBuffer<int>(fp4_rows);
+    auto* d_unpermuted_scales = allocBuffer<float>(h_unpermuted_scales.size());
+    auto* d_bf16_permuted_scales = allocBuffer<float>(bf16_rows);
+    auto* d_fp4_permuted_scales = allocBuffer<float>(fp4_rows);
+    auto* d_fp4_act_sf = allocBuffer<TmaWarpSpecializedGroupedGemmInput::ElementSF>(fp4_sf_elements);
+    auto* d_permuted_row_to_unpermuted_row = allocBuffer<int>(h_permuted_row_to_unpermuted_row.size());
+    auto* d_expert_precision_assignment = allocBuffer<int>(h_expert_precision_assignment.size());
+    auto* d_expert_first_token_offset = allocBuffer<int64_t>(h_expert_first_token_offset.size());
+    auto* d_bf16_expert_first_token_offset = allocBuffer<int64_t>(h_bf16_expert_first_token_offset.size());
+    auto* d_fp4_expert_first_token_offset = allocBuffer<int64_t>(h_fp4_expert_first_token_offset.size());
+    auto* d_fc1_act_global_scale = allocBuffer<float>(1);
+
+    // Copy to device
+    check_cuda_error(cudaMemcpyAsync(
+        d_input, h_input.data(), h_input.size() * sizeof(__nv_bfloat16), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_permuted_row_to_unpermuted_row, h_permuted_row_to_unpermuted_row.data(),
+        h_permuted_row_to_unpermuted_row.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_expert_precision_assignment, h_expert_precision_assignment.data(),
+        h_expert_precision_assignment.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_expert_first_token_offset, h_expert_first_token_offset.data(),
+        h_expert_first_token_offset.size() * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_bf16_expert_first_token_offset, h_bf16_expert_first_token_offset.data(),
+        h_bf16_expert_first_token_offset.size() * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_fp4_expert_first_token_offset, h_fp4_expert_first_token_offset.data(),
+        h_fp4_expert_first_token_offset.size() * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_unpermuted_scales, h_unpermuted_scales.data(),
+        h_unpermuted_scales.size() * sizeof(float), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(
+        cudaMemcpyAsync(d_fc1_act_global_scale, &h_fc1_act_global_scale, sizeof(float), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    // Launch kernel
+    CUTLASS_MOE_GEMM_KERNELS_NAMESPACE::expandInputRowsMixedPrecisionKernelLauncher<__nv_bfloat16>(
+        d_input, d_bf16_expanded_output, d_fp4_expanded_output, d_bf16_permuted_row_to_unpermuted_row,
+        d_fp4_permuted_row_to_unpermuted_row, d_unpermuted_scales, d_bf16_permuted_scales, d_fp4_permuted_scales,
+        d_fp4_act_sf, d_permuted_row_to_unpermuted_row, d_expert_precision_assignment, d_expert_first_token_offset,
+        d_bf16_expert_first_token_offset, d_fp4_expert_first_token_offset, num_rows, hidden_size, experts_per_token,
+        num_experts_per_node, d_fc1_act_global_scale, false, stream);
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    // Read back results
+    auto h_bf16_output = getDataFromDevice(d_bf16_expanded_output, bf16_rows * hidden_size);
+    auto h_fp4_output = getDataFromDevice(d_fp4_expanded_output, fp4_packed_elements);
+    auto h_bf16_row_map = getDataFromDevice(d_bf16_permuted_row_to_unpermuted_row, bf16_rows);
+    auto h_fp4_row_map = getDataFromDevice(d_fp4_permuted_row_to_unpermuted_row, fp4_rows);
+    auto h_bf16_scales = getDataFromDevice(d_bf16_permuted_scales, bf16_rows);
+    auto h_fp4_scales = getDataFromDevice(d_fp4_permuted_scales, fp4_rows);
+
+    std::vector<int> expected_bf16_row_map = {0, 7, 2, 5};
+    std::vector<int> expected_fp4_row_map = {1, 4, 3, 6};
+
+    // Verify row maps
+    for (int64_t i = 0; i < bf16_rows; ++i)
+    {
+        EXPECT_EQ(h_bf16_row_map[i], expected_bf16_row_map[i]) << "BF16 row map mismatch at " << i;
+    }
+    for (int64_t i = 0; i < fp4_rows; ++i)
+    {
+        EXPECT_EQ(h_fp4_row_map[i], expected_fp4_row_map[i]) << "FP4 row map mismatch at " << i;
+    }
+
+    // Verify BF16 rows: each element should match the FP4-exact input pattern exactly
+    for (int64_t bf16_row = 0; bf16_row < bf16_rows; ++bf16_row)
+    {
+        for (int64_t col = 0; col < hidden_size; ++col)
+        {
+            float const expected = FP4_EXACT_VALUES[col % 8];
+            float const actual = __bfloat162float(h_bf16_output[bf16_row * hidden_size + col]);
+            EXPECT_FLOAT_EQ(actual, expected)
+                << "BF16 row " << bf16_row << ", col " << col << ": expected=" << expected << " actual=" << actual;
+        }
+
+        // Verify routing scales
+        int const unpermuted_row = expected_bf16_row_map[bf16_row];
+        int64_t const source_row = unpermuted_row % num_tokens;
+        int64_t const source_k_rank = unpermuted_row / num_tokens;
+        int64_t const source_k_idx = source_row * experts_per_token + source_k_rank;
+        EXPECT_FLOAT_EQ(h_bf16_scales[bf16_row], h_unpermuted_scales[source_k_idx])
+            << "BF16 routing scale mismatch at row " << bf16_row;
+    }
+
+    // Verify FP4 rows: decode each nibble and compare to expected input value
+    // The FP4 output is packed as uint32_t, where each uint32_t holds 8 fp4 elements.
+    // Element j in the group is at bits [j*4+3 : j*4].
+    for (int64_t fp4_row = 0; fp4_row < fp4_rows; ++fp4_row)
+    {
+        for (int64_t col = 0; col < hidden_size; ++col)
+        {
+            int64_t const group_idx = fp4_row * (hidden_size / 8) + col / 8;
+            int const nibble_pos = static_cast<int>(col % 8);
+            uint32_t const packed = h_fp4_output[group_idx];
+            uint8_t const nibble = (packed >> (nibble_pos * 4)) & 0xF;
+            float const dequant = FP4_E2M1_TABLE[nibble]; // SF = 1.0, so no scaling needed
+            float const expected = FP4_EXACT_VALUES[col % 8];
+            EXPECT_FLOAT_EQ(dequant, expected)
+                << "FP4 row " << fp4_row << ", col " << col
+                << ": nibble=0x" << std::hex << static_cast<int>(nibble) << std::dec
+                << " dequant=" << dequant << " expected=" << expected;
+        }
+
+        // Verify routing scales for fp4 rows
+        int const unpermuted_row = expected_fp4_row_map[fp4_row];
+        int64_t const source_row = unpermuted_row % num_tokens;
+        int64_t const source_k_rank = unpermuted_row / num_tokens;
+        int64_t const source_k_idx = source_row * experts_per_token + source_k_rank;
+        EXPECT_FLOAT_EQ(h_fp4_scales[fp4_row], h_unpermuted_scales[source_k_idx])
+            << "FP4 routing scale mismatch at row " << fp4_row;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Test 15: doMixedPrecisionActivation - Dual-path numerical correctness
+//
+// Mental experiment:
+//   Use boundary_index=4, total_rows=8: 4 bf16 rows + 4 fp4 rows.
+//   GEMM1 layout: [linear | gate] per row, inter_size=128.
+//   BF16 rows: linear=row_value, gate=1.0  -> output = row_value * SiLU(1.0)
+//   FP4 rows:  linear=FP4_EXACT[col%8], gate=10.0
+//     -> SwiGLU = FP4_EXACT[col%8] * SiLU(10.0) ~ FP4_EXACT[col%8] * 9.9995
+//   SiLU(10.0) = 10/(1+exp(-10)) ~ 9.99955 -- very close to 10.0.
+//   After bf16 rounding in kernel, the SwiGLU values for FP4 rows are
+//   approximately [0, 5, 10, 15, 20, 30, 40, 60].
+//
+//   Verification:
+//     1. BF16 rows: compare to CPU SwiGLU reference (tolerance ~0.05).
+//     2. FP4 rows: decode nibbles, verify each nibble matches the expected
+//        E2M1 encoding. Since SiLU(10)~10, the kernel quantizes with SF~10.0,
+//        so scaled_val ~ FP4_EXACT[col%8], yielding the same nibble pattern.
+// ---------------------------------------------------------------------------
+TEST_F(MixedPrecisionMoETest, MixedPrecisionActivation_DualPathNumericalCorrectness)
+{
+    // E2M1 lookup table: nibble -> float
+    static constexpr float FP4_E2M1_TABLE[16] = {
+        0.0f, 0.5f, 1.0f, 1.5f, 2.0f, 3.0f, 4.0f, 6.0f,
+        -0.0f, -0.5f, -1.0f, -1.5f, -2.0f, -3.0f, -4.0f, -6.0f
+    };
+    static constexpr float FP4_EXACT_VALUES[8] = {0.0f, 0.5f, 1.0f, 1.5f, 2.0f, 3.0f, 4.0f, 6.0f};
+
+    int const num_experts_per_node = 2;
+    int64_t const inter_size = 128;
+    int64_t const total_rows = 8;
+    int64_t const boundary_index = 4; // first 4 rows bf16, last 4 rows fp4
+    int64_t const bf16_rows = boundary_index;
+    int64_t const fp4_rows = total_rows - boundary_index;
+    auto stream = sStream->get();
+
+    // BF16 rows: linear=row_value, gate=1.0 (same pattern as Test 13)
+    // FP4 rows:  linear=FP4_EXACT[col%8], gate=10.0
+    float const bf16_linear_vals[] = {1.0f, 2.0f, 1.0f, 2.0f};
+    float const bf16_gate_vals[] = {1.0f, 1.0f, 2.0f, 2.0f};
+    float const fp4_gate_val = 10.0f;
+
+    int64_t const gemm1_elements = total_rows * inter_size * 2;
+    std::vector<__nv_bfloat16> h_gemm1_output(gemm1_elements);
+    // BF16 rows (0..3)
+    for (int64_t row = 0; row < bf16_rows; ++row)
+    {
+        for (int64_t col = 0; col < inter_size; ++col)
+        {
+            h_gemm1_output[row * inter_size * 2 + col] = __float2bfloat16(bf16_linear_vals[row]);
+            h_gemm1_output[row * inter_size * 2 + inter_size + col] = __float2bfloat16(bf16_gate_vals[row]);
+        }
+    }
+    // FP4 rows (4..7)
+    for (int64_t row = 0; row < fp4_rows; ++row)
+    {
+        int64_t const abs_row = bf16_rows + row;
+        for (int64_t col = 0; col < inter_size; ++col)
+        {
+            h_gemm1_output[abs_row * inter_size * 2 + col] = __float2bfloat16(FP4_EXACT_VALUES[col % 8]);
+            h_gemm1_output[abs_row * inter_size * 2 + inter_size + col] = __float2bfloat16(fp4_gate_val);
+        }
+    }
+
+    // 2 experts, equal split: expert 0 gets 2 bf16 + 2 fp4, expert 1 gets 2 bf16 + 2 fp4
+    std::vector<int64_t> h_bf16_expert_first_token_offset = {0, 2, 4};
+    std::vector<int64_t> h_fp4_expert_first_token_offset = {0, 2, 4};
+
+    float const h_bf16_fp8_quant = 1.0f;
+    float const h_fp4_fp8_quant = 1.0f;
+    float const h_fp4_fc2_act_global_scale = 1.0f;
+
+    // FP4 activation output: inter_size/2 bytes per row (2 nibbles per byte)
+    int64_t const fp4_output_bytes = fp4_rows * inter_size / 2;
+    int64_t const padded_inter_size = TmaWarpSpecializedGroupedGemmInput::alignToSfDim(
+        inter_size, TmaWarpSpecializedGroupedGemmInput::MinKDimAlignmentNVFP4);
+    int64_t const fp4_sf_rows = num_experts_per_node * TmaWarpSpecializedGroupedGemmInput::MinNDimAlignmentNVFP4;
+    int64_t const fp4_sf_elements
+        = fp4_sf_rows * padded_inter_size / TmaWarpSpecializedGroupedGemmInput::NVFP4BlockScaleVectorSize;
+
+    auto* d_gemm1_output = allocBuffer<__nv_bfloat16>(h_gemm1_output.size());
+    auto* d_bf16_activation_output = allocBuffer<__nv_bfloat16>(bf16_rows * inter_size);
+    auto* d_fp4_activation_output = allocBuffer<uint8_t>(fp4_output_bytes);
+    auto* d_fp4_act_sf = allocBuffer<TmaWarpSpecializedGroupedGemmInput::ElementSF>(fp4_sf_elements);
+    auto* d_bf16_expert_first_token_offset = allocBuffer<int64_t>(h_bf16_expert_first_token_offset.size());
+    auto* d_fp4_expert_first_token_offset = allocBuffer<int64_t>(h_fp4_expert_first_token_offset.size());
+    auto* d_bf16_fp8_quant = allocBuffer<float>(1);
+    auto* d_fp4_fp8_quant = allocBuffer<float>(1);
+    auto* d_fp4_fc2_act_global_scale = allocBuffer<float>(1);
+
+    check_cuda_error(cudaMemcpyAsync(d_gemm1_output, h_gemm1_output.data(),
+        h_gemm1_output.size() * sizeof(__nv_bfloat16), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_bf16_expert_first_token_offset, h_bf16_expert_first_token_offset.data(),
+        h_bf16_expert_first_token_offset.size() * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_fp4_expert_first_token_offset, h_fp4_expert_first_token_offset.data(),
+        h_fp4_expert_first_token_offset.size() * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_bf16_fp8_quant, &h_bf16_fp8_quant, sizeof(float), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(d_fp4_fp8_quant, &h_fp4_fp8_quant, sizeof(float), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaMemcpyAsync(
+        d_fp4_fc2_act_global_scale, &h_fp4_fc2_act_global_scale, sizeof(float), cudaMemcpyHostToDevice, stream));
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    ActivationParams activation_params{ActivationType::Swiglu};
+    __nv_bfloat16 const* bias_ptr = nullptr;
+    __nv_bfloat16 const* prequant_scale_fp4 = nullptr;
+
+    CUTLASS_MOE_GEMM_KERNELS_NAMESPACE::doMixedPrecisionActivation(d_bf16_activation_output,
+        reinterpret_cast<__nv_fp4_e2m1*>(d_fp4_activation_output), d_fp4_act_sf, d_gemm1_output, bias_ptr,
+        true, d_bf16_expert_first_token_offset, d_fp4_expert_first_token_offset, num_experts_per_node, inter_size,
+        boundary_index, total_rows, d_bf16_fp8_quant, d_fp4_fp8_quant, d_fp4_fc2_act_global_scale, false,
+        activation_params, prequant_scale_fp4, stream);
+    check_cuda_error(cudaStreamSynchronize(stream));
+
+    auto h_bf16_activation_output = getDataFromDevice(d_bf16_activation_output, bf16_rows * inter_size);
+    auto h_fp4_output = getDataFromDevice(d_fp4_activation_output, fp4_output_bytes);
+
+    // CPU reference for SwiGLU: output = linear * SiLU(gate)
+    auto silu = [](float x) -> float { return x / (1.0f + expf(-x)); };
+
+    // 1. Verify BF16 rows
+    for (int64_t row = 0; row < bf16_rows; ++row)
+    {
+        float const expected = bf16_linear_vals[row] * silu(bf16_gate_vals[row]);
+        for (int64_t col = 0; col < inter_size; ++col)
+        {
+            float const actual = __bfloat162float(h_bf16_activation_output[row * inter_size + col]);
+            EXPECT_NEAR(actual, expected, 0.05f)
+                << "BF16 activation row " << row << ", col " << col
+                << ": expected=" << expected << " actual=" << actual;
+        }
+    }
+
+    // 2. Verify FP4 rows: compute expected SwiGLU, then check nibble decodes
+    //    Expected SwiGLU for fp4 rows: FP4_EXACT[col%8] * silu(10.0)
+    float const silu_10 = silu(fp4_gate_val); // ~ 9.9995
+    for (int64_t fp4_row = 0; fp4_row < fp4_rows; ++fp4_row)
+    {
+        for (int64_t col = 0; col < inter_size; ++col)
+        {
+            float const expected_swiglu = FP4_EXACT_VALUES[col % 8] * silu_10;
+
+            // Decode fp4 nibble from byte-packed output
+            int64_t const byte_idx = fp4_row * (inter_size / 2) + col / 2;
+            int const nibble_shift = static_cast<int>((col % 2) * 4);
+            uint8_t const nibble = (h_fp4_output[byte_idx] >> nibble_shift) & 0xF;
+            float const fp4_raw = FP4_E2M1_TABLE[nibble];
+
+            // For col%8==0, expected_swiglu==0 and fp4_raw should be 0
+            if (expected_swiglu == 0.0f)
+            {
+                EXPECT_EQ(fp4_raw, 0.0f)
+                    << "FP4 activation row " << fp4_row << ", col " << col
+                    << ": expected zero but got nibble=0x" << std::hex << static_cast<int>(nibble) << std::dec;
+            }
+            else
+            {
+                // The nibble encodes a value that, when multiplied by the SF,
+                // should approximate expected_swiglu.
+                // Since expected values are ~FP4_EXACT * 10, and the block max is ~60,
+                // SF = fp8(global_scale * 60/6) = fp8(10.0) = 10.0 exactly.
+                // So fp4_raw * SF ~ FP4_EXACT[col%8] * 10 ~ expected_swiglu.
+                EXPECT_GT(fp4_raw, 0.0f)
+                    << "FP4 activation row " << fp4_row << ", col " << col
+                    << ": expected positive value but got nibble=0x" << std::hex << static_cast<int>(nibble) << std::dec
+                    << " (raw=" << fp4_raw << "), expected_swiglu=" << expected_swiglu;
+
+                // Verify the nibble is the expected E2M1 encoding for the input column.
+                // Since silu(10) ~ 10, the SwiGLU output ~ FP4_EXACT[col%8] * 10.
+                // The kernel quantizes this with SF~10.0, so scaled_val ~ FP4_EXACT[col%8],
+                // which should round to the same nibble as the column index pattern.
+                uint8_t const expected_nibble = static_cast<uint8_t>(col % 8);
+                EXPECT_EQ(nibble, expected_nibble)
+                    << "FP4 activation row " << fp4_row << ", col " << col
+                    << ": expected nibble=0x" << std::hex << static_cast<int>(expected_nibble)
+                    << " but got 0x" << static_cast<int>(nibble) << std::dec
+                    << " (raw=" << fp4_raw << ", expected_swiglu=" << expected_swiglu << ")";
+            }
+        }
+    }
+}
 #endif // defined(ENABLE_BF16) && defined(ENABLE_FP4)
 
 // ============================== END Mixed-Precision MoE Tests ==============================

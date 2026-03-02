@@ -1,0 +1,94 @@
+===== buffer management =====
+
+input of the function
+activations [#all activation x hidden size]
+router assignment [#all activation x topk]
+router score [#all activation x topk]
+
+sorting and creating the mapping + new expand input
+output: [all expanded bf16 tokens x hidden size] alloc(all tokens in bf16 x hidden x size of bf16)
+        [all expanded nvfp4 tokens x hidden size] alloc(all tokens in fp4 x hidden x size of bf16)
+        [E+1] prefix mapping for bf16
+        [E+1] prefix mapping for nvfp4
+        nvfp4 scaling factor
+        bf16 num tokens
+        nvfp4 num tokens
+
+gemm1 have two calls:
+    call 1: gemm1(bf16 activation, bf16 prefix mapping, sf=None, output pointer bf16)
+    call 2: gemm1(fp4 activation, fp4 prefix mapping, sf=nvfp4 sf, output pointer fp4)
+        the output of nvfp4x nvfp4 is bf16 for the gemms here
+    because the output is all bf16, we can allocate one single output buffer,
+    the two poitners point to different region of the buffer [->bf16 | ->fp4]
+    the boundary can be calculated from the size of num bf16 tokens 
+
+    output: [--> bf16 results  (in bf16) | --> fp4 results (also in bf16)]
+
+do activation and quant:
+    input takes:
+        [--> bf16 results  (in bf16) | --> fp4 results (also in bf16)]
+        bf16 num tokens
+        nvfp4 num tokens
+    first do activation on the entire buffer, but starting from the right pointer:
+        it performs activation +quantization fused kernel
+    
+    output:
+        [bf16 tokens after activation] alloc(all tokens in bf16 x hidden x size of bf16)
+        [nvfp4 tokens after activation and quantization] alloc(all tokens in fp4 x hidden x size of bf16)
+        nvfp4 scaling factor
+
+    these variables can still be referenced:
+        [E+1] prefix mapping for bf16
+        [E+1] prefix mapping for nvfp4
+        bf16 num tokens
+        nvfp4 num tokens
+
+gemm2 have two calls:
+    call 1: gemm2(bf16 activation, bf16 prefix mapping, sf=None, output pointer)
+    call 2: gemm2(fp4 activation, fp4 prefix mapping, sf=nvfp4 sf, output pointer)
+    here the output pointer needs to be merged with do finalize. they write two the same final buffer
+    think of the original workload is separated into two pieces and adding to the same output buffer
+        Note: because different precisions can contribute to the same output token, 
+            instead of overriding the output buffer, we need to perform addition
+            so we also need to make output buffer zero first and keep the accumulation
+
+    output: 
+        [#activations * hidden size]
+
+
+===== sumed up workspace =====
+(the buffer required for previous prep)
+
+for expand
+    [all expanded bf16 tokens x hidden size] alloc(all tokens in bf16 x hidden x size of bf16)
+    [all expanded nvfp4 tokens x hidden size] alloc(all tokens in fp4 x hidden x size of bf16)
+    [E+1] prefix mapping for bf16
+    [E+1] prefix mapping for nvfp4
+    nvfp4 scaling factor
+    bf16 num tokens
+    nvfp4 num tokens
+
+for gemm1
+    [--> bf16 results  (in bf16) | --> fp4 results (also in bf16)] alloc as if we have entire compute in bf16 (all tokens in bf16 x hidden)
+
+for activation
+    [bf16 tokens after activation] alloc(all tokens in bf16 x intermediate x size of bf16)
+    [nvfp4 tokens after activation and quantization] alloc(all tokens in fp4 x intermediate x size of bf16)
+    nvfp4 scaling factor 
+
+for gemm2 
+    [#activations * hidden size] (passed in as param)
+
+----- in terms of size -----
+N as number of tokens, K as topK, H as hidden size, I for intermediate
+[NK x H x byte(bf16)]
+[NK x H x byte(nvfp4)]
+[E+1 x byte(int)]
+[E+1 x byte(int)]
+nvfp4 scaling factor for tensor [NK x H] (prep for the worst case)
+int
+int
+[NK x 2I x byte(bf16)] (for gemm1 output)
+[NK x I x byte(bf16)]
+[NK x I x byte(nvfp4)]
+nvfp4 scaling factor for tensor [NK x I] (prep for the worst case)

@@ -626,6 +626,8 @@ def main(*,
         build_deep_ep = "ON"
         build_deep_gemm = "ON"
         build_flash_mla = "ON"
+    
+    build_deep_ep = "OFF"
 
     if benchmarks:
         targets.append("benchmarks")

@@ -1350,7 +1350,7 @@ def test_fused_moe_fp8_blockwise_cute_dsl_multi_gpu(ep_size, routing_method,
     world_size = 4
     with MPIPoolExecutor(max_workers=world_size) as executor:
         results = executor.map(
-            test_fused_moe_fp8_blockwise_cute_dsl,
+            test_fused_moe_fp8_blockwise_cute_dsl,P
             *zip(*[(
                 torch.bfloat16,
                 72,

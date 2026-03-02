@@ -1,0 +1,308 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1772493942684,
+  "projectRoot": "/home/huanchen/TensorRT-LLM",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pyproject.toml",
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "pip",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "pytest",
+    "lintCommand": "ruff check",
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "examples",
+      "scripts",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "3rdparty": {
+      "path": "3rdparty",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1772493942674,
+      "keyFiles": [
+        "CMakeLists.txt",
+        "README.md",
+        "cpp-thirdparty.md",
+        "py-thirdparty.md"
+      ]
+    },
+    "__pycache__": {
+      "path": "__pycache__",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1772493942675,
+      "keyFiles": [
+        "test_simulated.cpython-312-pytest-9.0.2.pyc",
+        "test_simulated_offline.cpython-312-pytest-9.0.2.pyc"
+      ]
+    },
+    "benchmarks": {
+      "path": "benchmarks",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772493942676,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "build": {
+      "path": "build",
+      "purpose": "Build output",
+      "fileCount": 1,
+      "lastAccessed": 1772493942676,
+      "keyFiles": [
+        "CMakeCache.txt"
+      ]
+    },
+    "cpp": {
+      "path": "cpp",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1772493942677,
+      "keyFiles": [
+        "CMakeLists.txt",
+        "CMakeUserPresets.json",
+        "conan.lock",
+        "conandata.yml",
+        "conanfile.py"
+      ]
+    },
+    "docker": {
+      "path": "docker",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1772493942677,
+      "keyFiles": [
+        "Dockerfile.multi",
+        "Dockerfile.user",
+        "Makefile",
+        "README.md",
+        "detect_rootless.sh"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 5,
+      "lastAccessed": 1772493942677,
+      "keyFiles": [
+        "Doxygen",
+        "Makefile",
+        "README.md",
+        "make.bat",
+        "requirements.txt"
+      ]
+    },
+    "enroot": {
+      "path": "enroot",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772493942677,
+      "keyFiles": [
+        "Makefile"
+      ]
+    },
+    "examples": {
+      "path": "examples",
+      "purpose": "Example code",
+      "fileCount": 10,
+      "lastAccessed": 1772493942678,
+      "keyFiles": [
+        "__init__.py",
+        "constraints.txt",
+        "eval_long_context.py",
+        "generate_checkpoint_config.py",
+        "generate_xgrammar_tokenizer_info.py"
+      ]
+    },
+    "jenkins": {
+      "path": "jenkins",
+      "purpose": null,
+      "fileCount": 9,
+      "lastAccessed": 1772493942678,
+      "keyFiles": [
+        "Build.groovy",
+        "BuildDockerImage.groovy",
+        "L0_MergeRequest.groovy",
+        "L0_Test.groovy",
+        "TensorRT_LLM_PLC.groovy"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 19,
+      "lastAccessed": 1772493942678,
+      "keyFiles": [
+        "bandit.yaml",
+        "build_cpp_examples.py",
+        "build_wheel.py",
+        "check_test_list.py",
+        "dco_check.py"
+      ]
+    },
+    "security_scanning": {
+      "path": "security_scanning",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1772493942678,
+      "keyFiles": [
+        "metadata.json",
+        "poetry.lock",
+        "pyproject.toml"
+      ]
+    },
+    "tensorrt_llm": {
+      "path": "tensorrt_llm",
+      "purpose": null,
+      "fileCount": 30,
+      "lastAccessed": 1772493942679,
+      "keyFiles": [
+        "__init__.py",
+        "_common.py",
+        "_dlpack_utils.py",
+        "_ipc_utils.py",
+        "_mnnvl_utils.py"
+      ]
+    },
+    "tensorrt_llm.egg-info": {
+      "path": "tensorrt_llm.egg-info",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1772493942679,
+      "keyFiles": [
+        "PKG-INFO",
+        "SOURCES.txt",
+        "dependency_links.txt",
+        "entry_points.txt",
+        "requires.txt"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 1,
+      "lastAccessed": 1772493942679,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "triton_backend": {
+      "path": "triton_backend",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772493942679,
+      "keyFiles": [
+        "requirements.txt"
+      ]
+    },
+    "triton_kernels": {
+      "path": "triton_kernels",
+      "purpose": null,
+      "fileCount": 15,
+      "lastAccessed": 1772493942680,
+      "keyFiles": [
+        "LICENSE",
+        "README.md",
+        "VERSION",
+        "__init__.py",
+        "compaction.py"
+      ]
+    },
+    "cpp/build": {
+      "path": "cpp/build",
+      "purpose": "Build output",
+      "fileCount": 7,
+      "lastAccessed": 1772493942681,
+      "keyFiles": [
+        "CMakeCache.txt",
+        "CTestTestfile.cmake",
+        "Makefile"
+      ]
+    },
+    "security_scanning/docs": {
+      "path": "security_scanning/docs",
+      "purpose": "Documentation",
+      "fileCount": 2,
+      "lastAccessed": 1772493942682,
+      "keyFiles": [
+        "poetry.lock",
+        "pyproject.toml"
+      ]
+    },
+    "security_scanning/examples": {
+      "path": "security_scanning/examples",
+      "purpose": "Example code",
+      "fileCount": 0,
+      "lastAccessed": 1772493942683,
+      "keyFiles": []
+    },
+    "security_scanning/tests": {
+      "path": "security_scanning/tests",
+      "purpose": "Test files",
+      "fileCount": 0,
+      "lastAccessed": 1772493942683,
+      "keyFiles": []
+    },
+    "tests/scripts": {
+      "path": "tests/scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1772493942683,
+      "keyFiles": [
+        "iteration_log_parser.py"
+      ]
+    },
+    "triton_backend/scripts": {
+      "path": "triton_backend/scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1772493942684,
+      "keyFiles": [
+        "launch_triton_server.py"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels/moe_gemm/moe_kernels.cu",
+      "accessCount": 4,
+      "lastAccessed": 1772493998562,
+      "type": "directory"
+    }
+  ],
+  "userDirectives": []
+}

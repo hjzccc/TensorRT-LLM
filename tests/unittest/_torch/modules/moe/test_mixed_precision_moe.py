@@ -296,6 +296,9 @@ class TestMixedPrecisionForwardEquivalence:
                 fused_module, x, router_logits, routing_method
             )
 
+            print("Fused mixed-precision output:", fused_out)
+            print("Reference output:", ref_out)
+
             # When all experts are bf16, outputs should be very close.
             # BF16 accumulation order may differ, so allow ~2 ULP tolerance.
             torch.testing.assert_close(fused_out, ref_out, rtol=0.016, atol=0.016)

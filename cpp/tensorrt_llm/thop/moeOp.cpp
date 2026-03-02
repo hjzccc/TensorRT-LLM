@@ -1025,7 +1025,7 @@ private:
         if (!mFp4Runner)
         {
             mFp4Runner = std::make_shared<
-                kernels::CutlassMoeFCRunner<__nv_bfloat16, __nv_fp4_e2m1, __nv_bfloat16, __nv_bfloat16>>();
+                kernels::CutlassMoeFCRunner<__nv_fp4_e2m1, __nv_fp4_e2m1, __nv_bfloat16, __nv_bfloat16>>();
             mFp4Runner->use_fused_finalize_ = mUseFusedFinalize;
         }
         if (mFp4Gemm1Profiles.empty())
@@ -1075,12 +1075,69 @@ private:
             if (profile_ids.value().size() == 4)
             {
                 ensureFp4Runner();
+
+                // Mixed-precision requires GEMM2 fused finalize. Override the
+                // auto-tuned bf16 GEMM2 tactic if it lacks FINALIZE — the tuner
+                // profiles GEMMs independently so it may pick a non-FINALIZE tactic.
+                if (best_gemm2_profile.epilogue_fusion_type
+                    != cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE)
+                {
+                    for (auto const& p : mGemm2Profiles)
+                    {
+                        if (p.epilogue_fusion_type
+                            == cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE)
+                        {
+                            best_gemm2_profile = p;
+                            break;
+                        }
+                    }
+                }
+
                 auto best_fp4_gemm1 = mFp4Gemm1Profiles.front();
                 auto best_fp4_gemm2 = mFp4Gemm2Profiles.front();
                 best_fp4_gemm1
                     = profile_ids.value()[2] == -1 ? best_fp4_gemm1 : mFp4Gemm1Profiles.at(profile_ids.value()[2]);
                 best_fp4_gemm2
                     = profile_ids.value()[3] == -1 ? best_fp4_gemm2 : mFp4Gemm2Profiles.at(profile_ids.value()[3]);
+
+                // Same FINALIZE enforcement for fp4 GEMM2
+                if (best_fp4_gemm2.epilogue_fusion_type
+                    != cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE)
+                {
+                    for (auto const& p : mFp4Gemm2Profiles)
+                    {
+                        if (p.epilogue_fusion_type
+                            == cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE)
+                        {
+                            best_fp4_gemm2 = p;
+                            break;
+                        }
+                    }
+                }
+
+                // ===== SM120 HARDCODED FP4 TACTIC OVERRIDE =====
+                // When auto-tuner returns -1 on SM120, explicitly construct known-good
+                // FP4 configs instead of relying on profiles.front() fallback.
+                // Valid SM120 FP4 tiles: 128x128x128B, 128x128x64B, 256x128x64B, 128x256x64B
+                // Only cluster shape 1x1x1 is supported on SM120.
+                if (!mFp4Gemm1Profiles.empty()
+                    && mFp4Gemm1Profiles.front().sm_version >= 120
+                    && profile_ids.value()[2] == -1 && profile_ids.value()[3] == -1)
+                {
+                    best_fp4_gemm1 = cutlass_extensions::CutlassGemmConfig(
+                        cutlass_extensions::CutlassTileConfigSM120::CtaShape128x128x128B,
+                        cutlass_extensions::MainloopScheduleType::WARPSPECIALIZED,
+                        cutlass_extensions::EpilogueScheduleType::TMA,
+                        cutlass_extensions::ClusterShape::ClusterShape_1x1x1);
+                    best_fp4_gemm2 = best_fp4_gemm1;
+                    best_fp4_gemm2.epilogue_fusion_type
+                        = cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE;
+                    TLLM_LOG_WARNING(
+                        "[MixedPrecisionMoE] SM120 hardcoded FP4 tactics applied (auto-tuner returned -1). "
+                        "GEMM1: CtaShape128x128x128B/1x1x1/TMA/NONE, "
+                        "GEMM2: CtaShape128x128x128B/1x1x1/TMA/FINALIZE");
+                }
+
                 mFp4Runner->setTactic(best_fp4_gemm1, best_fp4_gemm2);
             }
         }
