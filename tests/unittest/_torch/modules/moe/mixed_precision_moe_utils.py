@@ -209,6 +209,29 @@ def pack_bf16_weights_for_fused_module(
     return w3_w1_weight, w2_weight
 
 
+def _interleave_block_scales(block_scales_3d: torch.Tensor) -> torch.Tensor:
+    """Apply block_scale_interleave per-expert and pack as int32.
+
+    The C++ MoE kernel expects block scales in interleaved int32 format.
+    This replicates the conversion done by
+    NVFP4CutlassFusedMoEMethod.load_expert_w*_weight_scale_nvfp4.
+
+    Args:
+        block_scales_3d: [E, rows, cols] float8_e4m3fn from fp4_quantize
+
+    Returns:
+        [E, rows, cols // 4] int32 interleaved block scales
+    """
+    results = []
+    for i in range(block_scales_3d.shape[0]):
+        expert_scales = block_scales_3d[i]  # [rows, cols] float8_e4m3fn
+        orig_shape = expert_scales.shape
+        interleaved = torch.ops.trtllm.block_scale_interleave(
+            expert_scales.contiguous().view(torch.uint8))
+        results.append(interleaved.view(torch.int32).reshape(
+            orig_shape[0], -1))
+    return torch.stack(results, dim=0)
+
 def pack_fp4_weights_for_fused_module(
     fp4_weights: Dict[str, torch.Tensor],
     num_experts: int,
@@ -260,12 +283,17 @@ def pack_fp4_weights_for_fused_module(
         fc1_global_scales.append(fp4_weights[f"{expert_id}.w1.weight_scale_2"])
         fc2_global_scales.append(fp4_weights[f"{expert_id}.w2.weight_scale_2"])
 
-    w3_w1_weight_fp4 = torch.stack(w3_w1_list, dim=0)
-    w2_weight_fp4 = torch.stack(w2_list, dim=0)
+    # Reinterpret uint8 (2 fp4/byte) as int64 (16 fp4/int64) for C++ kernel
+    w3_w1_weight_fp4 = torch.stack(w3_w1_list, dim=0).view(torch.int64)
+    w2_weight_fp4 = torch.stack(w2_list, dim=0).view(torch.int64)
 
-    # Stack block scales: [E, ...]
-    fc1_weight_block = torch.stack(fc1_weight_block_scales, dim=0)
-    fc2_weight_block = torch.stack(fc2_weight_block_scales, dim=0)
+    # Stack block scales: [E, rows, cols] in float8_e4m3fn
+    # Then apply block_scale_interleave + view as int32 to match C++ kernel format.
+    # Production code does this in NVFP4CutlassFusedMoEMethod.load_expert_w*_weight_scale_nvfp4.
+    fc1_weight_block_raw = torch.stack(fc1_weight_block_scales, dim=0)
+    fc2_weight_block_raw = torch.stack(fc2_weight_block_scales, dim=0)
+    fc1_weight_block = _interleave_block_scales(fc1_weight_block_raw)
+    fc2_weight_block = _interleave_block_scales(fc2_weight_block_raw)
 
     # Global scales: [E] tensor
     def _to_tensor(vals):

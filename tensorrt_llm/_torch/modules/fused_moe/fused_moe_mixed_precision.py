@@ -186,13 +186,14 @@ class FusedMixedPrecisionMoE(nn.Module):
         fp4_quant_scales: List[torch.Tensor],
     ):
         """Load fp4 group weights and quant scales.
-
+        
         Args:
             w3_w1_weight: [num_experts, inter_size*2, hidden_size/16] int64 packed nvfp4
             w2_weight: [num_experts, hidden_size, inter_size/16] int64 packed nvfp4
-            fp4_quant_scales: 6 tensors for NVFP4:
-                [fc1_act_global, fc1_weight_block, fc1_global,
-                 fc2_act_global, fc2_weight_block, fc2_global]
+            fp4_quant_scales: 6 tensors for NVFP4 (must be kernel-ready format):
+                [fc1_act_global (float32), fc1_weight_block (int32 interleaved),
+                 fc1_global (float32), fc2_act_global (float32),
+                 fc2_weight_block (int32 interleaved), fc2_global (float32)]
         """
         assert w3_w1_weight.dtype == torch.int64
         assert w2_weight.dtype == torch.int64
@@ -230,7 +231,7 @@ class FusedMixedPrecisionMoE(nn.Module):
         """
         # --- Routing ---
         if routing_method is not None:
-            token_selected_experts, token_final_scales = routing_method(
+            token_selected_experts, token_final_scales = routing_method.apply(
                 router_logits
             )
         else:

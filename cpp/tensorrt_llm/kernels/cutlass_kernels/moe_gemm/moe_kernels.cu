@@ -3288,6 +3288,14 @@ void accumulateMixedPrecisionOutput(T* output, T const* partial_output, int64_t 
     cudaLaunchKernelEx(&config, accumulateMixedPrecisionOutputKernel<T>, output, partial_output, num_elements);
 }
 
+// Explicit template instantiations for accumulateMixedPrecisionOutput
+#ifdef ENABLE_BF16
+template void accumulateMixedPrecisionOutput<__nv_bfloat16>(
+    __nv_bfloat16* output, __nv_bfloat16 const* partial_output, int64_t num_elements, cudaStream_t stream);
+#endif
+template void accumulateMixedPrecisionOutput<half>(
+    half* output, half const* partial_output, int64_t num_elements, cudaStream_t stream);
+
 // ============================== Lora Add Bias =================================
 constexpr static int LORA_KERNELS_THREADS_PER_BLOCK = 256;
 
@@ -5183,7 +5191,7 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
                 quant_params_fp4.fp4.fc2.act_global_scale,
                 quant_params_fp4.fp4.fc2.use_per_expert_act_scale,
                 fc1_activation_type,
-                nullptr,  // prequant_scale_fp4
+                static_cast<UnfusedGemmOutputType const*>(nullptr),  // prequant_scale_fp4
                 stream);
             sync_check_cuda_error(stream);
         }
