@@ -481,6 +481,8 @@ public:
         std::optional<cutlass_extensions::CutlassGemmConfig> gemm2_config)
         = 0;
     virtual std::vector<cutlass_extensions::CutlassGemmConfig> getTactics(MoeGemmId gemm_id) = 0;
+    virtual std::optional<cutlass_extensions::CutlassGemmConfig> getGemm1Config() const = 0;
+    virtual std::optional<cutlass_extensions::CutlassGemmConfig> getGemm2Config() const = 0;
 
     virtual void runMoe(void const* input_activations, void const* input_sf, bool const swizzled_input_sf,
         int const* token_selected_experts, float const* token_final_scales, void const* fc1_expert_weights,
@@ -654,6 +656,16 @@ public:
     {
         gemm1_config_ = std::move(gemm1_config);
         gemm2_config_ = std::move(gemm2_config);
+    }
+
+    std::optional<cutlass_extensions::CutlassGemmConfig> getGemm1Config() const override
+    {
+        return gemm1_config_;
+    }
+
+    std::optional<cutlass_extensions::CutlassGemmConfig> getGemm2Config() const override
+    {
+        return gemm2_config_;
     }
 
     std::vector<cutlass_extensions::CutlassGemmConfig> getTactics(MoeGemmId gemm_id) override
@@ -1005,7 +1017,7 @@ private:
     float* bf16_permuted_scales_{};        // bf16 group permuted router scales
     float* fp4_permuted_scales_{};         // fp4 group permuted router scales
     void* mixed_prec_glu_inter_result_{};  // shared GLU intermediate (sequential GEMM execution)
-    void* mixed_prec_final_output_scratch_{};
+    // void* mixed_prec_final_output_scratch_{}; // Removed: GEMM2 fused finalize writes directly to final_output
     TmaWarpSpecializedGroupedGemmInput mixed_fp4_tma_ws_grouped_gemm1_input_;
     TmaWarpSpecializedGroupedGemmInput mixed_fp4_tma_ws_grouped_gemm2_input_;
     size_t mixed_gemm_workspace_size_{};

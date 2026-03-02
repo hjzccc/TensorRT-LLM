@@ -921,16 +921,10 @@ public:
             output = torch::empty(output_shape, input.options().dtype(c10::ScalarType::BFloat16));
         }
 
-        // --- Lazily create the fp4 runner ---
-        if (!mFp4Runner)
-        {
-            mFp4Runner = std::make_shared<
-                kernels::CutlassMoeFCRunner<__nv_bfloat16, __nv_fp4_e2m1, __nv_bfloat16, __nv_bfloat16>>();
-            mFp4Runner->use_fused_finalize_ = mUseFusedFinalize;
-        }
-        // Share GEMM tactics with the fp4 runner
-        // (fp4 runner uses same tile configs initially; separate profiling can be added later)
-        mFp4Runner->setTactic(mGemm1Profiles.front(), mGemm2Profiles.front());
+        // --- Ensure the fp4 runner exists ---
+        // If setRunnerProfiles was called with 4 profile_ids, the fp4 runner is already
+        // created with the correct fp4-specific tactics. Otherwise, create it here.
+        ensureFp4Runner();
 
         // --- Workspace ---
         WorkspaceInfo const& workspace_info = getMixedPrecWorkspaceInfo(
@@ -1018,6 +1012,29 @@ private:
     using Profile = tensorrt_llm::cutlass_extensions::CutlassGemmConfig;
     std::vector<Profile> mGemm1Profiles;
     std::vector<Profile> mGemm2Profiles;
+    std::vector<Profile> mFp4Gemm1Profiles;
+    std::vector<Profile> mFp4Gemm2Profiles;
+
+    /**
+     * Lazily create the fp4 runner and populate its tactic lists.
+     * Called when mixed-precision MoE needs separate fp4 tactics.
+     */
+    void ensureFp4Runner()
+    {
+#if defined(ENABLE_BF16) && defined(ENABLE_FP4)
+        if (!mFp4Runner)
+        {
+            mFp4Runner = std::make_shared<
+                kernels::CutlassMoeFCRunner<__nv_bfloat16, __nv_fp4_e2m1, __nv_bfloat16, __nv_bfloat16>>();
+            mFp4Runner->use_fused_finalize_ = mUseFusedFinalize;
+        }
+        if (mFp4Gemm1Profiles.empty())
+        {
+            mFp4Gemm1Profiles = mFp4Runner->getTactics(MoeGemmId::GEMM_1);
+            mFp4Gemm2Profiles = mFp4Runner->getTactics(MoeGemmId::GEMM_2);
+        }
+#endif
+    }
 
     void freeProfileWorkspace()
     {
@@ -1047,11 +1064,25 @@ private:
         auto best_gemm2_profile = mGemm2Profiles.front();
         if (profile_ids.has_value())
         {
-            TORCH_CHECK(profile_ids.value().size() == 2, "Expecting 2 profile ids");
+            TORCH_CHECK(profile_ids.value().size() == 2 || profile_ids.value().size() == 4,
+                "Expecting 2 profile ids (bf16 only) or 4 profile ids (bf16 + fp4 for mixed precision)");
             best_gemm1_profile
                 = profile_ids.value()[0] == -1 ? best_gemm1_profile : mGemm1Profiles.at(profile_ids.value()[0]);
             best_gemm2_profile
                 = profile_ids.value()[1] == -1 ? best_gemm2_profile : mGemm2Profiles.at(profile_ids.value()[1]);
+
+            // Mixed-precision: profile_ids[2..3] are for the fp4 runner
+            if (profile_ids.value().size() == 4)
+            {
+                ensureFp4Runner();
+                auto best_fp4_gemm1 = mFp4Gemm1Profiles.front();
+                auto best_fp4_gemm2 = mFp4Gemm2Profiles.front();
+                best_fp4_gemm1
+                    = profile_ids.value()[2] == -1 ? best_fp4_gemm1 : mFp4Gemm1Profiles.at(profile_ids.value()[2]);
+                best_fp4_gemm2
+                    = profile_ids.value()[3] == -1 ? best_fp4_gemm2 : mFp4Gemm2Profiles.at(profile_ids.value()[3]);
+                mFp4Runner->setTactic(best_fp4_gemm1, best_fp4_gemm2);
+            }
         }
         mKernelRunner->setTactic(best_gemm1_profile, best_gemm2_profile);
     }

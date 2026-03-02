@@ -41,6 +41,8 @@ namespace kernels
 namespace cutlass_kernels
 {
 
+struct ActivationParams;
+
 // These kernels are used in moeUtilOp.cpp
 int64_t computeNumTokensPerBlock(int64_t const num_tokens, int64_t const num_experts_per_node);
 
@@ -122,6 +124,24 @@ void expandInputRowsMixedPrecisionKernelLauncher(
     float const* fc1_act_global_scale,            // fp4 quantization global scale
     bool use_per_expert_act_scale,
     cudaStream_t stream);
+
+#ifdef ENABLE_FP4
+/**
+ * \brief NEW: Host launcher for fused mixed-precision activation kernel.
+ * Processes contiguous [bf16_rows | fp4_rows] GEMM1 output buffer.
+ */
+template <class GemmOutputType, class ScaleBiasType>
+void doMixedPrecisionActivation(__nv_bfloat16* activation_output_bf16, __nv_fp4_e2m1* activation_output_fp4,
+    TmaWarpSpecializedGroupedGemmInput::ElementSF* fp4_act_sf_flat, GemmOutputType const* gemm1_output,
+    ScaleBiasType const* bias_ptr, bool bias_is_broadcast, int64_t const* bf16_expert_first_token_offset,
+    int64_t const* fp4_expert_first_token_offset, int num_experts_per_node, int64_t inter_size,
+    int64_t boundary_index, int64_t total_rows, float const* bf16_fp8_quant, float const* fp4_fp8_quant,
+    float const* fp4_fc2_act_global_scale, bool fp4_use_per_expert_act_scale, ActivationParams activation_type,
+    GemmOutputType const* prequant_scale_fp4, cudaStream_t stream);
+#endif
+
+template <typename T>
+void accumulateMixedPrecisionOutput(T* output, T const* partial_output, int64_t num_elements, cudaStream_t stream);
 
 // ========== END Mixed-Precision MoE utility kernels ==========
 

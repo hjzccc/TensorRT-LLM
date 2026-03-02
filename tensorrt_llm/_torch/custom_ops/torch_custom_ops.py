@@ -399,9 +399,11 @@ def fused_moe_mixed_precision(
     """
     tuner = AutoTuner.get()
     top_k = token_selected_experts.size(1)
+    num_tokens = input.shape[0]
 
-    # Create a bf16×bf16 primary runner (the fp4 runner is created inside C++)
-    moe_runner = MoERunner(
+    # --- Create runners for bf16 and fp4 precision groups ---
+    # bf16 primary runner
+    bf16_moe_runner = MoERunner(
         x_dtype=torch.bfloat16,
         weight_dtype=torch.bfloat16,
         output_dtype=torch.bfloat16,
@@ -422,34 +424,89 @@ def fused_moe_mixed_precision(
         unpadded_hidden_size=unpadded_hidden_size,
     )
 
+    # fp4 runner (for tactic profiling — the execution-side fp4 runner is created in C++)
+    fp4_moe_runner = MoERunner(
+        x_dtype=torch.bfloat16,
+        weight_dtype=torch.int64,  # NVFP4 packed as int64
+        output_dtype=torch.bfloat16,
+        top_k=top_k,
+        tp_size=tp_size,
+        tp_rank=tp_rank,
+        ep_size=ep_size,
+        ep_rank=ep_rank,
+        cluster_size=1,
+        cluster_rank=0,
+        use_deepseek_fp8_block_scale=False,
+        use_w4_group_scaling=False,
+        use_int8_woq_per_channel=False,
+        use_mxfp8_act_scaling=False,
+        min_latency_mode=False,
+        use_fused_finalize=use_fused_finalize,
+        activation_type=activation_type,
+        unpadded_hidden_size=unpadded_hidden_size,
+    )
+
     MoERunner.tuning_config.tune_max_num_tokens = tune_max_num_tokens
 
-    # Auto-tune GEMM1 and GEMM2 for the bf16 primary runner
-    # (the fp4 runner shares tactics initially)
-    _, gemm_tactic_1 = tuner.choose_one(
-        "trtllm::fused_moe_mixed_precision::gemm1",
-        [moe_runner],
+    # --- Create tuner inputs with scaled sizes ---
+    # Hot (bf16) experts see proportionally more tokens → tune with 2× input size
+    # Cold (fp4) experts see proportionally fewer tokens → tune with 0.5× input size
+    hidden_size = input.shape[1]
+    bf16_tuner_num_tokens = min(num_tokens * 2, tune_max_num_tokens)
+    fp4_tuner_num_tokens = max(1, num_tokens // 2)
+    bf16_tuner_input = torch.empty(bf16_tuner_num_tokens, hidden_size,
+                                    dtype=input.dtype, device=input.device)
+    fp4_tuner_input = torch.empty(fp4_tuner_num_tokens, hidden_size,
+                                   dtype=input.dtype, device=input.device)
+
+    # --- Auto-tune bf16 GEMM tactics (with 2× input size) ---
+    _, bf16_gemm_tactic_1 = tuner.choose_one(
+        "trtllm::fused_moe_mixed_precision::bf16_gemm1",
+        [bf16_moe_runner],
         MoERunner.tuning_config,
         [
-            input, fc1_expert_weights_bf16, fc1_expert_biases,
+            bf16_tuner_input, fc1_expert_weights_bf16, fc1_expert_biases,
             fc2_expert_weights_bf16, fc2_expert_biases
         ],
         gemm_idx=1,
     )
 
-    _, gemm_tactic_2 = tuner.choose_one(
-        "trtllm::fused_moe_mixed_precision::gemm2",
-        [moe_runner],
+    _, bf16_gemm_tactic_2 = tuner.choose_one(
+        "trtllm::fused_moe_mixed_precision::bf16_gemm2",
+        [bf16_moe_runner],
         MoERunner.tuning_config,
         [
-            input, fc1_expert_weights_bf16, fc1_expert_biases,
+            bf16_tuner_input, fc1_expert_weights_bf16, fc1_expert_biases,
             fc2_expert_weights_bf16, fc2_expert_biases
         ],
         gemm_idx=2,
     )
 
-    # Call the fused mixed-precision MoE C++ kernel
-    output = moe_runner.fused_moe_runner.run_mixed_precision_moe(
+    # --- Auto-tune fp4 GEMM tactics (with 0.5× input size) ---
+    _, fp4_gemm_tactic_1 = tuner.choose_one(
+        "trtllm::fused_moe_mixed_precision::fp4_gemm1",
+        [fp4_moe_runner],
+        MoERunner.tuning_config,
+        [
+            fp4_tuner_input, fc1_expert_weights_fp4, None,
+            fc2_expert_weights_fp4, None
+        ],
+        gemm_idx=1,
+    )
+
+    _, fp4_gemm_tactic_2 = tuner.choose_one(
+        "trtllm::fused_moe_mixed_precision::fp4_gemm2",
+        [fp4_moe_runner],
+        MoERunner.tuning_config,
+        [
+            fp4_tuner_input, fc1_expert_weights_fp4, None,
+            fc2_expert_weights_fp4, None
+        ],
+        gemm_idx=2,
+    )
+
+    # Call the fused mixed-precision MoE C++ kernel with per-precision tactics
+    output = bf16_moe_runner.fused_moe_runner.run_mixed_precision_moe(
         input,
         token_selected_experts,
         token_final_scales,
@@ -469,7 +526,7 @@ def fused_moe_mixed_precision(
         ep_size,
         ep_rank,
         enable_alltoall,
-        [gemm_tactic_1, gemm_tactic_2],
+        [bf16_gemm_tactic_1, bf16_gemm_tactic_2, fp4_gemm_tactic_1, fp4_gemm_tactic_2],
         activation_type,
         unpadded_hidden_size,
         None,  # num_valid_tokens (use all tokens)
