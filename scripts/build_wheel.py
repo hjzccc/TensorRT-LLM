@@ -619,15 +619,16 @@ def main(*,
         build_flash_mla = "OFF"
     else:
         targets.extend([
-            "th_common", "bindings", "deep_ep", "deep_gemm", "pg_utils",
+            # "th_common", "bindings", "deep_ep", "deep_gemm", "pg_utils",
+            # "flash_mla"
+            "th_common", "bindings", "deep_gemm", "pg_utils",
             "flash_mla"
         ])
         build_pyt = "ON"
-        build_deep_ep = "ON"
+        # build_deep_ep = "ON"
+        build_deep_ep = "OFF"
         build_deep_gemm = "ON"
         build_flash_mla = "ON"
-    
-    build_deep_ep = "OFF"
 
     if benchmarks:
         targets.append("benchmarks")

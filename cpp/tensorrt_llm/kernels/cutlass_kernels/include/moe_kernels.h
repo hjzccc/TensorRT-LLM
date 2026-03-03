@@ -496,22 +496,22 @@ public:
         = 0;
 
     /**
-     * \brief NEW: Fused mixed-precision MoE execution.
+     * \brief Mixed-precision MoE execution (bf16 hot experts + nvfp4 cold experts).
      *
-     * Handles both bf16 (hot experts) and nvfp4 (cold experts) precision groups
-     * in one fused call. See fusedMixPrecisionMoE_plan.md for design details.
-     *
-     * \param fp4_runner Secondary runner for fp4 group GEMMs.
+     * Stripped-down runMoe variant: no LoRA, no min-latency, no deepseek block scale.
+     * The runner self-configures based on its template types (bf16 or fp4).
      */
     virtual void runMixedPrecisionMoe(void const* input_activations, void const* input_sf,
         bool const swizzled_input_sf, int const* token_selected_experts, float const* token_final_scales,
-        void const* fc1_expert_weights_bf16, void const* fc2_expert_weights_bf16,
-        void const* fc1_expert_weights_fp4, void const* fc2_expert_weights_fp4,
-        void const* fc1_expert_biases, void const* fc2_expert_biases, QuantParams quant_params_bf16,
-        QuantParams quant_params_fp4, int const num_high_precision_experts, ActivationParams fc1_activation_type,
+        void const* fc1_expert_weights_bf16, void const* fc1_expert_weights_fp4,
+        void const* fc1_expert_biases, ActivationParams fc1_activation_type,
+        void const* fc2_expert_weights_bf16, void const* fc2_expert_weights_fp4,
+        void const* fc2_expert_biases,
+        QuantParams bf16_quant_params, QuantParams fp4_quant_params,
         int64_t const num_rows, int64_t const num_valid_rows, int64_t const hidden_size,
         int64_t const unpadded_hidden_size, int64_t const inter_size, int const num_experts,
-        int const experts_per_token, char* workspace_ptr, void* final_output,
+        int const num_high_precision_experts, int const experts_per_token,
+        char* workspace_ptr, void* final_output,
         int* unpermuted_row_to_permuted_row, MOEParallelismConfig parallelism_config, bool const enable_alltoall,
         CutlassMoeFCRunnerInterface* fp4_runner, cudaStream_t stream)
         = 0;
@@ -690,16 +690,18 @@ public:
         bool use_deepseek_fp8_block_scale, bool min_latency_mode, MoeMinLatencyParams& min_latency_params,
         cudaStream_t stream) override;
 
-    // NEW: Fused mixed-precision MoE — handles dual precision groups in one call
+    // Mixed-precision MoE — stripped-down runMoe for bf16/nvfp4 only
     void runMixedPrecisionMoe(void const* input_activations, void const* input_sf, bool const swizzled_input_sf,
         int const* token_selected_experts, float const* token_final_scales,
-        void const* fc1_expert_weights_bf16, void const* fc2_expert_weights_bf16,
-        void const* fc1_expert_weights_fp4, void const* fc2_expert_weights_fp4,
-        void const* fc1_expert_biases, void const* fc2_expert_biases, QuantParams quant_params_bf16,
-        QuantParams quant_params_fp4, int const num_high_precision_experts, ActivationParams fc1_activation_type,
+        void const* fc1_expert_weights_bf16, void const* fc1_expert_weights_fp4,
+        void const* fc1_expert_biases, ActivationParams fc1_activation_type,
+        void const* fc2_expert_weights_bf16, void const* fc2_expert_weights_fp4,
+        void const* fc2_expert_biases,
+        QuantParams bf16_quant_params, QuantParams fp4_quant_params,
         int64_t const num_rows, int64_t const num_valid_rows, int64_t const hidden_size,
         int64_t const unpadded_hidden_size, int64_t const inter_size, int const num_experts,
-        int const experts_per_token, char* workspace_ptr, void* final_output,
+        int const num_high_precision_experts, int const experts_per_token,
+        char* workspace_ptr, void* final_output,
         int* unpermuted_row_to_permuted_row, MOEParallelismConfig parallelism_config, bool const enable_alltoall,
         CutlassMoeFCRunnerInterface* fp4_runner, cudaStream_t stream) override;
 

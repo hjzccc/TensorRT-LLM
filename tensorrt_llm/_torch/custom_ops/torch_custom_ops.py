@@ -452,7 +452,7 @@ def fused_moe_mixed_precision(
     # Hot (bf16) experts see proportionally more tokens → tune with 2× input size
     # Cold (fp4) experts see proportionally fewer tokens → tune with 0.5× input size
     hidden_size = input.shape[1]
-    bf16_tuner_num_tokens = min(num_tokens * 2000, tune_max_num_tokens)
+    bf16_tuner_num_tokens = min(num_tokens * 2, tune_max_num_tokens)
     fp4_tuner_num_tokens = max(1, num_tokens // 2)
     bf16_tuner_input = torch.empty(bf16_tuner_num_tokens, hidden_size,
                                     dtype=input.dtype, device=input.device)
@@ -507,7 +507,8 @@ def fused_moe_mixed_precision(
     # print(f"Chosen tactics — bf16 GEMM1: {bf16_gemm_tactic_1}, bf16 GEMM2: {bf16_gemm_tactic_2}, "
     #       f"fp4 GEMM1: {fp4_gemm_tactic_1}, fp4 GEMM2: {fp4_gemm_tactic_2}")
 
-    # return out_tensor if out_tensor is not None else torch.empty(0)  # Return dummy output for fake op registration
+    # return torch.zeros(input.shape[0], input.shape[1], dtype=input.dtype, device=input.device)
+    
     # Call the fused mixed-precision MoE C++ kernel with per-precision tactics
     output = bf16_moe_runner.fused_moe_runner.run_mixed_precision_moe(
         input,

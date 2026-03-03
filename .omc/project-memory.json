@@ -299,8 +299,176 @@
   "hotPaths": [
     {
       "path": "cpp/tensorrt_llm/kernels/cutlass_kernels/moe_gemm/moe_kernels.cu",
+      "accessCount": 98,
+      "lastAccessed": 1772515033663,
+      "type": "directory"
+    },
+    {
+      "path": "cpp/tensorrt_llm/thop/moeOp.cpp",
+      "accessCount": 75,
+      "lastAccessed": 1772514912216,
+      "type": "directory"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels/include/moe_kernels.h",
+      "accessCount": 40,
+      "lastAccessed": 1772514274201,
+      "type": "directory"
+    },
+    {
+      "path": "tests/unittest/_torch/modules/moe/mixed_precision_moe_utils.py",
+      "accessCount": 17,
+      "lastAccessed": 1772514187573,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/custom_ops/torch_custom_ops.py",
+      "accessCount": 15,
+      "lastAccessed": 1772514954518,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe",
+      "accessCount": 12,
+      "lastAccessed": 1772509197389,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/ops/moe_op_cutlass.py",
+      "accessCount": 12,
+      "lastAccessed": 1772510374029,
+      "type": "file"
+    },
+    {
+      "path": "tests/unittest/_torch/modules/moe/test_mixed_precision_moe.py",
+      "accessCount": 10,
+      "lastAccessed": 1772514169514,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels/moe_gemm",
+      "accessCount": 10,
+      "lastAccessed": 1772514284504,
+      "type": "directory"
+    },
+    {
+      "path": "tests/unittest/_torch/modules/test_fused_moe.py",
+      "accessCount": 8,
+      "lastAccessed": 1772507486879,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/fused_moe_mixed_precision.py",
+      "accessCount": 8,
+      "lastAccessed": 1772510363150,
+      "type": "file"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/fused_moe_cutlass.py",
+      "accessCount": 7,
+      "lastAccessed": 1772509203865,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/quantization.py",
+      "accessCount": 6,
+      "lastAccessed": 1772501213359,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels/include",
+      "accessCount": 5,
+      "lastAccessed": 1772513093400,
+      "type": "directory"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels/cutlass_kernels",
       "accessCount": 4,
-      "lastAccessed": 1772493998562,
+      "lastAccessed": 1772513231893,
+      "type": "directory"
+    },
+    {
+      "path": "cpp/tensorrt_llm/cutlass_extensions/include/cutlass_extensions/gemm_configs.h",
+      "accessCount": 3,
+      "lastAccessed": 1772497109280,
+      "type": "directory"
+    },
+    {
+      "path": "cpp/CMakeLists.txt",
+      "accessCount": 3,
+      "lastAccessed": 1772498945558,
+      "type": "file"
+    },
+    {
+      "path": "tests/unittest/_torch/modules/moe",
+      "accessCount": 3,
+      "lastAccessed": 1772514170572,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/ops",
+      "accessCount": 2,
+      "lastAccessed": 1772496430055,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/custom_ops",
+      "accessCount": 2,
+      "lastAccessed": 1772496543227,
+      "type": "directory"
+    },
+    {
+      "path": "cpp/tensorrt_llm/cutlass_extensions",
+      "accessCount": 2,
+      "lastAccessed": 1772497097632,
+      "type": "directory"
+    },
+    {
+      "path": "tests/unittest/_torch/modules/moe/quantize_utils.py",
+      "accessCount": 2,
+      "lastAccessed": 1772501024411,
+      "type": "directory"
+    },
+    {
+      "path": "cpp",
+      "accessCount": 2,
+      "lastAccessed": 1772506893496,
+      "type": "directory"
+    },
+    {
+      "path": "tensorrt_llm/_torch/modules/fused_moe/fused_moe_triton.py",
+      "accessCount": 1,
+      "lastAccessed": 1772501056624,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 1,
+      "lastAccessed": 1772506892296,
+      "type": "directory"
+    },
+    {
+      "path": "tests/unittest/_torch/modules",
+      "accessCount": 1,
+      "lastAccessed": 1772507449485,
+      "type": "directory"
+    },
+    {
+      "path": "tests/unittest/_torch/modules/moe/test_moe_module.py",
+      "accessCount": 1,
+      "lastAccessed": 1772507455948,
+      "type": "file"
+    },
+    {
+      "path": "cpp/tests/unit_tests/kernels/mixtureOfExpertsTest.cu",
+      "accessCount": 1,
+      "lastAccessed": 1772510136022,
+      "type": "directory"
+    },
+    {
+      "path": "cpp/tensorrt_llm/kernels",
+      "accessCount": 1,
+      "lastAccessed": 1772513225738,
       "type": "directory"
     }
   ],

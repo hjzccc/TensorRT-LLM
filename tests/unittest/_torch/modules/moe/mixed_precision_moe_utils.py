@@ -35,7 +35,7 @@ from tensorrt_llm._torch.modules.fused_moe.fused_moe_mixed_precision import (
     FusedMixedPrecisionMoE,
 )
 from tensorrt_llm.mapping import Mapping
-from tensorrt_llm.models.modeling_utils import QuantAlgo
+from tensorrt_llm.models.modeling_utils import QuantAlgo, QuantConfig
 
 
 # ---------------------------------------------------------------------------
@@ -371,6 +371,63 @@ def create_bf16_reference_backend(
         init_load_balancer=False,
     )
     backend.load_weights([copy.deepcopy(weights)])
+    backend.post_load_weights()
+    backend.cuda()
+    return backend
+
+
+def create_nvfp4_reference_backend(
+    routing_method: RenormalizeMoeRoutingMethod,
+    mapping: Mapping,
+    num_experts: int,
+    hidden_size: int,
+    intermediate_size: int,
+    dtype: torch.dtype,
+    fp4_weights: Dict[str, torch.Tensor],
+) -> CutlassFusedMoE:
+    """Create a pure NVFP4 CutlassFusedMoE backend as reference.
+
+    This serves as ground truth for the all-fp4 case: all experts run in NVFP4
+    through the standard CUTLASS NVFP4 path.
+    """
+    import os
+
+    from transformers.configuration_utils import PretrainedConfig
+
+    from tensorrt_llm._torch.model_config import ModelConfig
+    from tensorrt_llm._torch.modules.fused_moe.create_moe import (
+        create_moe_backend,
+    )
+
+    os.environ["ENABLE_CONFIGURABLE_MOE"] = "0"
+
+    pretrained_config = PretrainedConfig()
+    pretrained_config.num_experts = num_experts
+    pretrained_config.hidden_size = hidden_size
+    pretrained_config.intermediate_size = intermediate_size
+    pretrained_config.torch_dtype = dtype
+
+    quant_config = QuantConfig(quant_algo=QuantAlgo.NVFP4)
+
+    model_config = ModelConfig(
+        pretrained_config=pretrained_config,
+        mapping=mapping,
+        quant_config=quant_config,
+        moe_backend="CUTLASS",
+    )
+
+    backend = create_moe_backend(
+        moe_cls=CutlassFusedMoE,
+        routing_method=routing_method,
+        num_experts=num_experts,
+        hidden_size=hidden_size,
+        intermediate_size=intermediate_size,
+        dtype=dtype,
+        reduce_results=True,
+        model_config=model_config,
+        init_load_balancer=False,
+    )
+    backend.load_weights([copy.deepcopy(fp4_weights)])
     backend.post_load_weights()
     backend.cuda()
     return backend

@@ -39,6 +39,7 @@ from _torch.modules.moe.mixed_precision_moe_utils import (
     SMALL_TOP_K,
     create_bf16_reference_backend,
     create_fused_mixed_precision_module,
+    create_nvfp4_reference_backend,
     create_unquantized_weights,
     flush_l2_cache,
     mixed_precision_supported,
@@ -288,16 +289,17 @@ class TestMixedPrecisionForwardEquivalence:
                 fp4_weights=fp4_weights,
             )
 
-            # Run both
+            # Run both (with sync points to isolate async CUDA errors)
             ref_out = run_reference_forward(
                 ref_backend, x, router_logits, all_rank_num_tokens
             )
+            torch.cuda.synchronize()  # DEBUG: catch errors from reference forward
+            print("Reference output:", ref_out)
             fused_out = run_mixed_precision_forward(
                 fused_module, x, router_logits, routing_method
             )
-
+            torch.cuda.synchronize()  # DEBUG: catch errors from mixed-precision forward
             print("Fused mixed-precision output:", fused_out)
-            print("Reference output:", ref_out)
 
             # When all experts are bf16, outputs should be very close.
             # BF16 accumulation order may differ, so allow ~2 ULP tolerance.
@@ -392,15 +394,17 @@ class TestMixedPrecisionForwardEquivalence:
                 )
 
     @pytest.mark.parametrize("dtype", [torch.bfloat16], ids=lambda val: f"dtype={val}")
-    def test_all_fp4_runs_without_error(self, dtype):
-        """When all experts are fp4 (num_high_precision=0), the kernel should not crash.
+    def test_all_fp4_matches_nvfp4_reference(self, dtype):
+        """When all experts are fp4, fused mixed-prec should match pure NVFP4 CutlassFusedMoE.
 
         Mental experiment:
-          bf16 group is empty. Only fp4 group runs.
-          The sortExpertsByTokenCount assigns all precision=0.
+          num_high_precision_experts = 0 → all experts in fp4 group.
+          The sortExpertsByTokenCount assigns all experts precision=0.
           expandInputRowsMixedPrecision quantizes everything to fp4.
           Only fp4_runner->gemm1() and fp4_runner->gemm2() are called.
           bf16 gemm calls see 0 tokens and early-exit.
+          The output should match the standard CUTLASS NVFP4 backend
+          (which runs the same fp4 weights through CutlassFusedMoE with QuantAlgo.NVFP4).
         """
         seq_len = 8
         top_k = 2
@@ -409,15 +413,22 @@ class TestMixedPrecisionForwardEquivalence:
         intermediate_size = SMALL_INTER_SIZE
         num_high_precision = 0  # ALL fp4
 
-        with torch.device("cuda:0"):
+        mapping = Mapping()
+        mapping.rank = mpi_rank()
+        all_rank_num_tokens = [seq_len] * mapping.world_size
+
+        with torch.device(f"cuda:{mapping.rank}"):
             torch.manual_seed(42)
             torch.cuda.manual_seed(42)
+
+            routing_method = RenormalizeMoeRoutingMethod(top_k=top_k)
 
             x = torch.randn((seq_len, hidden_size), dtype=dtype, device="cuda")
             router_logits = torch.randn(
                 (seq_len, num_experts), dtype=dtype, device="cuda"
             )
 
+            # Create bf16 weights (needed for bf16 slot even though unused)
             bf16_weights = create_unquantized_weights(
                 num_experts=num_experts,
                 hidden_size=hidden_size,
@@ -425,10 +436,23 @@ class TestMixedPrecisionForwardEquivalence:
                 dtype=dtype,
             )
 
+            # Quantize the bf16 weights to fp4
             fp4_weights = quantize_bf16_to_nvfp4(
                 bf16_weights, num_experts, hidden_size, intermediate_size, dtype, x
             )
 
+            # Create pure NVFP4 CutlassFusedMoE reference backend
+            ref_backend = create_nvfp4_reference_backend(
+                routing_method=routing_method,
+                mapping=mapping,
+                num_experts=num_experts,
+                hidden_size=hidden_size,
+                intermediate_size=intermediate_size,
+                dtype=dtype,
+                fp4_weights=fp4_weights,
+            )
+
+            # Create fused mixed-precision module (all fp4)
             fused_module = create_fused_mixed_precision_module(
                 num_experts=num_experts,
                 hidden_size=hidden_size,
@@ -439,16 +463,28 @@ class TestMixedPrecisionForwardEquivalence:
                 fp4_weights=fp4_weights,
             )
 
-            routing_method = RenormalizeMoeRoutingMethod(top_k=top_k)
-            output = run_mixed_precision_forward(
+            # Run both (with sync points to isolate async CUDA errors)
+            ref_out = run_reference_forward(
+                ref_backend, x, router_logits, all_rank_num_tokens
+            )
+            torch.cuda.synchronize()
+            print("NVFP4 reference output:", ref_out)
+
+            fused_out = run_mixed_precision_forward(
                 fused_module, x, router_logits, routing_method
             )
+            torch.cuda.synchronize()
+            print("Fused mixed-precision (all fp4) output:", fused_out)
 
-            # Just verify no crash and output shape
-            assert output.shape == (seq_len, hidden_size)
-            assert output.dtype == torch.bfloat16
-            assert not torch.isnan(output).any(), "Output contains NaN"
-            assert not torch.isinf(output).any(), "Output contains Inf"
+            # Basic sanity checks
+            assert fused_out.shape == (seq_len, hidden_size)
+            assert fused_out.dtype == torch.bfloat16
+            assert not torch.isnan(fused_out).any(), "Fused output contains NaN"
+            assert not torch.isinf(fused_out).any(), "Fused output contains Inf"
+
+            # Both use the same fp4 weights, so outputs should be close.
+            # Allow some tolerance for accumulation order differences.
+            torch.testing.assert_close(fused_out, ref_out, rtol=0.016, atol=0.016)
 
 
 # ===========================================================================

@@ -921,46 +921,42 @@ public:
             output = torch::empty(output_shape, input.options().dtype(c10::ScalarType::BFloat16));
         }
 
-        // --- Ensure the fp4 runner exists ---
-        // If setRunnerProfiles was called with 4 profile_ids, the fp4 runner is already
-        // created with the correct fp4-specific tactics. Otherwise, create it here.
+        // --- Ensure fp4 runner is ready ---
         ensureFp4Runner();
 
-        // --- Workspace ---
-        WorkspaceInfo const& workspace_info = getMixedPrecWorkspaceInfo(
-            num_rows, hidden_size, inter_size, num_experts_total,
-            experts_per_token, base_activation_type, parallelism_config, stream);
+        // --- Quant params ---
+        auto const bf16_quant_params = kernels::QuantParams{};
+        auto const fp4_quant_params = buildFp4QuantParams(num_experts_on_rank, fp4_quant_scales);
 
-        // --- Build quant params ---
-        // bf16 group: no quantization needed
-        auto const quant_params_bf16 = kernels::QuantParams{};
-        // fp4 group: NVFP4 quantization
-        auto const quant_params_fp4 = buildFp4QuantParams(num_experts_on_rank, fp4_quant_scales);
+        // --- Workspace: take max of bf16 and fp4 runner workspace needs ---
+        bool constexpr min_latency_mode = false;
+        WorkspaceInfo const& workspace_info = getMixedPrecWorkspaceInfo(num_rows, hidden_size, inter_size,
+            num_experts_total, experts_per_token, base_activation_type, parallelism_config, stream);
 
-        // --- Call the fused C++ kernel ---
+        // --- Call the C++ kernel (bf16 runner dispatches to fp4 runner internally) ---
         mKernelRunner->runMixedPrecisionMoe(input.const_data_ptr(),
-            /* input_sf */ nullptr,  // No block scaling for bf16 primary runner
+            /* input_sf */ nullptr,
             /* swizzled_input_sf */ false,
             reinterpret_cast<int const*>(token_selected_experts.const_data_ptr()),
             token_final_scales.has_value()
                 ? reinterpret_cast<float const*>(token_final_scales.value().const_data_ptr())
                 : nullptr,
             fc1_expert_weights_bf16.const_data_ptr(),
-            fc2_expert_weights_bf16.const_data_ptr(),
             fc1_expert_weights_fp4.const_data_ptr(),
-            fc2_expert_weights_fp4.const_data_ptr(),
             fc1_expert_biases.has_value() ? fc1_expert_biases.value().const_data_ptr() : nullptr,
-            fc2_expert_biases.has_value() ? fc2_expert_biases.value().const_data_ptr() : nullptr,
-            quant_params_bf16,
-            quant_params_fp4,
-            static_cast<int>(num_high_precision_experts),
             activation_params,
+            fc2_expert_weights_bf16.const_data_ptr(),
+            fc2_expert_weights_fp4.const_data_ptr(),
+            fc2_expert_biases.has_value() ? fc2_expert_biases.value().const_data_ptr() : nullptr,
+            bf16_quant_params,
+            fp4_quant_params,
             num_rows,
             num_valid_tokens.has_value() ? num_valid_tokens.value() : num_rows,
             hidden_size,
             unpadded_hidden_size_val,
             inter_size,
             num_experts_total,
+            num_high_precision_experts,
             experts_per_token,
             static_cast<char*>(workspace_info.workspace.data_ptr()),
             output.data_ptr(),
@@ -1115,6 +1111,27 @@ private:
                     }
                 }
 
+                // ===== SM120 HARDCODED BF16 TACTIC OVERRIDE =====
+                // When auto-tuner returns -1 on SM120, explicitly construct known-good
+                // bf16 configs instead of relying on profiles.front() fallback.
+                if (!mGemm1Profiles.empty()
+                    && mGemm1Profiles.front().sm_version >= 120
+                    && profile_ids.value()[0] == -1 && profile_ids.value()[1] == -1)
+                {
+                    best_gemm1_profile = cutlass_extensions::CutlassGemmConfig(
+                        cutlass_extensions::CutlassTileConfigSM90::CtaShape64x128x128B,
+                        cutlass_extensions::MainloopScheduleType::WARPSPECIALIZED,
+                        cutlass_extensions::EpilogueScheduleType::TMA,
+                        cutlass_extensions::ClusterShape::ClusterShape_1x1x1);
+                    best_gemm2_profile = best_gemm1_profile;
+                    best_gemm2_profile.epilogue_fusion_type
+                        = cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE;
+                    TLLM_LOG_WARNING(
+                        "[MixedPrecisionMoE] SM90 hardcoded BF16 tactics applied (auto-tuner returned -1). "
+                        "GEMM1: CtaShape64x128x128B/1x1x1/TMA/NONE, "
+                        "GEMM2: CtaShape64x128x128B/1x1x1/TMA/FINALIZE");
+                }
+
                 // ===== SM120 HARDCODED FP4 TACTIC OVERRIDE =====
                 // When auto-tuner returns -1 on SM120, explicitly construct known-good
                 // FP4 configs instead of relying on profiles.front() fallback.
@@ -1184,16 +1201,22 @@ private:
     }
 
     /**
-     * NEW: Workspace management for mixed-precision MoE.
-     * Calls getMixedPrecisionWorkspaceSize() on the primary runner.
-     * Layout: [mixed_prec_workspace | src_to_dest_map]
+     * Workspace management for mixed-precision MoE.
+     * Takes the max of bf16 and fp4 runner workspace sizes to ensure
+     * the buffer is large enough for whichever runner executes.
+     * Layout: [moe_workspace | src_to_dest_map]
      */
     WorkspaceInfo const& getMixedPrecWorkspaceInfo(int64_t const num_rows, int64_t const hidden_size,
         int64_t const inter_size, int num_experts, int experts_per_token, ActivationType activation_type,
         kernels::MOEParallelismConfig const& parallelismConfig, cudaStream_t stream)
     {
-        size_t moe_workspace_size = mKernelRunner->getMixedPrecisionWorkspaceSize(
-            num_rows, hidden_size, inter_size, num_experts, experts_per_token, activation_type, parallelismConfig);
+        size_t bf16_ws = mKernelRunner->getWorkspaceSize(num_rows, hidden_size, inter_size, num_experts,
+            experts_per_token, activation_type, parallelismConfig, /* use_lora */ false, mUseDeepSeekFP8BlockScaling,
+            /* min_latency_mode */ false, mUseW4GroupScaling);
+        size_t fp4_ws = mFp4Runner ? mFp4Runner->getWorkspaceSize(num_rows, hidden_size, inter_size, num_experts,
+            experts_per_token, activation_type, parallelismConfig, /* use_lora */ false, false,
+            /* min_latency_mode */ false, false) : 0;
+        size_t moe_workspace_size = std::max(bf16_ws, fp4_ws);
         size_t src_to_dest_map_size = experts_per_token * num_rows * sizeof(int);
         auto& workspace_info = mMixedPrecStreamWorkspaces[stream];
 

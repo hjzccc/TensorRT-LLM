@@ -1415,6 +1415,35 @@ __global__ void computeStridesTmaWarpSpecializedKernel(int64_t const* expert_fir
     auto const num_tokens_to_expert = num_tokens_including_expert - num_tokens_before_expert;
     auto const gemm_m = num_tokens_to_expert;
 
+    // Skip experts with no tokens assigned (e.g., experts the router didn't select,
+    // or experts belonging to the other precision group in mixed-precision MoE).
+    // We must NOT compute pointers for these experts: the activation/output buffers
+    // are sized for the group's valid token count, so pointer arithmetic with
+    // num_tokens_before_expert would land at or past the buffer boundary.
+    // TMA hardware may validate descriptors even for M=0 tiles, causing illegal
+    // memory access faults. Setting problem shapes to {0,0,0} tells CUTLASS to
+    // skip this expert entirely.
+    if (gemm_m == 0)
+    {
+        layout_info1.shape_info.problem_shapes[expert]
+            = TmaWarpSpecializedGroupedGemmInput::ProblemShape::UnderlyingProblemShape(0, 0, 0);
+        layout_info2.shape_info.problem_shapes[expert]
+            = TmaWarpSpecializedGroupedGemmInput::ProblemShape::UnderlyingProblemShape(0, 0, 0);
+        if (layout_info1.int4_groupwise_params.enabled)
+        {
+            layout_info1.int4_groupwise_params.shape.problem_shapes[expert]
+                = TmaWarpSpecializedGroupedGemmInput::INT4GroupwiseParams::ProblemShapeInt::UnderlyingProblemShape(
+                    0, 0, 0);
+        }
+        if (layout_info2.int4_groupwise_params.enabled)
+        {
+            layout_info2.int4_groupwise_params.shape.problem_shapes[expert]
+                = TmaWarpSpecializedGroupedGemmInput::INT4GroupwiseParams::ProblemShapeInt::UnderlyingProblemShape(
+                    0, 0, 0);
+        }
+        return;
+    }
+
     // M and N transposed since we are using the #tokens as the N dimension
     layout_info1.shape_info.problem_shapes[expert]
         = TmaWarpSpecializedGroupedGemmInput::ProblemShape::UnderlyingProblemShape(
@@ -5095,432 +5124,371 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
     }
 }
 
+// ======================================================================================
+// scatterAddMixedPrecFinalizeKernel: Non-TMA-WS finalize for mixed-precision BF16 GEMM2.
+//
+// On SM120 (Blackwell), the BF16 MoE GEMM runner does NOT support TMA warp-specialized
+// kernels (only FP4×FP4 and FP8×FP4 are valid SM120 TMA WS specializations).
+// This means the BF16 GEMM2 output is at GROUP-LOCAL permuted indices and cannot use
+// the TMA WS fused finalize epilogue. Instead, this kernel performs the finalize step:
+//   (1) For each group-local permuted row, look up the original token index,
+//   (2) Scale by the router weight,
+//   (3) Add expert bias (if present),
+//   (4) Atomically add the contribution to the shared final_output buffer.
+//
+// Requires SM90+ for atomicAdd on __nv_bfloat16. Guarded by __CUDA_ARCH__ >= 900.
+// ======================================================================================
+template <typename OutputType, typename GemmOutputType, typename ScaleBiasType>
+__global__ void scatterAddMixedPrecFinalizeKernel(
+    GemmOutputType const* __restrict__ group_gemm2_output,
+    OutputType* __restrict__ final_output,
+    ScaleBiasType const* __restrict__ bias,
+    float const* __restrict__ group_permuted_scales,
+    int const* __restrict__ group_permuted_row_to_unpermuted,
+    int64_t const* __restrict__ group_expert_first_token_offset,
+    int64_t group_valid_tokens,
+    int64_t num_rows,
+    int64_t hidden_size,
+    int64_t unpadded_hidden_size,
+    int num_experts_per_node)
+{
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900))
+    int64_t const group_row = blockIdx.x;
+    if (group_row >= group_valid_tokens)
+        return;
+
+    // Map group-local permuted row back to original token index.
+    // group_permuted_row_to_unpermuted stores: unpermuted_idx = token_row * experts_per_token + expert_slot
+    // We need just the token row: token_row = unpermuted_idx / experts_per_token.
+    // But we don't have experts_per_token here — instead, unpermuted_idx % num_rows gives the token row
+    // because unpermuted indices are laid out as [token0_expert0, token1_expert0, ..., tokenN_expert0,
+    // token0_expert1, ...], i.e., the row index into the expanded (num_rows * experts_per_token) table.
+    int64_t const unpermuted_idx = group_permuted_row_to_unpermuted[group_row];
+    int64_t const token_row = unpermuted_idx % num_rows;
+
+    float const scale = group_permuted_scales[group_row];
+
+    auto const* input_row = group_gemm2_output + group_row * hidden_size;
+    auto* output_row = final_output + token_row * unpadded_hidden_size;
+
+    // Determine which expert this row belongs to, for bias lookup.
+    ScaleBiasType const* bias_row = nullptr;
+    if (bias)
+    {
+        // Binary search would be cleaner, but num_experts_per_node is small (typically 8-64).
+        int expert_id = num_experts_per_node - 1;
+        for (int e = 0; e < num_experts_per_node; ++e)
+        {
+            if (group_row < group_expert_first_token_offset[e + 1])
+            {
+                expert_id = e;
+                break;
+            }
+        }
+        bias_row = bias + expert_id * hidden_size;
+    }
+
+    // Each thread handles a slice of columns. Scale, add bias, and atomically accumulate.
+    for (int64_t col = threadIdx.x; col < unpadded_hidden_size; col += blockDim.x)
+    {
+        float val = static_cast<float>(input_row[col]) * scale;
+        if (bias_row)
+        {
+            val += static_cast<float>(bias_row[col]);
+        }
+        atomicAdd(output_row + col, static_cast<OutputType>(__float2bfloat16_rn(val)));
+    }
+#else
+    // This kernel is only valid on SM90+. On older architectures, mixed-precision MoE
+    // with non-TMA-WS BF16 GEMM2 is not supported.
+    (void)group_gemm2_output;
+    (void)final_output;
+    (void)bias;
+    (void)group_permuted_scales;
+    (void)group_permuted_row_to_unpermuted;
+    (void)group_expert_first_token_offset;
+    (void)group_valid_tokens;
+    (void)num_rows;
+    (void)hidden_size;
+    (void)unpadded_hidden_size;
+    (void)num_experts_per_node;
+#endif
+}
+
+template <typename OutputType, typename GemmOutputType, typename ScaleBiasType>
+void scatterAddMixedPrecFinalizeLauncher(
+    GemmOutputType const* group_gemm2_output,
+    OutputType* final_output,
+    ScaleBiasType const* bias,
+    float const* group_permuted_scales,
+    int const* group_permuted_row_to_unpermuted,
+    int64_t const* group_expert_first_token_offset,
+    int64_t group_valid_tokens,
+    int64_t num_rows,
+    int64_t hidden_size,
+    int64_t unpadded_hidden_size,
+    int num_experts_per_node,
+    cudaStream_t stream)
+{
+    if (group_valid_tokens <= 0)
+        return;
+    int const threads = FINALIZE_THREADS_PER_BLOCK;
+    int const blocks = static_cast<int>(group_valid_tokens);
+    scatterAddMixedPrecFinalizeKernel<<<blocks, threads, 0, stream>>>(
+        group_gemm2_output, final_output, bias,
+        group_permuted_scales, group_permuted_row_to_unpermuted,
+        group_expert_first_token_offset, group_valid_tokens,
+        num_rows, hidden_size, unpadded_hidden_size, num_experts_per_node);
+}
+
 template <class T, class WeightType, class OutputType, class InputType, class BackBoneType, class Enable>
-// ======================================================================================
-// runMixedPrecisionMoe: Fused mixed-precision Mixture-of-Experts forward pass.
-//
-// OVERVIEW:
-//   In standard MoE, all experts use the same numerical precision. This function implements
-//   a "mixed-precision" variant where the top-N most loaded ("hot") experts run in BF16 for
-//   quality, while the remaining ("cold") experts run in NVFP4 for throughput. This is motivated
-//   by the observation that a small number of experts handle most tokens (following a power-law
-//   distribution), so running them in higher precision has disproportionate impact on quality.
-//
-// EXECUTION PIPELINE (6 steps):
-//   Step 0: Configure workspace pointers and build expert routing maps (token-to-expert assignment).
-//   Step 1: Sort experts by token count, assign top-N to BF16 group and rest to FP4 group.
-//           Build per-group expert_first_token_offset arrays.
-//   Step 2: Expand (permute) input activations into two separate buffers:
-//           - BF16 buffer: direct copy of rows routed to BF16 experts.
-//           - FP4 buffer: rows routed to FP4 experts, quantized to NVFP4 with scaling factors.
-//   Step 3: Run GEMM1 (FC1: hidden_size -> inter_size*2 for gated activations) independently
-//           for each group. BF16 group uses this->gemm1(), FP4 group uses fp4_runner->gemm1().
-//           Both write their GLU intermediate results into a shared contiguous buffer:
-//           [bf16_rows | fp4_rows] so the activation kernel can process them in one launch.
-//   Step 4: Fused activation (SwiGLU/GeGLU) over the contiguous GLU buffer.
-//           - Rows [0, bf16_count): SwiGLU -> BF16 activation output for BF16 GEMM2.
-//           - Rows [bf16_count, total): SwiGLU + NVFP4 quantize -> FP4 output + scaling factors.
-//   Step 5: Zero-initialize final_output, then run GEMM2 (FC2: inter_size -> hidden_size)
-//           for each group sequentially on the same stream. Both use fused-finalize epilogues
-//           that atomically accumulate (SM90_RED_ADD_BF16x2) un-permuted, router-scaled results
-//           directly into the shared final_output buffer.
-//
-// KEY DESIGN DECISIONS:
-//   - Two separate runners: `this` (BF16 runner) and `fp4_runner` (FP4 runner), because they
-//     need different CUTLASS kernels with different type parameters.
-//   - Sequential GEMM2 on same stream (not parallel) because both groups atomically accumulate
-//     into the same zero-initialized output buffer. Stream ordering prevents races.
-//   - Fused finalize in GEMM2 epilogue (Sm90ScatterPtrArray) avoids a separate finalizeMoeRouting
-//     kernel — it un-permutes rows and applies router scales inside the GEMM2 epilogue itself.
-//   - Only supports gated activations (SwiGLU/GeGLU) because the contiguous GLU buffer layout
-//     depends on the gated activation producing 2x inter_size output from GEMM1.
-//   - Only supports BF16 backbone type (template guard enforced at compile time).
-// ======================================================================================
 void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::runMixedPrecisionMoe(
     void const* input_activations_void, void const* input_sf_void, bool const swizzled_input_sf,
-    int const* token_selected_experts, float const* token_final_scales, void const* fc1_expert_weights_bf16_void,
-    void const* fc2_expert_weights_bf16_void, void const* fc1_expert_weights_fp4_void,
-    void const* fc2_expert_weights_fp4_void, void const* fc1_expert_biases_void, void const* fc2_expert_biases_void,
-    QuantParams quant_params_bf16, QuantParams quant_params_fp4, int const num_high_precision_experts,
-    ActivationParams fc1_activation_type, int64_t const num_rows, int64_t const num_valid_rows,
-    int64_t const hidden_size, int64_t const unpadded_hidden_size, int64_t const inter_size,
-    int const full_num_experts, int const experts_per_token, char* workspace_ptr, void* final_output_void,
-    int* unpermuted_row_to_permuted_row, MOEParallelismConfig parallelism_config, bool const enable_alltoall,
+    int const* token_selected_experts, float const* token_final_scales,
+    void const* fc1_expert_weights_bf16_void, void const* fc1_expert_weights_fp4_void,
+    void const* fc1_expert_biases_void, ActivationParams fc1_activation_type,
+    void const* fc2_expert_weights_bf16_void, void const* fc2_expert_weights_fp4_void,
+    void const* fc2_expert_biases_void,
+    QuantParams bf16_quant_params, QuantParams fp4_quant_params,
+    int64_t const num_rows, int64_t const num_valid_rows,
+    int64_t const hidden_size, int64_t const unpadded_hidden_size, int64_t const inter_size, int const full_num_experts,
+    int const num_high_precision_experts, int const experts_per_token,
+    char* workspace_ptr, void* final_output_void, int* unpermuted_row_to_permuted_row,
+    MOEParallelismConfig parallelism_config, bool const enable_alltoall,
     CutlassMoeFCRunnerInterface* fp4_runner, cudaStream_t stream)
 {
-#if !defined(ENABLE_BF16) || !defined(ENABLE_FP4)
-    TLLM_THROW("runMixedPrecisionMoe requires ENABLE_BF16 and ENABLE_FP4");
-#else
-    if constexpr (!std::is_same_v<T, __nv_bfloat16> || !std::is_same_v<WeightType, __nv_bfloat16>)
+    int const num_experts_per_node = full_num_experts / parallelism_config.ep_size;
+    bool const all_fp4 = (num_high_precision_experts == 0);
+
+    // --- Dispatch: if all fp4, delegate to the fp4-typed runner via runMoe ---
+    if (all_fp4 && fp4_runner)
     {
-        TLLM_THROW(
-            "runMixedPrecisionMoe is only implemented for CutlassMoeFCRunner<__nv_bfloat16, __nv_bfloat16>");
-    }
-    else
-    {
-        // --- Unsupported feature flags (mixed-precision path does not support LoRA or min-latency mode) ---
-        bool constexpr use_lora = false;
-        bool constexpr min_latency_mode = false;
-        static_cast<void>(input_sf_void);    // input scaling factors unused in BF16 backbone
-        static_cast<void>(swizzled_input_sf); // (only relevant for FP8 input quantization)
-        TLLM_CHECK(!use_lora);
-        TLLM_CHECK(!min_latency_mode);
-
-        // --- Precondition checks: validate all required pointers and configs ---
-        TLLM_CHECK(input_activations_void);
-        TLLM_CHECK(token_selected_experts);       // [num_rows * experts_per_token]: router's expert selection
-        TLLM_CHECK(workspace_ptr);                // pre-allocated workspace for all intermediate buffers
-        TLLM_CHECK(final_output_void);             // [num_rows x unpadded_hidden_size]: accumulated output
-        TLLM_CHECK(unpermuted_row_to_permuted_row);// reverse mapping for finalization
-        TLLM_CHECK(fp4_runner);                    // separate CutlassMoeFCRunner<fp4,fp4,bf16> for FP4 GEMMs
-        TLLM_CHECK(fc1_expert_weights_bf16_void);  // FC1 weights for BF16 experts
-        TLLM_CHECK(fc2_expert_weights_bf16_void);  // FC2 weights for BF16 experts
-        TLLM_CHECK(fc1_expert_weights_fp4_void);   // FC1 weights for FP4 experts (pre-quantized NVFP4)
-        TLLM_CHECK(fc2_expert_weights_fp4_void);   // FC2 weights for FP4 experts (pre-quantized NVFP4)
-        TLLM_CHECK_WITH_INFO(gemm1_config_, "MOE GEMM1 Config is not set");
-        TLLM_CHECK_WITH_INFO(gemm2_config_, "MOE GEMM2 Config is not set");
-        TLLM_CHECK_WITH_INFO(isGatedActivation(fc1_activation_type.activation_type),
-            "runMixedPrecisionMoe currently supports only gated activations");
-
-        // ===== Step 0a: Expert Parallelism (EP) partitioning =====
-        // When using expert parallelism, each node owns a contiguous slice of experts.
-        // E.g., with 256 experts across 8 EP nodes: node 0 owns experts [0,32), node 1 owns [32,64), etc.
-        int const ep_size = parallelism_config.ep_size;
-        TLLM_CHECK_WITH_INFO(full_num_experts % ep_size == 0, "Number of experts must be a multiple of ep size");
-        int const num_experts_per_node = full_num_experts / ep_size;
-        int const start_expert = num_experts_per_node * parallelism_config.ep_rank;
-        int const end_expert = start_expert + num_experts_per_node;
-
-        // ===== Step 0b: Configure workspace memory layout =====
-        // Partitions the pre-allocated workspace_ptr into named sub-buffers for all intermediate
-        // data: permutation maps, expanded inputs (bf16 + fp4), GEMM outputs, activation outputs,
-        // scaling factors, TMA descriptors, etc. See configureWsPtrsMixedPrecision() for full layout.
-        configureWsPtrsMixedPrecision(workspace_ptr, num_rows, hidden_size, inter_size, num_experts_per_node,
-            experts_per_token, fc1_activation_type.activation_type, parallelism_config);
-
-        // ===== Step 0c: Build expert routing maps =====
-        // From the router's token_selected_experts, build:
-        //   - permuted_row_to_unpermuted_row_: for each permuted position, the original (token, k) index
-        //   - expert_first_token_offset_: [E+1] cumulative token counts, so expert e owns permuted
-        //     rows in range [expert_first_token_offset_[e], expert_first_token_offset_[e+1])
-        // First try a fused single-kernel path; fall back to the 3-step version if unavailable.
-        bool fused_prologue_result = fusedBuildExpertMapsSortFirstToken(token_selected_experts,
-            permuted_row_to_unpermuted_row_, unpermuted_row_to_permuted_row, expert_first_token_offset_, num_rows,
-            num_experts_per_node, experts_per_token, start_expert, end_expert, stream);
-        if (!fused_prologue_result)
+        // DEBUG: print inputs to all-fp4 runMoe
         {
-            threeStepBuildExpertMapsSortFirstToken(token_selected_experts, permuted_token_selected_experts_,
-                permuted_row_to_unpermuted_row_,
-                unpermuted_row_to_permuted_row, expert_first_token_offset_, blocked_expert_counts_,
-                blocked_expert_counts_cumsum_, blocked_row_to_unpermuted_row_, num_rows, num_experts_per_node,
-                experts_per_token, start_expert, stream);
+            TLLM_LOG_WARNING("[MixedPrecMoE] all_fp4 runMoe inputs:");
+            TLLM_LOG_WARNING("  num_rows=%ld, num_valid_rows=%ld, hidden_size=%ld, inter_size=%ld",
+                (long)num_rows, (long)num_valid_rows, (long)hidden_size, (long)inter_size);
+            TLLM_LOG_WARNING("  full_num_experts=%d, experts_per_token=%ld, unpadded_hidden_size=%ld",
+                full_num_experts, (long)experts_per_token, (long)unpadded_hidden_size);
+            TLLM_LOG_WARNING("  input_activations=%p, fc1_weights_fp4=%p, fc2_weights_fp4=%p",
+                input_activations_void, fc1_expert_weights_fp4_void, fc2_expert_weights_fp4_void);
+            TLLM_LOG_WARNING("  fc1_biases=%p, fc2_biases=%p, final_output=%p",
+                fc1_expert_biases_void, fc2_expert_biases_void, final_output_void);
+
+            // Print first few elements of input activations (as bf16)
+            int const print_n = 8;
+            {
+                std::vector<__nv_bfloat16> tmp(print_n);
+                cudaMemcpy(tmp.data(), input_activations_void, print_n * sizeof(__nv_bfloat16), cudaMemcpyDeviceToHost);
+                std::string s = "  input[0..7]: ";
+                for (int i = 0; i < print_n; i++) {
+                    if (i > 0) s += ", ";
+                    s += std::to_string(__bfloat162float(tmp[i]));
+                }
+                TLLM_LOG_WARNING("%s", s.c_str());
+            }
+
+            // Print first few elements of fp4 weights (as raw int64)
+            {
+                std::vector<int64_t> tmp(print_n);
+                cudaMemcpy(tmp.data(), fc1_expert_weights_fp4_void, print_n * sizeof(int64_t), cudaMemcpyDeviceToHost);
+                std::string s = "  fc1_fp4_weights[0..7] (int64): ";
+                for (int i = 0; i < print_n; i++) {
+                    if (i > 0) s += ", ";
+                    s += std::to_string(tmp[i]);
+                }
+                TLLM_LOG_WARNING("%s", s.c_str());
+            }
+
+            // Print token_selected_experts
+            {
+                int const total = std::min((int)(num_rows * experts_per_token), print_n);
+                std::vector<int> tmp(total);
+                cudaMemcpy(tmp.data(), token_selected_experts, total * sizeof(int), cudaMemcpyDeviceToHost);
+                std::string s = "  token_selected_experts[0.." + std::to_string(total - 1) + "]: ";
+                for (int i = 0; i < total; i++) {
+                    if (i > 0) s += ", ";
+                    s += std::to_string(tmp[i]);
+                }
+                TLLM_LOG_WARNING("%s", s.c_str());
+            }
+
+            // Print token_final_scales
+            {
+                int const total = std::min((int)(num_rows * experts_per_token), print_n);
+                std::vector<float> tmp(total);
+                cudaMemcpy(tmp.data(), token_final_scales, total * sizeof(float), cudaMemcpyDeviceToHost);
+                std::string s = "  token_final_scales[0.." + std::to_string(total - 1) + "]: ";
+                for (int i = 0; i < total; i++) {
+                    if (i > 0) s += ", ";
+                    s += std::to_string(tmp[i]);
+                }
+                TLLM_LOG_WARNING("%s", s.c_str());
+            }
         }
-        sync_check_cuda_error(stream);
 
-        // ===== Step 1: Assign precision groups (BF16 vs FP4) based on token load =====
-        // Counts tokens per expert from expert_first_token_offset_, picks the top
-        // num_high_precision_experts by token count and assigns them to BF16 (precision=1).
-        // The rest get FP4 (precision=0). Also builds per-group offset arrays:
-        //   bf16_expert_first_token_offset[e+1] = cumulative bf16 tokens up to expert e
-        //   fp4_expert_first_token_offset[e+1]  = cumulative fp4 tokens up to expert e
-        // Non-group experts have zero-width intervals (cumsum stays flat).
-        sortExpertsByTokenCount(expert_first_token_offset_, num_experts_per_node, num_high_precision_experts,
-            mixed_prec_state_.expert_precision_assignment, mixed_prec_state_.bf16_expert_indices,
-            mixed_prec_state_.fp4_expert_indices, mixed_prec_state_.bf16_expert_first_token_offset,
-            mixed_prec_state_.fp4_expert_first_token_offset, stream);
-        sync_check_cuda_error(stream);
-
-        // Read back total token counts for each precision group from device to host.
-        // The last element of each per-group offset array holds the total count.
-        // These host-side counts are needed for: (1) skipping empty groups entirely,
-        // (2) computing the GLU buffer split point for the fused activation kernel.
-        int64_t bf16_num_valid_tokens = 0;
-        int64_t fp4_num_valid_tokens = 0;
-        check_cuda_error(cudaMemcpyAsync(&bf16_num_valid_tokens,
-            mixed_prec_state_.bf16_expert_first_token_offset + num_experts_per_node, sizeof(int64_t),
-            cudaMemcpyDeviceToHost, stream));
-        check_cuda_error(cudaMemcpyAsync(&fp4_num_valid_tokens,
-            mixed_prec_state_.fp4_expert_first_token_offset + num_experts_per_node, sizeof(int64_t),
-            cudaMemcpyDeviceToHost, stream));
-        sync_check_cuda_error(stream);  // must sync before using host values
-        mixed_prec_state_.bf16_token_count = bf16_num_valid_tokens;
-        mixed_prec_state_.fp4_token_count = fp4_num_valid_tokens;
-
-        // ===== Step 2: Expand (permute) input activations into dual precision buffers =====
-        // Iterates over all permuted token positions and, based on expert_precision_assignment:
-        //   - BF16 expert rows: direct copy to bf16_expanded_data_ (BF16 format)
-        //   - FP4 expert rows:  quantize to NVFP4 and write to fp4_expanded_data_ with scaling factors
-        // Also builds per-group permuted_row_to_unpermuted_row and permuted_scales arrays,
-        // remapping global permuted indices to group-local contiguous indices.
-        auto const* input_activations = static_cast<InputType const*>(input_activations_void);
-
-        expandInputRowsMixedPrecisionKernelLauncher(input_activations, bf16_expanded_data_, fp4_expanded_data_,
-            bf16_permuted_row_to_unpermuted_row_, fp4_permuted_row_to_unpermuted_row_, token_final_scales,
-            bf16_permuted_scales_, fp4_permuted_scales_, fp4_expanded_sf_, permuted_row_to_unpermuted_row_,
-            mixed_prec_state_.expert_precision_assignment, expert_first_token_offset_,
-            mixed_prec_state_.bf16_expert_first_token_offset, mixed_prec_state_.fp4_expert_first_token_offset, num_rows,
-            hidden_size, experts_per_token, num_experts_per_node, quant_params_fp4.fp4.fc1.act_global_scale,
-            quant_params_fp4.fp4.fc1.use_per_expert_act_scale, stream);
-        sync_check_cuda_error(stream);
-
-        // --- Derived dimensions used by GEMM1 and GEMM2 ---
-        int64_t const expanded_num_rows = num_rows * experts_per_token;  // total permuted rows across all experts
-        int64_t const expected_tokens_per_expert                         // average tokens per expert (for CUTLASS hints)
-            = (num_valid_rows * experts_per_token + full_num_experts - 1) / full_num_experts;
-        int64_t const fc1_out_size = isGatedActivation(fc1_activation_type.activation_type) ? inter_size * 2 : inter_size;
-
-        // Device pointers to the total valid token counts (last element of per-group offset arrays).
-        // Used by CUTLASS grouped GEMM to know the total problem size on-device without host readback.
-        int64_t const* bf16_num_valid_tokens_ptr = mixed_prec_state_.bf16_expert_first_token_offset + num_experts_per_node;
-        int64_t const* fp4_num_valid_tokens_ptr = mixed_prec_state_.fp4_expert_first_token_offset + num_experts_per_node;
-
-        // Cast bias and output pointers to concrete types.
-        auto const* fc1_biases = static_cast<ScaleBiasType const*>(fc1_expert_biases_void);
-        auto const* fc2_biases = static_cast<ScaleBiasType const*>(fc2_expert_biases_void);
-        auto const* fc2_bias_rank0 = parallelism_config.tp_rank == 0 ? fc2_biases : nullptr;  // only rank 0 adds bias
+        LoraParams dummy_lora{};
+        MoeMinLatencyParams dummy_min_latency{};
+        fp4_runner->runMoe(
+            input_activations_void, input_sf_void, swizzled_input_sf,
+            token_selected_experts, token_final_scales,
+            fc1_expert_weights_fp4_void,
+            fc1_expert_biases_void, fc1_activation_type,
+            fc2_expert_weights_fp4_void,
+            fc2_expert_biases_void,
+            fp4_quant_params,
+            num_rows, num_valid_rows, hidden_size, unpadded_hidden_size, inter_size,
+            full_num_experts, experts_per_token,
+            workspace_ptr, final_output_void, unpermuted_row_to_permuted_row,
+            parallelism_config, enable_alltoall,
+            /*use_lora=*/false, dummy_lora,
+            /*use_deepseek_fp8_block_scale=*/false,
+            /*min_latency_mode=*/false, dummy_min_latency,
+            stream);
         auto* final_output = static_cast<OutputType*>(final_output_void);
 
-        // ===== Step 3a: Configure TMA warp-specialized grouped GEMM descriptors for BF16 group =====
-        // TMA (Tensor Memory Accelerator) warp-specialized kernels are Hopper/Blackwell CUTLASS kernels
-        // that use hardware TMA for efficient global memory access in grouped GEMMs.
-        // Fused finalize is REQUIRED: GEMM2 epilogue atomically un-permutes and accumulates results
-        // directly into final_output, avoiding a separate finalizeMoeRouting kernel.
-        bool const using_tma_ws_gemm2 = moe_gemm_runner_.isTmaWarpSpecialized(*gemm2_config_);
-        // bool const using_fused_finalize = using_tma_ws_gemm2
-        //     && gemm2_config_->epilogue_fusion_type == cutlass_extensions::CutlassGemmConfig::EpilogueFusionType::FINALIZE
-        //     && use_fused_finalize_;
-        bool const using_fused_finalize = true;
-        TLLM_CHECK_WITH_INFO(using_fused_finalize,
-            "runMixedPrecisionMoe currently requires GEMM2 fused finalize on TMA warp-specialized kernels");
-        TLLM_CHECK_WITH_INFO(fp4_runner->getGemmWorkspaceSize(num_experts_per_node) <= mixed_gemm_workspace_size_,
-            "Workspace is insufficient for fp4 runner GEMM workspace %d required, %d provided", (int) fp4_runner->getGemmWorkspaceSize(num_experts_per_node), (int) mixed_gemm_workspace_size_);
-
-        // Configure BF16 GEMM1/GEMM2 TMA descriptors:
-        // - GEMM1 fusion = NONE (raw matrix multiply, activation is applied separately later)
-        // - GEMM2 fusion = FINALIZE (epilogue un-permutes rows, scales by router weights, atomic-adds to output)
-        auto bf16_gemm1_tma_ws_input = tma_ws_grouped_gemm1_input_;
-        auto bf16_gemm2_tma_ws_input = tma_ws_grouped_gemm2_input_;
-        bf16_gemm1_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE;
-        bf16_gemm2_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE;
-        bf16_gemm1_tma_ws_input.swap_ab = gemm1_config_->swap_ab;
-        bf16_gemm2_tma_ws_input.swap_ab = gemm2_config_->swap_ab;
-        // Both precision groups share the same final_output buffer. The fused finalize epilogue
-        // (Sm90ScatterPtrArray) un-permutes rows via ptr_source_token_index, scales by router weights
-        // via ptr_router_scales, and writes to final_output. use_reduction=true forces atomic adds
-        // (SM90_RED_ADD_BF16x2) so that contributions from both groups accumulate correctly —
-        // the buffer is zero-initialized before the two sequential GEMM2 calls.
-        bf16_gemm2_tma_ws_input.setFinalizeFusionParams(
-            final_output, unpadded_hidden_size, num_rows, /*use_reduction=*/true);
-
-        // ===== Step 3b: BF16 GEMM1 (FC1: hidden_size -> inter_size*2) =====
-        // Skip entirely if all experts were assigned to the FP4 group.
-        // computeStridesTmaWarpSpecializedDispatch populates per-expert TMA descriptors (pointers,
-        // strides, scaling factors) into the TMA workspace. Then gemm1() launches the CUTLASS kernel.
-        // Output goes to mixed_prec_glu_inter_result_ (the GLU intermediate buffer,
-        // which will be consumed by the fused activation kernel). skip_activation=true
-        // prevents gemm1 from running doActivation (we use doMixedPrecisionActivation instead).
-        if (bf16_num_valid_tokens > 0)
+        // DEBUG: print first few elements of final_output after all-fp4 runMoe
         {
-            std::tie(bf16_gemm1_tma_ws_input, bf16_gemm2_tma_ws_input)
-                = this->computeStridesTmaWarpSpecializedDispatch(mixed_prec_state_.bf16_expert_first_token_offset,
-                    bf16_gemm1_tma_ws_input, bf16_gemm2_tma_ws_input, num_rows, expanded_num_rows, fc1_out_size, hidden_size,
-                    hidden_size, inter_size, num_experts_per_node, bf16_expanded_data_, bf16_activation_output_,
-                    fc1_expert_weights_bf16_void, fc2_expert_weights_bf16_void, quant_params_bf16.fp8.dequant_fc1,
-                    quant_params_bf16.fp8.dequant_fc2, nullptr, nullptr, quant_params_bf16, nullptr, fc2_bias_rank0,
-                    mixed_prec_glu_inter_result_, gemm2_scratch_, bf16_permuted_scales_,
-                    bf16_permuted_row_to_unpermuted_row_, stream);
-
-            this->gemm1(bf16_expanded_data_, /*output=*/nullptr, mixed_prec_glu_inter_result_,
-                mixed_prec_state_.bf16_expert_first_token_offset, bf16_gemm1_tma_ws_input, fc1_expert_weights_bf16_void,
-                nullptr, bf16_num_valid_tokens_ptr, quant_params_bf16.wo.fc1_weight_scales, quant_params_bf16.fp8.dequant_fc1,
-                quant_params_bf16.fp8.quant_fc2, nullptr, nullptr, quant_params_bf16, num_rows, expanded_num_rows,
-                expected_tokens_per_expert, hidden_size, inter_size, num_experts_per_node, fc1_activation_type,
-                alpha_scale_ptr_array_fc1_, false, false, stream, *gemm1_config_, false, nullptr, nullptr,
-                /*skip_activation=*/true);
             sync_check_cuda_error(stream);
-        }
-
-        // bf16 doActivation removed — replaced by fused doMixedPrecisionActivation below
-
-        // Determine FP4 block scaling type: standard NVFP4 vs MXFP (Microscaling) format.
-        // MXFPX uses block-level scaling defined by the OCP MX specification.
-        auto fp4_scaling_type = TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::NVFP4;
-        if (quant_params_fp4.mxfp8_mxfp4.fc1.weight_block_scale || quant_params_fp4.mxfp8_mxfp4.fc2.weight_block_scale
-            || quant_params_fp4.fp8_mxfp4.fc1.weight_block_scale || quant_params_fp4.fp8_mxfp4.fc2.weight_block_scale)
-        {
-            fp4_scaling_type = TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::MXFPX;
-        }
-
-        // fp4 TMA reconfiguration: use fp4 runner's capabilities.
-        // On SM 120, moe_gemm_runner_ (bf16) has no TMA WS but fp4 runner does.
-        if (mixed_fp4_tma_ws_grouped_gemm1_input_.isValid())
-        {
-            auto workspaces = getWorkspaceDeviceBufferSizesMixedPrecision(num_rows, hidden_size, inter_size,
-                num_experts_per_node, experts_per_token, fc1_activation_type.activation_type);
-            auto* mixed_gemm_workspace = reinterpret_cast<int8_t*>(workspace_ptr + workspaces.at("mixed_gemm_workspace").second);
-            mixed_fp4_tma_ws_grouped_gemm1_input_.configureWorkspace(
-                reinterpret_cast<int8_t*>(workspace_ptr + workspaces.at("mixed_fp4_tma_ws_gemm1_workspace").second),
-                num_experts_per_node, mixed_gemm_workspace, mixed_gemm_workspace_size_, fp4_scaling_type);
-            mixed_fp4_tma_ws_grouped_gemm2_input_.configureWorkspace(
-                reinterpret_cast<int8_t*>(workspace_ptr + workspaces.at("mixed_fp4_tma_ws_gemm2_workspace").second),
-                num_experts_per_node, mixed_gemm_workspace, mixed_gemm_workspace_size_, fp4_scaling_type);
-        }
-
-        // ===== Step 3c: Configure TMA descriptors for FP4 group =====
-        // Same pattern as BF16 above, but using the fp4 runner's GEMM configs.
-        auto fp4_gemm1_tma_ws_input = mixed_fp4_tma_ws_grouped_gemm1_input_;
-        auto fp4_gemm2_tma_ws_input = mixed_fp4_tma_ws_grouped_gemm2_input_;
-        fp4_gemm1_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE;
-        fp4_gemm2_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE;
-        fp4_gemm1_tma_ws_input.swap_ab = fp4_runner->getGemm1Config()->swap_ab;
-        fp4_gemm2_tma_ws_input.swap_ab = fp4_runner->getGemm2Config()->swap_ab;
-        // Same shared final_output and use_reduction=true as bf16 group above.
-        // Sequential launch on the same stream guarantees bf16 GEMM2 completes before fp4 GEMM2,
-        // so the atomic adds from both groups never race.
-        fp4_gemm2_tma_ws_input.setFinalizeFusionParams(
-            final_output, unpadded_hidden_size, num_rows, /*use_reduction=*/true);
-
-        // Compute the FP4 group's GLU intermediate buffer offset within the shared contiguous buffer.
-        // The GLU buffer is laid out as: [bf16_gemm1_out (bf16_count * fc1_out_size) | fp4_gemm1_out (...)]
-        // so BF16 GEMM1 writes to the front and FP4 GEMM1 writes starting at this offset.
-        // This layout lets the fused activation kernel process both groups in a single launch.
-        void* fp4_glu_inter_result = static_cast<int8_t*>(mixed_prec_glu_inter_result_)
-            + bf16_num_valid_tokens * fc1_out_size * sizeof(BackBoneType);
-
-        // ===== Step 3d: FP4 GEMM1 (FC1: hidden_size -> inter_size*2) =====
-        // Same structure as BF16 GEMM1 above, but dispatched through fp4_runner which uses
-        // CUTLASS kernels specialized for NVFP4 weight types. Input is fp4_expanded_data_
-        // (already quantized to FP4 during Step 2), output goes to fp4_glu_inter_result
-        // (the offset portion of the shared GLU buffer).
-        if (fp4_num_valid_tokens > 0)
-        {
-            std::tie(fp4_gemm1_tma_ws_input, fp4_gemm2_tma_ws_input)
-                = fp4_runner->computeStridesTmaWarpSpecializedDispatch(mixed_prec_state_.fp4_expert_first_token_offset,
-                    fp4_gemm1_tma_ws_input, fp4_gemm2_tma_ws_input, num_rows, expanded_num_rows, fc1_out_size, hidden_size,
-                    hidden_size, inter_size, num_experts_per_node, fp4_expanded_data_, fp4_activation_output_,
-                    fc1_expert_weights_fp4_void, fc2_expert_weights_fp4_void, quant_params_fp4.fp8.dequant_fc1,
-                    quant_params_fp4.fp8.dequant_fc2, fp4_expanded_sf_, fp4_gemm2_act_sf_, quant_params_fp4, nullptr,
-                    fc2_bias_rank0, fp4_glu_inter_result, gemm2_scratch_, fp4_permuted_scales_,
-                    fp4_permuted_row_to_unpermuted_row_, stream);
-
-            // ===== FP4 GEMM1 DIAGNOSTIC =====
+            int const print_elems = std::min((int)(num_rows * hidden_size), 16);
+            std::vector<float> host_buf(print_elems);
+            if constexpr (std::is_same_v<OutputType, __nv_bfloat16>)
             {
-                auto const& fp4_g1_cfg = fp4_runner->getGemm1Config().value();
-                TLLM_LOG_WARNING(
-                    "[MixedPrecMoE] FP4 GEMM1: sm=%d, tile=%s, cluster=%s, tma_ws=%d, fusion=%d, swap_ab=%d, "
-                    "fp4_tokens=%ld, hidden=%ld, inter=%ld, num_experts=%d, "
-                    "tma_input_valid=%d, ws_size=%zu, "
-                    "fp4_expanded_data=%p, fp4_expanded_sf=%p",
-                    fp4_g1_cfg.sm_version, fp4_g1_cfg.getTileConfigAsName().c_str(),
-                    cutlass_extensions::get_cluster_shape_name(fp4_g1_cfg.cluster_shape).c_str(),
-                    (int) fp4_g1_cfg.is_tma_warp_specialized, (int) fp4_g1_cfg.epilogue_fusion_type,
-                    (int) fp4_g1_cfg.swap_ab,
-                    fp4_num_valid_tokens, hidden_size, inter_size, num_experts_per_node,
-                    (int) fp4_gemm1_tma_ws_input.isValid(), mixed_gemm_workspace_size_,
-                    (void*) fp4_expanded_data_, (void*) fp4_expanded_sf_);
+                std::vector<__nv_bfloat16> tmp(print_elems);
+                cudaMemcpy(tmp.data(), final_output, print_elems * sizeof(__nv_bfloat16), cudaMemcpyDeviceToHost);
+                for (int i = 0; i < print_elems; i++) host_buf[i] = __bfloat162float(tmp[i]);
             }
-            fp4_runner->gemm1(fp4_expanded_data_, /*output=*/nullptr, fp4_glu_inter_result,
-                mixed_prec_state_.fp4_expert_first_token_offset, fp4_gemm1_tma_ws_input, fc1_expert_weights_fp4_void, nullptr,
-                fp4_num_valid_tokens_ptr, quant_params_fp4.wo.fc1_weight_scales, quant_params_fp4.fp8.dequant_fc1,
-                quant_params_fp4.fp8.quant_fc2, fp4_expanded_sf_, fp4_gemm2_act_sf_, quant_params_fp4, num_rows,
-                expanded_num_rows, expected_tokens_per_expert, hidden_size, inter_size, num_experts_per_node,
-                fc1_activation_type, alpha_scale_ptr_array_fc1_, false, false, stream, fp4_runner->getGemm1Config().value(), false, nullptr,
-                nullptr, /*skip_activation=*/true);
-            sync_check_cuda_error(stream);
-        }
-
-        // ===== Step 4: Fused Mixed-Precision Activation =====
-        // Processes the contiguous GLU buffer [bf16_rows | fp4_rows] in a single kernel launch.
-        // For each row:
-        //   - Rows [0, bf16_count): Apply SwiGLU/GeGLU -> write BF16 to bf16_activation_output_
-        //   - Rows [bf16_count, total): Apply SwiGLU/GeGLU + quantize to NVFP4 -> write to
-        //     fp4_activation_output_ with scaling factors fp4_gemm2_act_sf_
-        // The boundary_index parameter tells the kernel where the BF16/FP4 split is.
-        // This fused approach avoids two separate activation kernel launches and exploits the
-        // contiguous memory layout from Step 3 for better memory access patterns.
-        {
-            int64_t const total_activation_rows = bf16_num_valid_tokens + fp4_num_valid_tokens;
-            if (total_activation_rows > 0)
+            else
             {
-                doMixedPrecisionActivation(
-                    static_cast<__nv_bfloat16*>(bf16_activation_output_),
-                    static_cast<__nv_fp4_e2m1*>(fp4_activation_output_),
-                    fp4_gemm2_act_sf_,
-                    static_cast<UnfusedGemmOutputType const*>(mixed_prec_glu_inter_result_),
-                    fc1_biases, true,
-                    mixed_prec_state_.bf16_expert_first_token_offset,
-                    mixed_prec_state_.fp4_expert_first_token_offset,
-                    num_experts_per_node, inter_size,
-                    bf16_num_valid_tokens,       // boundary_index: rows < this are BF16, rows >= are FP4
-                    total_activation_rows,
-                    quant_params_bf16.fp8.quant_fc2,
-                    quant_params_fp4.fp8.quant_fc2,
-                    quant_params_fp4.fp4.fc2.act_global_scale,
-                    quant_params_fp4.fp4.fc2.use_per_expert_act_scale,
-                    fc1_activation_type,
-                    static_cast<UnfusedGemmOutputType const*>(nullptr),  // prequant_scale_fp4 (unused)
-                    stream);
-                sync_check_cuda_error(stream);
+                cudaMemcpy(host_buf.data(), final_output, print_elems * sizeof(float), cudaMemcpyDeviceToHost);
             }
-        }
-
-        // ===== Step 5: Zero-init final_output + Sequential Dual GEMM2 + Fused Finalize =====
-        // Zero-initialize because both BF16 and FP4 GEMM2 kernels atomically ADD their results.
-        // Each GEMM2's fused finalize epilogue: (1) un-permutes rows back to original token order,
-        // (2) scales each expert's contribution by the router weight, (3) atomic-adds to final_output.
-        check_cuda_error(
-            cudaMemsetAsync(final_output, 0x0, sizeof(OutputType) * num_rows * unpadded_hidden_size, stream));
-
-        // --- BF16 GEMM2 (FC2: inter_size -> hidden_size) ---
-        // Input: bf16_activation_output_ from Step 4. Output: atomic-add to final_output.
-        // The fused finalize epilogue handles un-permutation and router scale application.
-        if (bf16_num_valid_tokens > 0)
-        {
-            this->gemm2(bf16_activation_output_, gemm2_scratch_, final_output,
-                mixed_prec_state_.bf16_expert_first_token_offset, bf16_gemm2_tma_ws_input, fc2_expert_weights_bf16_void,
-                fc2_expert_biases_void, quant_params_bf16.wo.fc2_weight_scales, quant_params_bf16.fp8.dequant_fc2, nullptr,
-                quant_params_bf16, token_final_scales, bf16_permuted_scales_, unpermuted_row_to_permuted_row,
-                bf16_permuted_row_to_unpermuted_row_, token_selected_experts, bf16_num_valid_tokens_ptr, num_rows,
-                expanded_num_rows, expected_tokens_per_expert, hidden_size, unpadded_hidden_size, inter_size,
-                num_experts_per_node, experts_per_token, alpha_scale_ptr_array_fc2_, false, nullptr, false, stream,
-                parallelism_config, enable_alltoall, *gemm2_config_, false, nullptr, nullptr);
-            sync_check_cuda_error(stream);
-        }
-
-        // --- FP4 GEMM2 (FC2: inter_size -> hidden_size) ---
-        // Input: fp4_activation_output_ (NVFP4 quantized) from Step 4. Output: atomic-add to final_output.
-        // Runs after BF16 GEMM2 on the same stream, so stream ordering prevents atomic races.
-        if (fp4_num_valid_tokens > 0)
-        {
-            // ===== FP4 GEMM2 DIAGNOSTIC =====
+            std::string s = "[MixedPrecMoE] all_fp4 final_output[0.." + std::to_string(print_elems - 1) + "]: ";
+            for (int i = 0; i < print_elems; i++)
             {
-                auto const& fp4_g2_cfg = fp4_runner->getGemm2Config().value();
-                TLLM_LOG_WARNING(
-                    "[MixedPrecMoE] FP4 GEMM2: sm=%d, tile=%s, cluster=%s, tma_ws=%d, fusion=%d, swap_ab=%d, "
-                    "fp4_tokens=%ld, hidden=%ld, inter=%ld, num_experts=%d, "
-                    "tma_input_valid=%d, ws_size=%zu, "
-                    "fp4_act_output=%p, gemm2_scratch=%p, final_output=%p, fp4_gemm2_act_sf=%p",
-                    fp4_g2_cfg.sm_version, fp4_g2_cfg.getTileConfigAsName().c_str(),
-                    cutlass_extensions::get_cluster_shape_name(fp4_g2_cfg.cluster_shape).c_str(),
-                    (int) fp4_g2_cfg.is_tma_warp_specialized, (int) fp4_g2_cfg.epilogue_fusion_type,
-                    (int) fp4_g2_cfg.swap_ab,
-                    fp4_num_valid_tokens, hidden_size, inter_size, num_experts_per_node,
-                    (int) fp4_gemm2_tma_ws_input.isValid(), mixed_gemm_workspace_size_,
-                    (void*) fp4_activation_output_, (void*) gemm2_scratch_,
-                    (void*) final_output, (void*) fp4_gemm2_act_sf_);
+                if (i > 0) s += ", ";
+                s += std::to_string(host_buf[i]);
             }
-            fp4_runner->gemm2(fp4_activation_output_, gemm2_scratch_, final_output,
-                mixed_prec_state_.fp4_expert_first_token_offset, fp4_gemm2_tma_ws_input, fc2_expert_weights_fp4_void,
-                fc2_expert_biases_void, quant_params_fp4.wo.fc2_weight_scales, quant_params_fp4.fp8.dequant_fc2,
-                fp4_gemm2_act_sf_, quant_params_fp4, token_final_scales, fp4_permuted_scales_, unpermuted_row_to_permuted_row,
-                fp4_permuted_row_to_unpermuted_row_, token_selected_experts, fp4_num_valid_tokens_ptr, num_rows,
-                expanded_num_rows, expected_tokens_per_expert, hidden_size, unpadded_hidden_size, inter_size,
-                num_experts_per_node, experts_per_token, alpha_scale_ptr_array_fc2_, false, nullptr, false, stream,
-                parallelism_config, enable_alltoall, fp4_runner->getGemm2Config().value(), false, nullptr, nullptr);
-            sync_check_cuda_error(stream);
+            TLLM_LOG_WARNING("%s", s.c_str());
         }
+
+        return;
     }
-#endif
+
+    // --- Normal path: this runner handles the weights via its template types ---
+    auto const* input_activations = static_cast<InputType const*>(input_activations_void);
+    auto const* input_sf = input_sf_void
+        ? reinterpret_cast<TmaWarpSpecializedGroupedGemmInput::ElementSF const*>(input_sf_void)
+        : nullptr;
+    auto const* fc1_expert_weights = static_cast<WeightType const*>(fc1_expert_weights_bf16_void);
+    auto const* fc1_expert_biases = reinterpret_cast<ScaleBiasType const*>(fc1_expert_biases_void);
+    auto const* fc2_expert_weights = static_cast<WeightType const*>(fc2_expert_weights_bf16_void);
+    auto const* fc2_expert_biases = reinterpret_cast<ScaleBiasType const*>(fc2_expert_biases_void);
+    auto* final_output = static_cast<OutputType*>(final_output_void);
+    float const* token_topk_unpermuted_scales = token_final_scales;
+    auto const& quant_params = bf16_quant_params;
+
+    // --- Precondition checks ---
+    TLLM_CHECK(input_activations);
+    TLLM_CHECK(token_selected_experts);
+    TLLM_CHECK(fc1_expert_weights);
+    TLLM_CHECK(fc2_expert_weights);
+    TLLM_CHECK(workspace_ptr);
+    TLLM_CHECK(unpermuted_row_to_permuted_row);
+    TLLM_CHECK(full_num_experts % parallelism_config.ep_size == 0);
+    TLLM_CHECK_WITH_INFO(gemm1_config_, "MOE GEMM1 Config is not set");
+    TLLM_CHECK_WITH_INFO(gemm2_config_, "MOE GEMM2 Config is not set");
+
+    // Require at least 128 bits of alignment for MOE GEMM
+    TLLM_CHECK_WITH_INFO(hidden_size % (128 / sizeof_bits<WeightType>::value) == 0,
+        "Hidden size %d does not meet minimum alignment requirements for MOE GEMM %d", (int) hidden_size,
+        (int) (128 / sizeof_bits<WeightType>::value));
+    TLLM_CHECK_WITH_INFO(inter_size % (128 / sizeof_bits<WeightType>::value) == 0,
+        "Inter size %d does not meet minimum alignment requirements for MOE GEMM %d", (int) inter_size,
+        (int) (128 / sizeof_bits<WeightType>::value));
+
+    TLLM_CHECK_WITH_INFO(num_rows <= std::numeric_limits<int>::max(), "Number of rows is too large");
+    TLLM_CHECK_WITH_INFO(
+        num_rows * full_num_experts <= std::numeric_limits<int>::max(), "Number of rows * num_experts is too large");
+
+    // --- EP partitioning ---
+    int const start_expert = num_experts_per_node * parallelism_config.ep_rank;
+    int const end_expert = start_expert + num_experts_per_node;
+
+    // --- Workspace setup (no lora, no deepseek block scale, no min latency, no awq) ---
+    configureWsPtrs(workspace_ptr, num_rows, hidden_size, inter_size, num_experts_per_node, experts_per_token,
+        fc1_activation_type.activation_type, parallelism_config, /*use_lora=*/false,
+        /*use_deepseek_fp8_block_scale=*/false, /*min_latency_mode=*/false, /*use_awq=*/false);
+
+    bool const needs_num_valid = parallelism_config.ep_size > 1;
+    int64_t const* num_valid_tokens_ptr = needs_num_valid ? expert_first_token_offset_ + num_experts_per_node : nullptr;
+
+    auto expanded_num_rows = num_rows * experts_per_token;
+    auto expected_tokens_per_expert = (num_valid_rows * experts_per_token + full_num_experts - 1) / full_num_experts;
+
+    // --- Build expert routing maps ---
+    bool fused_prologue_result = fusedBuildExpertMapsSortFirstToken(token_selected_experts,
+        permuted_row_to_unpermuted_row_, unpermuted_row_to_permuted_row, expert_first_token_offset_, num_rows,
+        num_experts_per_node, experts_per_token, start_expert, end_expert, stream);
+    if (!fused_prologue_result)
+    {
+        threeStepBuildExpertMapsSortFirstToken(token_selected_experts, permuted_token_selected_experts_,
+            permuted_row_to_unpermuted_row_, unpermuted_row_to_permuted_row, expert_first_token_offset_,
+            blocked_expert_counts_, blocked_expert_counts_cumsum_, blocked_row_to_unpermuted_row_, num_rows,
+            num_experts_per_node, experts_per_token, start_expert, stream);
+    }
+    sync_check_cuda_error(stream);
+
+    // --- Expand input rows ---
+    bool use_per_expert_act_scale = use_fp4 ? quant_params.fp4.fc1.use_per_expert_act_scale : false;
+    expandInputRowsKernelLauncher(input_activations, reinterpret_cast<T*>(permuted_data_),
+        token_topk_unpermuted_scales, permuted_token_final_scales_, permuted_row_to_unpermuted_row_, num_rows,
+        hidden_size, experts_per_token, num_experts_per_node, quant_params, use_per_expert_act_scale,
+        expert_first_token_offset_, fc1_fp4_act_scale_, input_sf, swizzled_input_sf,
+        /*prequant_act_scale=*/nullptr, stream);
+    sync_check_cuda_error(stream);
+
+    // --- TMA descriptor setup ---
+    MoeMinLatencyParams dummy_min_latency{};
+    auto [gemm1_tma_ws_input, gemm2_tma_ws_input]
+        = setupTmaWarpSpecializedInputs(num_rows, expanded_num_rows, fc1_activation_type, hidden_size,
+            unpadded_hidden_size, inter_size, num_experts_per_node, input_activations_void, input_sf, final_output,
+            fc1_expert_weights, fc2_expert_weights, quant_params, fc1_expert_biases, fc2_expert_biases,
+            /*min_latency_mode=*/false, dummy_min_latency, /*use_lora=*/false, start_expert,
+            parallelism_config, stream);
+
+    // --- GEMM1 (FC1: hidden_size -> inter_size, with fused activation) ---
+    Self::gemm1(moe_gemm_runner_, /*blockscale_gemm_runner=*/nullptr,
+        reinterpret_cast<T const*>(permuted_data_), fc1_result_, glu_inter_result_,
+        expert_first_token_offset_, gemm1_tma_ws_input,
+        fc1_expert_weights, fc1_expert_biases, num_valid_tokens_ptr,
+        /*fc1_int_scales=*/nullptr, /*fc1_fp8_dequant=*/nullptr, /*fc2_fp8_quant=*/nullptr,
+        fc1_fp4_act_scale_, fc2_fp4_act_scale_, quant_params,
+        num_rows, expanded_num_rows, expected_tokens_per_expert,
+        hidden_size, inter_size, num_experts_per_node,
+        fc1_activation_type, alpha_scale_ptr_array_fc1_,
+        /*bias_is_broadcast=*/true, stream, *gemm1_config_,
+        /*min_latency_mode=*/false, /*active_expert_count=*/nullptr, /*active_expert_ids=*/nullptr,
+        /*fc2_prequant_scale=*/nullptr);
+    sync_check_cuda_error(stream);
+
+    // --- GEMM2 (FC2: inter_size -> hidden_size, with finalize) ---
+    Self::gemm2(moe_gemm_runner_, /*blockscale_gemm_runner=*/nullptr,
+        fc1_result_, fc2_result_, final_output,
+        expert_first_token_offset_, gemm2_tma_ws_input,
+        fc2_expert_weights, fc2_expert_biases,
+        /*fc2_int_scales=*/nullptr, /*fc2_fp8_dequant=*/nullptr,
+        fc2_fp4_act_scale_, quant_params, token_topk_unpermuted_scales,
+        permuted_token_final_scales_, unpermuted_row_to_permuted_row, permuted_row_to_unpermuted_row_,
+        token_selected_experts, num_valid_tokens_ptr,
+        num_rows, expanded_num_rows, expected_tokens_per_expert,
+        hidden_size, unpadded_hidden_size, inter_size,
+        num_experts_per_node, experts_per_token,
+        alpha_scale_ptr_array_fc2_,
+        /*use_lora=*/false, /*lora_fc2_result=*/nullptr,
+        stream, parallelism_config, enable_alltoall,
+        *gemm2_config_, /*min_latency_mode=*/false,
+        /*active_expert_count=*/nullptr, /*active_expert_ids=*/nullptr);
+    sync_check_cuda_error(stream);
 }
 
 template <class T, class WeightType, class OutputType, class InputType, class BackBoneType, class Enable>
