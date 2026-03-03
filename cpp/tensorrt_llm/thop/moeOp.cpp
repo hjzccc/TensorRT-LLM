@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2022-2026, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,10 @@
 #endif
 // Always include the public header for moe_gemm_kernels.h
 #include "tensorrt_llm/kernels/cutlass_kernels/include/moe_gemm_kernels.h"
+
+#if defined(ENABLE_FP4) && defined(ENABLE_BF16)
+#include "tensorrt_llm/kernels/cutlass_kernels/include/mixed_precision_moe_kernels.h"
+#endif
 
 #include "tensorrt_llm/common/config.h"
 #include "tensorrt_llm/common/workspace.h"
@@ -1199,6 +1203,316 @@ private:
     }
 };
 
+#if defined(ENABLE_FP4) && defined(ENABLE_BF16)
+
+// ================================================================================================
+// MixedPrecisionMoeRunner
+// ================================================================================================
+//
+// Torch custom class wrapping MixPrecisionMoEFCWrapper for Python access.
+// Always uses bf16 backbone. FP4 weights/quant params are set separately.
+//
+// Usage from Python:
+//   runner = torch.classes.trtllm.MixedPrecisionMoeRunner()
+//   runner.set_expert_precision_assignment(assignment_tensor, num_bf16)
+//   runner.set_fp4_weights(fp4_fc1, fp4_fc2, fp4_quant_scales)
+//   runner.set_tactic(bf16_g1, bf16_g2, fp4_g1, fp4_g2)
+//   output = runner.run_moe(input, token_selected_experts, ...)
+//
+class MixedPrecisionMoeRunner : public torch::CustomClassHolder
+{
+public:
+    MixedPrecisionMoeRunner()
+    {
+        // Get tactic lists from both runners for profiling support.
+        mBf16Gemm1Profiles = mWrapper.getBf16Runner().getTactics(MoeGemmId::GEMM_1);
+        mBf16Gemm2Profiles = mWrapper.getBf16Runner().getTactics(MoeGemmId::GEMM_2);
+        mFp4Gemm1Profiles = mWrapper.getFp4Runner().getTactics(MoeGemmId::GEMM_1);
+        mFp4Gemm2Profiles = mWrapper.getFp4Runner().getTactics(MoeGemmId::GEMM_2);
+
+        // Default: first tactic for both runners.
+        mWrapper.getBf16Runner().setTactic(mBf16Gemm1Profiles.front(), mBf16Gemm2Profiles.front());
+        mWrapper.getFp4Runner().setTactic(mFp4Gemm1Profiles.front(), mFp4Gemm2Profiles.front());
+    }
+
+    ~MixedPrecisionMoeRunner() = default;
+    MixedPrecisionMoeRunner(MixedPrecisionMoeRunner const&) = delete;
+    void operator=(MixedPrecisionMoeRunner const&) = delete;
+
+    // ---- Configuration methods (call before runMoe) ----
+
+    void setExpertPrecisionAssignment(torch::Tensor const& assignment, int64_t num_bf16_experts)
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        CHECK_INPUT(assignment, at::ScalarType::Int);
+        TORCH_CHECK(assignment.dim() == 1, "Expert precision assignment must be 1D");
+        TORCH_CHECK(assignment.is_contiguous(), "Expert precision assignment must be contiguous");
+
+        // Keep tensor alive for the duration of the runner.
+        mExpertPrecisionAssignment = assignment;
+        mWrapper.setExpertPrecisionAssignment(
+            static_cast<int const*>(assignment.const_data_ptr()), static_cast<int>(num_bf16_experts));
+    }
+
+    void setFp4Weights(torch::Tensor const& fp4_fc1_expert_weights,
+        torch::Tensor const& fp4_fc2_expert_weights,
+        c10::ArrayRef<torch::Tensor> const& fp4_quant_scales)
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        CHECK_INPUT(fp4_fc1_expert_weights, at::ScalarType::Long); // 16 FP4 packed into 1 LONG
+        CHECK_INPUT(fp4_fc2_expert_weights, at::ScalarType::Long);
+        TORCH_CHECK(fp4_fc1_expert_weights.dim() == 3, "fp4 fc1 weights must be 3D");
+        TORCH_CHECK(fp4_fc2_expert_weights.dim() == 3, "fp4 fc2 weights must be 3D");
+
+        // Keep tensors alive.
+        mFp4Fc1Weights = fp4_fc1_expert_weights;
+        mFp4Fc2Weights = fp4_fc2_expert_weights;
+        mFp4QuantScales.assign(fp4_quant_scales.begin(), fp4_quant_scales.end());
+
+        auto fp4_qp = parseNvfp4QuantParams(fp4_quant_scales);
+        mWrapper.setFp4Weights(
+            fp4_fc1_expert_weights.const_data_ptr(), fp4_fc2_expert_weights.const_data_ptr(), fp4_qp);
+    }
+
+    void setTactic(
+        int64_t bf16_gemm1_id, int64_t bf16_gemm2_id, int64_t fp4_gemm1_id, int64_t fp4_gemm2_id)
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        auto bf16_g1 = (bf16_gemm1_id < 0) ? mBf16Gemm1Profiles.front() : mBf16Gemm1Profiles.at(bf16_gemm1_id);
+        auto bf16_g2 = (bf16_gemm2_id < 0) ? mBf16Gemm2Profiles.front() : mBf16Gemm2Profiles.at(bf16_gemm2_id);
+        auto fp4_g1 = (fp4_gemm1_id < 0) ? mFp4Gemm1Profiles.front() : mFp4Gemm1Profiles.at(fp4_gemm1_id);
+        auto fp4_g2 = (fp4_gemm2_id < 0) ? mFp4Gemm2Profiles.front() : mFp4Gemm2Profiles.at(fp4_gemm2_id);
+
+        mWrapper.getBf16Runner().setTactic(bf16_g1, bf16_g2);
+        mWrapper.getFp4Runner().setTactic(fp4_g1, fp4_g2);
+    }
+
+    int64_t getBf16TacticNum(int64_t gemm_idx)
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        TORCH_CHECK(gemm_idx == 1 || gemm_idx == 2, "gemm_idx must be 1 or 2");
+        return (gemm_idx == 1) ? mBf16Gemm1Profiles.size() : mBf16Gemm2Profiles.size();
+    }
+
+    int64_t getFp4TacticNum(int64_t gemm_idx)
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        TORCH_CHECK(gemm_idx == 1 || gemm_idx == 2, "gemm_idx must be 1 or 2");
+        return (gemm_idx == 1) ? mFp4Gemm1Profiles.size() : mFp4Gemm2Profiles.size();
+    }
+
+    // ---- Main execution ----
+
+    torch::Tensor runMoe(torch::Tensor const& input, torch::Tensor const& token_selected_experts,
+        torch::optional<torch::Tensor> const& token_final_scales,
+        torch::Tensor const& fc1_expert_weights, // bf16
+        torch::optional<torch::Tensor> const& fc1_expert_biases,
+        torch::Tensor const& fc2_expert_weights, // bf16
+        torch::optional<torch::Tensor> const& fc2_expert_biases,
+        int64_t const tp_size, int64_t const tp_rank, int64_t const ep_size, int64_t const ep_rank,
+        bool const enable_alltoall,
+        torch::optional<int64_t> const& activation_type,
+        torch::optional<int64_t> const& unpadded_hidden_size,
+        torch::optional<int64_t> const& num_valid_tokens,
+        torch::optional<torch::Tensor> const& out_tensor)
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+
+        // ---- Input validation ----
+        CHECK_INPUT(input, at::ScalarType::BFloat16);
+        CHECK_INPUT(token_selected_experts, at::ScalarType::Int);
+        CHECK_INPUT(fc1_expert_weights, at::ScalarType::BFloat16);
+        CHECK_INPUT(fc2_expert_weights, at::ScalarType::BFloat16);
+
+        if (token_final_scales.has_value())
+        {
+            CHECK_INPUT(token_final_scales.value(), at::ScalarType::Float);
+        }
+        if (fc1_expert_biases.has_value())
+        {
+            CHECK_INPUT(fc1_expert_biases.value(), at::ScalarType::BFloat16);
+        }
+        if (fc2_expert_biases.has_value())
+        {
+            CHECK_INPUT(fc2_expert_biases.value(), at::ScalarType::BFloat16);
+        }
+
+        TORCH_CHECK(input.dim() == 2, "input must be 2D");
+        TORCH_CHECK(token_selected_experts.dim() == 2, "token_selected_experts must be 2D");
+        TORCH_CHECK(fc1_expert_weights.dim() == 3, "fc1_expert_weights must be 3D");
+        TORCH_CHECK(fc2_expert_weights.dim() == 3, "fc2_expert_weights must be 3D");
+        TORCH_CHECK(input.sizes()[0] == token_selected_experts.sizes()[0],
+            "input and token_selected_experts must have same num tokens");
+
+        // ---- Extract dimensions ----
+        int const experts_per_token = token_selected_experts.sizes()[1];
+        int64_t const num_rows = input.sizes()[0];
+        int64_t const hidden_size = fc2_expert_weights.sizes()[1];
+        int64_t const unpadded_hidden_size_val
+            = unpadded_hidden_size.has_value() ? unpadded_hidden_size.value() : hidden_size;
+        int64_t const inter_size = fc2_expert_weights.sizes()[2];
+        int const num_experts_on_rank = fc2_expert_weights.sizes()[0];
+        auto const num_experts_total = static_cast<int>(num_experts_on_rank * ep_size);
+
+        auto parallelism_config = kernels::MOEParallelismConfig(tp_size, tp_rank, ep_size, ep_rank);
+
+        ActivationType base_activation_type = activation_type.has_value()
+            ? static_cast<ActivationType>(activation_type.value())
+            : ActivationType::Swiglu;
+        auto activation_params = ActivationParams(base_activation_type, nullptr, nullptr, nullptr);
+
+        auto stream = at::cuda::getCurrentCUDAStream(input.get_device());
+
+        // ---- Output tensor ----
+        std::vector<int64_t> output_shape = {num_rows, unpadded_hidden_size_val};
+        torch::Tensor output;
+        if (out_tensor.has_value())
+        {
+            auto const& provided = out_tensor.value();
+            CHECK_INPUT(provided, at::ScalarType::BFloat16);
+            TORCH_CHECK(provided.sizes() == output_shape,
+                "Provided out tensor has incorrect shape. Expected ", output_shape, ", got ", provided.sizes());
+            output = provided;
+        }
+        else
+        {
+            output = torch::empty(output_shape, input.options().dtype(at::ScalarType::BFloat16));
+        }
+
+        // ---- Workspace ----
+        auto& workspace_info = getWorkspaceInfo(num_rows, hidden_size, inter_size, num_experts_total,
+            experts_per_token, base_activation_type, parallelism_config, stream);
+
+        // bf16 weights don't need quant scales.
+        kernels::QuantParams quant_params{};
+        ::tensorrt_llm::kernels::LoraParams lora_params{};
+        kernels::MoeMinLatencyParams min_latency_params{};
+
+        mWrapper.runMoe(input.const_data_ptr(),
+            /* input_sf */ nullptr,
+            /* swizzled_input_sf */ false,
+            reinterpret_cast<int const*>(token_selected_experts.const_data_ptr()),
+            token_final_scales.has_value()
+                ? reinterpret_cast<float const*>(token_final_scales.value().const_data_ptr())
+                : nullptr,
+            fc1_expert_weights.const_data_ptr(),
+            fc1_expert_biases.has_value() ? fc1_expert_biases.value().const_data_ptr() : nullptr,
+            activation_params,
+            fc2_expert_weights.const_data_ptr(),
+            fc2_expert_biases.has_value() ? fc2_expert_biases.value().const_data_ptr() : nullptr,
+            quant_params, num_rows, num_valid_tokens.has_value() ? num_valid_tokens.value() : num_rows,
+            hidden_size, unpadded_hidden_size_val, inter_size, num_experts_total, experts_per_token,
+            static_cast<char*>(workspace_info.workspace.data_ptr()), output.data_ptr(),
+            static_cast<int*>(workspace_info.src_to_dest_map),
+            parallelism_config, enable_alltoall,
+            /* use_lora */ false, lora_params,
+            /* use_deepseek_fp8_block_scale */ false,
+            /* min_latency_mode */ false, min_latency_params,
+            stream);
+
+        return output;
+    }
+
+private:
+    struct WorkspaceInfo
+    {
+        torch::Tensor workspace{};
+        void* src_to_dest_map{};
+    };
+
+    kernels::MixPrecisionMoEFCWrapper mWrapper;
+    std::mutex mMutex;
+    std::map<cudaStream_t, WorkspaceInfo> mStreamWorkspaces;
+
+    // Tensor storage to keep references alive.
+    torch::Tensor mExpertPrecisionAssignment;
+    torch::Tensor mFp4Fc1Weights;
+    torch::Tensor mFp4Fc2Weights;
+    std::vector<torch::Tensor> mFp4QuantScales;
+
+    using Profile = tensorrt_llm::cutlass_extensions::CutlassGemmConfig;
+    std::vector<Profile> mBf16Gemm1Profiles;
+    std::vector<Profile> mBf16Gemm2Profiles;
+    std::vector<Profile> mFp4Gemm1Profiles;
+    std::vector<Profile> mFp4Gemm2Profiles;
+
+    WorkspaceInfo& getWorkspaceInfo(int64_t num_rows, int64_t hidden_size, int64_t inter_size,
+        int num_experts, int experts_per_token, ActivationType activation_type,
+        kernels::MOEParallelismConfig const& parallelism_config, cudaStream_t stream)
+    {
+        size_t moe_workspace_size = mWrapper.getWorkspaceSize(num_rows, hidden_size, inter_size, num_experts,
+            experts_per_token, activation_type, parallelism_config,
+            /* use_lora */ false, /* use_deepseek_fp8_block_scale */ false,
+            /* min_latency_mode */ false, /* use_awq */ false);
+        size_t src_to_dest_map_size = experts_per_token * num_rows * sizeof(int);
+        auto& workspace_info = mStreamWorkspaces[stream];
+
+        std::vector<size_t> workspaces{moe_workspace_size, src_to_dest_map_size};
+        int64_t total_workspace_size = common::calculateTotalWorkspaceSize(workspaces.data(), workspaces.size());
+
+        bool is_capturing = tensorrt_llm::common::isCapturing(stream);
+        if (is_capturing || workspace_info.workspace.numel() < total_workspace_size)
+        {
+            if (is_capturing)
+            {
+                TLLM_LOG_DEBUG("Allocating mixed-precision MoE workspace with %ld bytes during cuda graph capture",
+                    total_workspace_size);
+            }
+            else
+            {
+                TLLM_LOG_DEBUG(
+                    "Mixed-precision MoE workspace size not enough, increase from %ld to %ld bytes",
+                    workspace_info.workspace.numel(), total_workspace_size);
+            }
+            workspace_info = WorkspaceInfo();
+            workspace_info.workspace = torch::empty({static_cast<long>(total_workspace_size)},
+                torch::dtype(torch::kInt8).device(torch::kCUDA).requires_grad(false));
+        }
+        workspace_info.src_to_dest_map
+            = common::nextWorkspacePtr(static_cast<int8_t*>(workspace_info.workspace.data_ptr()), moe_workspace_size);
+
+        return workspace_info;
+    }
+
+    kernels::QuantParams parseNvfp4QuantParams(c10::ArrayRef<torch::Tensor> const& quant_scales) const
+    {
+        TORCH_CHECK(quant_scales.size() == 6, "Expecting 6 quant scales for NVFP4 quantization");
+
+        auto const& fc1_act_global = quant_scales[0];
+        auto const& fc1_weight_block = quant_scales[1];
+        auto const& fc1_global = quant_scales[2];
+        auto const& fc2_act_global = quant_scales[3];
+        auto const& fc2_weight_block = quant_scales[4];
+        auto const& fc2_global = quant_scales[5];
+
+        CHECK_INPUT(fc1_act_global, c10::ScalarType::Float);
+        CHECK_INPUT(fc1_weight_block, c10::ScalarType::Int);
+        CHECK_INPUT(fc1_global, c10::ScalarType::Float);
+        CHECK_INPUT(fc2_act_global, c10::ScalarType::Float);
+        CHECK_INPUT(fc2_weight_block, c10::ScalarType::Int);
+        CHECK_INPUT(fc2_global, c10::ScalarType::Float);
+
+        TORCH_CHECK(
+            fc1_act_global.dim() == 0 || fc1_act_global.dim() == 1, "fc1 act global must be scalar or 1D");
+        TORCH_CHECK(fc1_weight_block.dim() == 3, "fc1 weight block must be 3D");
+        TORCH_CHECK(fc1_global.dim() == 1, "fc1 global must be 1D");
+        TORCH_CHECK(
+            fc2_act_global.dim() == 0 || fc2_act_global.dim() == 1, "fc2 act global must be scalar or 1D");
+        TORCH_CHECK(fc2_weight_block.dim() == 3, "fc2 weight block must be 3D");
+        TORCH_CHECK(fc2_global.dim() == 1, "fc2 global must be 1D");
+
+        return kernels::QuantParams::FP4(static_cast<float const*>(fc1_act_global.data_ptr()),
+            static_cast<TmaWarpSpecializedGroupedGemmInput::ElementSF*>(fc1_weight_block.data_ptr()),
+            static_cast<float const*>(fc1_global.data_ptr()),
+            static_cast<float const*>(fc2_act_global.data_ptr()),
+            static_cast<TmaWarpSpecializedGroupedGemmInput::ElementSF*>(fc2_weight_block.data_ptr()),
+            static_cast<float const*>(fc2_global.data_ptr()), fc1_act_global.dim() == 1,
+            fc2_act_global.dim() == 1);
+    }
+};
+
+#endif // ENABLE_FP4 && ENABLE_BF16
+
 } // namespace torch_ext
 
 TRTLLM_NAMESPACE_END
@@ -1211,4 +1525,16 @@ TORCH_LIBRARY(trtllm, m)
         .def("get_tactic_num", &tensorrt_llm::torch_ext::FusedMoeRunner::getTacticNum)
         .def("run_moe", &tensorrt_llm::torch_ext::FusedMoeRunner::runMoe)
         .def("run_moe_min_latency", &tensorrt_llm::torch_ext::FusedMoeRunner::runMoeMinLantency);
+
+#if defined(ENABLE_FP4) && defined(ENABLE_BF16)
+    m.class_<tensorrt_llm::torch_ext::MixedPrecisionMoeRunner>("MixedPrecisionMoeRunner")
+        .def(torch::init<>())
+        .def("set_expert_precision_assignment",
+            &tensorrt_llm::torch_ext::MixedPrecisionMoeRunner::setExpertPrecisionAssignment)
+        .def("set_fp4_weights", &tensorrt_llm::torch_ext::MixedPrecisionMoeRunner::setFp4Weights)
+        .def("set_tactic", &tensorrt_llm::torch_ext::MixedPrecisionMoeRunner::setTactic)
+        .def("get_bf16_tactic_num", &tensorrt_llm::torch_ext::MixedPrecisionMoeRunner::getBf16TacticNum)
+        .def("get_fp4_tactic_num", &tensorrt_llm::torch_ext::MixedPrecisionMoeRunner::getFp4TacticNum)
+        .def("run_moe", &tensorrt_llm::torch_ext::MixedPrecisionMoeRunner::runMoe);
+#endif
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2023, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2020-2026, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -766,7 +766,7 @@ public:
             start_expert, stream);
     }
 
-private:
+protected:
     std::pair<TmaWarpSpecializedGroupedGemmInput, TmaWarpSpecializedGroupedGemmInput> setupTmaWarpSpecializedInputs(
         int64_t num_rows, int64_t expanded_num_rows, ActivationParams fc1_activation_type, int64_t hidden_size,
         int64_t unpadded_hidden_size, int64_t inter_size, int64_t num_experts_per_node,
@@ -806,7 +806,7 @@ private:
         MOEParallelismConfig parallelism_config, bool use_lora, bool use_deepseek_fp8_block_scale,
         bool min_latency_mode, bool use_awq);
 
-private:
+protected:
     static bool useAwq(cutlass_kernels::QuantParams const& quant_params)
     {
         return quant_params.groupwise.fc1.act_scales && quant_params.groupwise.fc2.act_scales && !use_wfp4a16;
