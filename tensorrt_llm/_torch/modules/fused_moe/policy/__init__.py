@@ -36,29 +36,10 @@ def resolve_dispatch_policy(
     num_experts: int,
     group_size_ratios: List[float],
 ) -> HeterDispatchPolicy:
-    """Instantiate a dispatch policy from ``heter_config``.
+    """Instantiate a dispatch policy from ``heter_config["policy"]``.
 
-    The ``"policy"`` key can be:
-
-    * A **string** — policy name looked up in :data:`POLICY_REGISTRY`.
-      Uses default constructor kwargs (e.g. ``seed=42``).
-    * A **dict** with a ``"type"`` key (policy name) plus any extra
-      keyword arguments forwarded to the constructor.
-    * **Absent** — defaults to ``"expert_load"``.
-
-    Example config snippets::
-
-        "policy": "expert_load"
-
-        "policy": {
-            "type": "confidence_threshold",
-            "confidence_threshold": 0.7,
-            "fallback_seed": 123,
-        }
-
-    Raises:
-        ValueError: If the policy type is unknown or the value has
-            an unexpected type.
+    Accepts a string (policy name) or dict ``{"type": "<name>", ...}``
+    with extra constructor kwargs.  Defaults to ``"expert_load"``.
     """
     policy_cfg = heter_config.get("policy", "expert_load")
 

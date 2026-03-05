@@ -14,71 +14,29 @@
 # limitations under the License.
 """Heterogeneous dispatch policies for mixed-precision MoE.
 
-A :class:`HeterDispatchPolicy` partitions experts into precision groups
-and transforms standard MoE routing into per-group dispatches.
+Partitions experts into precision groups and transforms standard MoE routing
+into per-group dispatches.  Each group's dispatch is ``(experts, scales)``
+with shape ``[N, K]``.  Non-group expert slots use sentinel expert ID
+(``num_experts``) and zero scale so the CUTLASS kernel skips them.
 
-Each group's dispatch is an ``(experts, scales)`` tuple with shape
-``[N, K]`` — all tokens participate in every group.  Non-group expert
-slots are filled with a sentinel expert ID (``num_experts``) and zero
-scale so the CUTLASS kernel skips them.
-
-The policy knows nothing about quantization algorithms or weight
-storage — that mapping lives in
-:class:`~...fused_moe_heter.HeterCutlassFusedMoE`.
-
-Usage::
-
-    policy = RandomHeterDispatch(
-        num_experts=128,
-        group_size_ratios=[0.8, 0.2],
-        seed=42,
-    )
-
-    dispatches = policy.dispatch(
-        token_selected_experts,   # [num_tokens, top_k]
-        token_final_scales,       # [num_tokens, top_k]
-    )
-    for group_idx, (experts, scales) in enumerate(dispatches):
-        result = fused_moe(x, experts, scales, ...)
-        accumulated += result
-
-Implementation notes — torch.compile & CUDA graph safety:
-
-* ``_assign()`` writes into pre-allocated ``expert_to_group`` buffers
-  on GPU — no per-call allocations, no ``.tolist()`` sync.
-* ``dispatch()`` uses ``torch.where()`` for sentinel masking — all
-  ops have fixed shapes, no ``nonzero()``, no dynamic outputs.
-* 2-group fast path uses ``torch.topk()`` (O(E) partial sort).
-* N-group fallback uses ``torch.argsort() + scatter_()`` with
-  pre-computed ``group_labels`` — no CPU→GPU transfer in hot path.
+All operations use fixed-shape GPU tensors — torch.compile and CUDA graph safe.
 """
 
 import abc
-import logging
 from typing import List, Optional, Tuple
 
 import torch
 from tensorrt_llm.logger import logger
 
-# Type alias for a per-group dispatch result: (experts, scales).
-# Both tensors have shape [N, K].  Non-group expert slots use a sentinel
-# expert ID (num_experts) and zero scale so the kernel skips them.
+# (experts, scales) pair for one group, both [N, K].
 GroupDispatchTuple = Tuple[torch.Tensor, torch.Tensor]
-
-
-# ------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------
 
 
 def _compute_group_sizes(
     num_experts: int,
     group_size_ratios: List[float],
 ) -> List[int]:
-    """Convert fractional ratios to concrete group sizes.
-
-    Last group absorbs rounding remainder.
-    """
+    """Convert fractional ratios to concrete group sizes. Last group absorbs rounding."""
     sizes: List[int] = []
     offset = 0
     for i, ratio in enumerate(group_size_ratios):
@@ -98,9 +56,8 @@ def _build_group_labels(
 ) -> torch.Tensor:
     """Pre-compute position-to-group labels for the N-group argsort path.
 
-    Returns a tensor of shape ``[num_experts]`` mapping sorted positions
-    to group indices.  Built once and cached — the CPU→GPU transfer only
-    happens at buffer init, not in the hot path.
+    Returns ``[num_experts]`` mapping sorted positions to group indices.
+    Built once at init — CPU→GPU transfer only happens here, not in hot path.
     """
     num_groups = len(group_size_ratios)
     group_sizes = _compute_group_sizes(num_experts, group_size_ratios)
@@ -118,18 +75,10 @@ def _assign_by_score_gpu(
     expert_to_group: torch.Tensor,
     group_labels: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    """GPU-only: split experts into groups by descending score.
+    """Split experts into groups by descending score (GPU-only, no sync).
 
-    Writes into the pre-allocated *expert_to_group* buffer of shape
-    ``[num_experts]``.  **Zero GPU-CPU synchronisation, no new tensor
-    allocations** — safe for ``torch.compile`` and CUDA graphs.
-
-    The **last** group gets the highest-scoring experts (high-precision);
-    the **first** group gets the lowest-scoring experts (low-precision).
-
-    For G=2 uses ``torch.topk`` (O(E) partial sort).
-    For G>2 uses ``torch.argsort + scatter_`` (O(E log E)); requires
-    pre-computed *group_labels* from :func:`_build_group_labels`.
+    Last group gets highest-scoring experts (high-precision).
+    G=2: ``torch.topk`` (O(E)).  G>2: ``torch.argsort + scatter_`` (O(E log E)).
     """
     num_groups = len(group_size_ratios)
 
@@ -138,26 +87,14 @@ def _assign_by_score_gpu(
         return expert_to_group
 
     if num_groups == 2:
-        # Fast path: single topk for the high-precision (last) group.
         k_high = round(num_experts * group_size_ratios[1])
         expert_to_group.zero_()
         _, top_indices = torch.topk(scores, k_high)
         expert_to_group[top_indices] = 1
-        # if True:
-        #     # Log token-slots dispatched to each group (scores = per-expert
-        #     # activation counts when called from ExpertLoadHeterDispatch).
-        #     group_0_tokens = scores[expert_to_group == 0].sum()
-        #     group_1_tokens = scores[expert_to_group == 1].sum()
-        #     print(
-        #         "HeterDispatch: token-slots per group: "
-        #         "group_0=%d, group_1=%d",
-        #         group_0_tokens.item(), group_1_tokens.item())
         return expert_to_group
     else:
-        # General N-group path: argsort on GPU + scatter.
         assert group_labels is not None, (
-            "group_labels required for N-group path (N>2); "
-            "pre-compute with _build_group_labels()")
+            "group_labels required for N-group path (N>2)")
         sorted_ids = torch.argsort(scores, descending=True)
         expert_to_group.scatter_(0, sorted_ids, group_labels)
         return expert_to_group
@@ -168,42 +105,20 @@ def _validate_expert_to_group(
     num_experts: int,
     num_groups: int,
 ) -> None:
-    """Debug-only validation for expert_to_group tensor.
-
-    Checks shape and value range.  Uses ``.item()`` calls that sync
-    with GPU — only runs under ``__debug__`` (``python -O`` disables).
-    """
+    """Debug-only validation (uses .item() sync — only under __debug__)."""
     assert expert_to_group.shape == (num_experts,), (
         f"expert_to_group shape {expert_to_group.shape} != ({num_experts},)")
-    assert expert_to_group.min().item() >= 0, "expert_to_group has negative values"
+    assert expert_to_group.min().item() >= 0, "negative values"
     assert expert_to_group.max().item() < num_groups, (
-        f"expert_to_group max {expert_to_group.max().item()} >= num_groups {num_groups}")
-
-
-# ------------------------------------------------------------------
-# Base class
-# ------------------------------------------------------------------
+        f"max {expert_to_group.max().item()} >= num_groups {num_groups}")
 
 
 class HeterDispatchPolicy(abc.ABC):
     """Base class for heterogeneous MoE dispatch policies.
 
-    Subclasses implement :meth:`_assign` — the expert-to-group
-    assignment strategy.  The base class provides :meth:`dispatch`
-    which calls ``_assign``, then uses ``torch.where`` to build
-    per-group ``(experts, scales)`` tuples with sentinel masking.
-
-    All operations use fixed-shape tensors on GPU — no ``nonzero()``,
-    no ``.tolist()``, fully compatible with ``torch.compile`` and
-    CUDA graphs.
-
-    Args:
-        num_experts: Total number of experts in the MoE layer.
-        group_size_ratios: Target fraction of experts for each group.
-            Must sum to 1.0.  ``len(group_size_ratios)`` determines
-            the number of groups.
-        device: Target device for pre-allocated buffers.  Defaults to
-            ``'cuda'``.
+    Subclasses implement ``_assign()`` — the expert-to-group assignment
+    strategy.  ``dispatch()`` calls ``_assign()``, then builds per-group
+    ``(experts, scales)`` tuples with sentinel masking via ``torch.where``.
     """
 
     def __init__(
@@ -236,24 +151,14 @@ class HeterDispatchPolicy(abc.ABC):
     def group_size_ratios(self) -> List[float]:
         return self._group_size_ratios
 
-    # ----------------------------------------------------------
-    # Abstract: assignment strategy (subclasses implement this)
-    # ----------------------------------------------------------
-
     @abc.abstractmethod
     def _assign(
         self,
         token_selected_experts: Optional[torch.Tensor],
         token_final_scales: Optional[torch.Tensor],
     ) -> torch.Tensor:
-        """Return ``expert_to_group`` tensor of shape ``[num_experts]``
-        on the same device as input tensors.  ``expert_to_group[e]``
-        is the group index for expert *e*."""
+        """Return ``expert_to_group`` tensor ``[num_experts]`` on GPU."""
         ...
-
-    # ----------------------------------------------------------
-    # Public API
-    # ----------------------------------------------------------
 
     def dispatch(
         self,
@@ -262,27 +167,15 @@ class HeterDispatchPolicy(abc.ABC):
     ) -> List[GroupDispatchTuple]:
         """Transform N-expert routing into per-group dispatches.
 
-        Returns a list of length ``num_groups``.  Each element is
-        ``(experts, scales)`` with shape ``[N, K]``.  Non-group expert
-        slots are sentinel-masked (expert ID = ``num_experts``, scale = 0).
-
-        Uses ``torch.where`` for sentinel masking — all ops have
-        fixed shapes, fully torch.compile and CUDA graph safe.
+        Returns list of ``(experts, scales)`` with shape ``[N, K]`` per group.
+        Non-group slots: expert=``num_experts``, scale=0.
         """
         expert_to_group = self._assign(
             token_selected_experts,
             token_final_scales,
         )
-        # if __debug__:
-        #     _validate_expert_to_group(
-        #         expert_to_group, self._num_experts, self.num_groups)
-
         return self._dispatch_from_expert_to_group(
             expert_to_group, token_selected_experts, token_final_scales)
-
-    # ----------------------------------------------------------
-    # Internals
-    # ----------------------------------------------------------
 
     def _dispatch_from_expert_to_group(
         self,
@@ -290,50 +183,24 @@ class HeterDispatchPolicy(abc.ABC):
         token_selected_experts: torch.Tensor,
         token_final_scales: torch.Tensor,
     ) -> List[GroupDispatchTuple]:
-        """Build per-group dispatch tuples using torch.where.
-
-        All N tokens are sent to every group.  Non-group expert slots
-        get sentinel expert ID (``num_experts``) and zero scale.  The
-        CUTLASS kernel skips sentinel slots (no GEMM, no weight loads).
-
-        No ``nonzero()``, no ``clone()``, no dynamic shapes.
-        """
+        """Build per-group dispatch tuples using torch.where (fixed shapes)."""
         num_groups = self.num_groups
-
-        # [N, K] — which group each expert slot belongs to.
         slot_groups = expert_to_group[token_selected_experts.long()]
 
         results: List[GroupDispatchTuple] = []
         for gidx in range(num_groups):
-            in_group = (slot_groups == gidx)  # [N, K], bool
-
-            # torch.where: fixed shape [N, K], no dynamic output.
+            in_group = (slot_groups == gidx)
             experts_g = torch.where(
                 in_group, token_selected_experts, self._num_experts)
             scales_g = torch.where(
                 in_group, token_final_scales, 0.0)
-
             results.append((experts_g, scales_g))
 
         return results
 
 
-# ------------------------------------------------------------------
-# Concrete policies
-# ------------------------------------------------------------------
-
-
 class RandomHeterDispatch(HeterDispatchPolicy):
-    """Random expert-to-group assignment.  Ignores runtime signals.
-
-    Deterministic when *seed* is set.  The assignment is computed once
-    at construction via :func:`_assign_by_score_gpu` with random scores.
-
-    Args:
-        num_experts: Total number of experts.
-        group_size_ratios: Target fraction per group.
-        seed: Random seed for reproducibility.  Default 42.
-    """
+    """Random expert-to-group assignment. Deterministic when seed is set."""
 
     def __init__(
         self,
@@ -357,15 +224,8 @@ class RandomHeterDispatch(HeterDispatchPolicy):
 class ConfidenceThresholdHeterDispatch(HeterDispatchPolicy):
     """Assign by per-expert mean routing weight.
 
-    High-weight experts go to the **last** group (high-precision);
-    low-weight experts go to the **first** group (low-precision).
+    High-weight experts → last group (high-precision).
     Falls back to random when signals are unavailable.
-
-    Args:
-        num_experts: Total number of experts.
-        group_size_ratios: Target fraction per group.
-        confidence_threshold: Reserved for future per-token gating.
-        fallback_seed: Seed for fallback random assignment.
     """
 
     def __init__(
@@ -379,11 +239,7 @@ class ConfidenceThresholdHeterDispatch(HeterDispatchPolicy):
         super().__init__(num_experts, group_size_ratios, device=device)
         self._confidence_threshold = confidence_threshold
         self._fallback = RandomHeterDispatch(
-            num_experts,
-            group_size_ratios,
-            seed=fallback_seed,
-            device=device,
-        )
+            num_experts, group_size_ratios, seed=fallback_seed, device=device)
         self._expert_weight_sum = torch.empty(
             num_experts, device=self._device, dtype=torch.float32)
         self._expert_count_buf = torch.zeros(
@@ -395,15 +251,13 @@ class ConfidenceThresholdHeterDispatch(HeterDispatchPolicy):
                 token_selected_experts, token_final_scales)
 
         buf = self._expert_weight_sum
-
         flat_experts = token_selected_experts.reshape(-1).long()
         flat_scales = token_final_scales.reshape(-1)
 
         buf.zero_()
         buf.scatter_add_(0, flat_experts, flat_scales)
 
-        # scatter_add_ with ones instead of bincount — bincount has
-        # dynamic output shape which breaks torch.compile.
+        # scatter_add_ with ones (not bincount — dynamic output breaks torch.compile).
         expert_count = self._expert_count_buf
         expert_count.zero_()
         expert_count.scatter_add_(
@@ -413,26 +267,15 @@ class ConfidenceThresholdHeterDispatch(HeterDispatchPolicy):
         buf.div_(expert_count)
 
         return _assign_by_score_gpu(
-            buf,
-            self._num_experts,
-            self._group_size_ratios,
-            self._expert_to_group_buf,
-            self._group_labels,
-        )
+            buf, self._num_experts, self._group_size_ratios,
+            self._expert_to_group_buf, self._group_labels)
 
 
 class ExpertLoadHeterDispatch(HeterDispatchPolicy):
     """Assign by expert activation frequency.
 
-    Frequently activated ("hot") experts go to the **last** group
-    (high-precision); rarely activated ("cold") experts go to the
-    **first** group (low-precision).
+    Hot experts → last group (high-precision).
     Falls back to random when signals are unavailable.
-
-    Args:
-        num_experts: Total number of experts.
-        group_size_ratios: Target fraction per group.
-        fallback_seed: Seed for fallback random assignment.
     """
 
     def __init__(
@@ -444,11 +287,7 @@ class ExpertLoadHeterDispatch(HeterDispatchPolicy):
     ):
         super().__init__(num_experts, group_size_ratios, device=device)
         self._fallback = RandomHeterDispatch(
-            num_experts,
-            group_size_ratios,
-            seed=fallback_seed,
-            device=device,
-        )
+            num_experts, group_size_ratios, seed=fallback_seed, device=device)
         self._count_buf = torch.zeros(
             num_experts, device=self._device, dtype=torch.float32)
 
@@ -458,8 +297,7 @@ class ExpertLoadHeterDispatch(HeterDispatchPolicy):
                 token_selected_experts, token_final_scales)
 
         flat_experts = token_selected_experts.reshape(-1).long()
-        # scatter_add_ with ones instead of bincount — bincount has
-        # dynamic output shape which breaks torch.compile.
+        # scatter_add_ with ones (not bincount — dynamic output breaks torch.compile).
         counts = self._count_buf
         counts.zero_()
         counts.scatter_add_(
@@ -467,9 +305,5 @@ class ExpertLoadHeterDispatch(HeterDispatchPolicy):
             torch.ones_like(flat_experts, dtype=torch.float32))
 
         return _assign_by_score_gpu(
-            counts,
-            self._num_experts,
-            self._group_size_ratios,
-            self._expert_to_group_buf,
-            self._group_labels,
-        )
+            counts, self._num_experts, self._group_size_ratios,
+            self._expert_to_group_buf, self._group_labels)
