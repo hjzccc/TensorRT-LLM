@@ -30,7 +30,7 @@ TRTLLM_NAMESPACE_BEGIN
 
 namespace kernels::cutlass_kernels
 {
-std::array<size_t, 20> TmaWarpSpecializedGroupedGemmInput::workspaceBuffers(
+std::array<size_t, 22> TmaWarpSpecializedGroupedGemmInput::workspaceBuffers(
     int num_experts, FpXBlockScalingType scaling_type)
 {
     size_t problem_shape_size = sizeof(ProblemShape::UnderlyingProblemShape) * num_experts;
@@ -57,11 +57,13 @@ std::array<size_t, 20> TmaWarpSpecializedGroupedGemmInput::workspaceBuffers(
     size_t int4_groupwise_stride_sf_a_size = sizeof(INT4GroupwiseParams::StrideSFA) * num_experts;
 
     size_t ptr_token_map_size = sizeof(int**) * num_experts;
+    size_t swiglu_stride_size = sizeof(int64_t) * num_experts;
 
     return std::array{problem_shape_size, stride_act_size, stride_weight_size, stride_c_size, stride_d_size,
         ptr_buf_size, ptr_buf_size, ptr_buf_size, ptr_buf_size, scale_buf_size, sf_act_size, sf_weight_size,
         stride_sf_act_size, stride_sf_weight_size, int4_groupwise_problem_shape_size, int4_groupwise_sf_a_size,
-        int4_groupwise_stride_sf_a_size, ptr_buf_size, scale_buf_size, ptr_token_map_size};
+        int4_groupwise_stride_sf_a_size, ptr_buf_size, scale_buf_size, ptr_token_map_size, ptr_buf_size,
+        swiglu_stride_size};
 }
 
 size_t TmaWarpSpecializedGroupedGemmInput::workspaceSize(int num_experts, FpXBlockScalingType scaling_type)
@@ -74,7 +76,7 @@ void TmaWarpSpecializedGroupedGemmInput::configureWorkspace(int8_t* start_ptr, i
     size_t gemm_workspace_size, FpXBlockScalingType scaling_type)
 {
     auto buffers = workspaceBuffers(num_experts, scaling_type);
-    std::array<int8_t*, 20> pointers{};
+    std::array<int8_t*, 22> pointers{};
     TLLM_CHECK_WITH_INFO(pointers.size() == buffers.size(), "Mismatching workspace size and number of buffers");
     for (int i = 0; i < buffers.size(); i++)
     {
@@ -113,6 +115,9 @@ void TmaWarpSpecializedGroupedGemmInput::configureWorkspace(int8_t* start_ptr, i
     fused_finalize_epilogue.ptr_router_scales = reinterpret_cast<float const**>(pointers[18]);
     fused_finalize_epilogue.ptr_source_token_index = reinterpret_cast<int const**>(pointers[19]);
 
+    fused_swiglu_epilogue.ptr_swiglu_output_array = reinterpret_cast<void**>(pointers[20]);
+    fused_swiglu_epilogue.stride_swiglu_output = reinterpret_cast<int64_t*>(pointers[21]);
+
     this->gemm_workspace = reinterpret_cast<uint8_t*>(gemm_workspace);
     this->gemm_workspace_size = gemm_workspace_size;
 }
@@ -130,6 +135,17 @@ void TmaWarpSpecializedGroupedGemmInput::setFinalizeFusionParams(
     fused_finalize_epilogue.num_rows_in_final_output = num_output_tokens;
     fused_finalize_epilogue.shape_override = hidden_size;
     fused_finalize_epilogue.use_reduction = use_reduction;
+}
+
+void TmaWarpSpecializedGroupedGemmInput::setSwigluFusionParams(void* swiglu_output, uint8_t* fc2_act_sf_flat,
+    int64_t const* expert_first_token_offset, float const* global_sf_scale_ptr, int inter_size, int num_experts)
+{
+    fused_swiglu_epilogue.ptr_swiglu_output = swiglu_output;
+    fused_swiglu_epilogue.fc2_act_sf_flat = fc2_act_sf_flat;
+    fused_swiglu_epilogue.expert_first_token_offset = expert_first_token_offset;
+    fused_swiglu_epilogue.global_sf_scale_ptr = global_sf_scale_ptr;
+    fused_swiglu_epilogue.inter_size = inter_size;
+    fused_swiglu_epilogue.num_experts = num_experts;
 }
 
 std::string TmaWarpSpecializedGroupedGemmInput::toString() const
@@ -150,6 +166,19 @@ std::string TmaWarpSpecializedGroupedGemmInput::toString() const
             ss << ",\nBias: " << (PrintType) fused_finalize_epilogue.ptr_bias;
             ss << ",\nRouter Scales: " << fused_finalize_epilogue.ptr_router_scales;
             ss << ", Source Map: " << (PrintType) fused_finalize_epilogue.ptr_source_token_index;
+        }
+        else if (fusion == TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU)
+        {
+            ss << "Ptr D: " << (PrintType) ptr_d;
+            ss << " with Stride: " << (PrintType) stride_d;
+            ss << ",\nSwiGLU Output: " << (PrintType) fused_swiglu_epilogue.ptr_swiglu_output;
+            ss << ", SwiGLU Ptr Array: " << (PrintType) fused_swiglu_epilogue.ptr_swiglu_output_array;
+            ss << ", SwiGLU Stride Array: " << (PrintType) fused_swiglu_epilogue.stride_swiglu_output;
+            ss << ",\nFC2 Act SF Flat: " << (PrintType) fused_swiglu_epilogue.fc2_act_sf_flat;
+            ss << ", Expert Offsets: " << (PrintType) fused_swiglu_epilogue.expert_first_token_offset;
+            ss << ", Global SF Scale: " << (PrintType) fused_swiglu_epilogue.global_sf_scale_ptr;
+            ss << ", Inter Size: " << fused_swiglu_epilogue.inter_size;
+            ss << ", Num Experts: " << fused_swiglu_epilogue.num_experts;
         }
         else
         {

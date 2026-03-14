@@ -804,8 +804,8 @@ private:
         void const* input_activations_void, TmaWarpSpecializedGroupedGemmInput::ElementSF const* input_sf,
         void* final_output, WeightType const* fc1_expert_weights, WeightType const* fc2_expert_weights,
         QuantParams quant_params, ScaleBiasType const* fc1_expert_biases, ScaleBiasType const* fc2_expert_biases,
-        bool min_latency_mode, MoeMinLatencyParams& min_latency_params, bool use_lora, int start_expert,
-        MOEParallelismConfig parallelism_config, cudaStream_t stream);
+        bool min_latency_mode, MoeMinLatencyParams& min_latency_params, bool use_lora, bool enable_swiglu_fusion,
+        int start_expert, MOEParallelismConfig parallelism_config, cudaStream_t stream);
 
     static std::pair<TmaWarpSpecializedGroupedGemmInput, TmaWarpSpecializedGroupedGemmInput>
     computeStridesTmaWarpSpecialized(int64_t const* expert_first_token_offset,

@@ -176,12 +176,29 @@ struct TmaWarpSpecializedGroupedGemmInput
 
     FusedFinalizeEpilogue fused_finalize_epilogue;
 
+    struct FusedSwigluEpilogue
+    {
+        void* ptr_swiglu_output = nullptr;
+        void** ptr_swiglu_output_array = nullptr;
+        int64_t* stride_swiglu_output = nullptr;
+
+        uint8_t* fc2_act_sf_flat = nullptr;
+        int64_t const* expert_first_token_offset = nullptr;
+        float const* global_sf_scale_ptr = nullptr;
+
+        int inter_size = 0;
+        int num_experts = 0;
+    };
+
+    FusedSwigluEpilogue fused_swiglu_epilogue;
+
     enum class EpilogueFusion
     {
         NONE,
         ACTIVATION,
         GATED_ACTIVATION,
-        FINALIZE
+        FINALIZE,
+        SWIGLU
     };
     EpilogueFusion fusion = EpilogueFusion::NONE;
 
@@ -231,7 +248,7 @@ struct TmaWarpSpecializedGroupedGemmInput
     uint8_t* gemm_workspace = nullptr;
     size_t gemm_workspace_size = 0;
 
-    static std::array<size_t, 20> workspaceBuffers(int num_experts, FpXBlockScalingType scaling_type);
+    static std::array<size_t, 22> workspaceBuffers(int num_experts, FpXBlockScalingType scaling_type);
 
     static size_t workspaceSize(int num_experts, FpXBlockScalingType scaling_type);
 
@@ -244,6 +261,9 @@ struct TmaWarpSpecializedGroupedGemmInput
     }
 
     void setFinalizeFusionParams(void* final_output, int hidden_size, int num_output_tokens, bool use_reduction);
+
+    void setSwigluFusionParams(void* swiglu_output, uint8_t* fc2_act_sf_flat,
+        int64_t const* expert_first_token_offset, float const* global_sf_scale_ptr, int inter_size, int num_experts);
 
     std::string toString() const;
 };

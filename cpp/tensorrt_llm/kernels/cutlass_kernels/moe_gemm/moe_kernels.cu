@@ -78,6 +78,23 @@ TRTLLM_NAMESPACE_BEGIN
 namespace kernels::cutlass_kernels
 {
 
+namespace
+{
+
+bool getForceUnfusedSwiglu()
+{
+    static bool const force_unfused_swiglu = getBoolEnv("FORCE_UNFUSED_SWIGLU");
+    return force_unfused_swiglu;
+}
+
+bool getEnableSingleTileSwigluFusion()
+{
+    static bool const enable_single_tile_swiglu_fusion = getBoolEnv("ENABLE_SINGLE_TILE_SWIGLU_FUSION");
+    return enable_single_tile_swiglu_fusion;
+}
+
+} // namespace
+
 // Forced vectorized load
 template <typename T>
 __device__ __forceinline__ T loadVec(T const* ptr)
@@ -1188,7 +1205,8 @@ __device__ void computeTmaWarpSpecializedInputStrides(
         // TODO Enable 1xN bias matrix as C
         assert(false && "CUTLASS does not support a 1xN bias");
     }
-    if (layout_info.fusion == TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE)
+    if (layout_info.fusion == TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE
+        || layout_info.fusion == TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU)
     {
         if (layout_info.swap_ab)
         {
@@ -1198,10 +1216,15 @@ __device__ void computeTmaWarpSpecializedInputStrides(
         }
         else
         {
-            reinterpret_cast<TmaWarpSpecializedGroupedGemmInput::StrideD*>(layout_info.stride_d)[out_idx]
+                reinterpret_cast<TmaWarpSpecializedGroupedGemmInput::StrideD*>(layout_info.stride_d)[out_idx]
                 = cutlass::make_cute_packed_stride(
                     TmaWarpSpecializedGroupedGemmInput::StrideD{}, cute::make_shape(gemm_m, gemm_n, 1));
         }
+    }
+    if (layout_info.fusion == TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU)
+    {
+        assert(gemm_n % 2 == 0);
+        layout_info.fused_swiglu_epilogue.stride_swiglu_output[out_idx] = gemm_n / 2;
     }
     if (layout_info.int4_groupwise_params.enabled)
     {
@@ -1229,10 +1252,16 @@ __device__ void computeTmaWarpSpecializedInputPointers(TmaWarpSpecializedGrouped
     // Each expert's weight matrix is a constant size NxK, get the matrix at index `expert`
     layout_info.ptr_weight[out_idx] = safe_inc_ptr(weights, expert * (gemm_n * gemm_k));
 
-    if (layout_info.fusion == TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE)
+    if (layout_info.fusion == TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE
+        || layout_info.fusion == TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU)
     {
         // The output prior to this contains N elements per token, with `num_tokens_before_expert` tokens
         layout_info.ptr_d[out_idx] = safe_inc_ptr(output, num_tokens_before_expert * gemm_n);
+    }
+    if (layout_info.fusion == TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU)
+    {
+        layout_info.fused_swiglu_epilogue.ptr_swiglu_output_array[out_idx]
+            = layout_info.fused_swiglu_epilogue.ptr_swiglu_output;
     }
     if (layout_info.fusion == TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE)
     {
@@ -2953,6 +2982,19 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::
         = getOffsetActivationSF(num_experts_per_node, act_sf_rows, inter_size, getScalingType()) * sf_size;
     size_t const fp4_act_scale_size = std::max(fc1_fp4_act_scale_size, fc2_fp4_act_scale_size);
 
+    bool const prepare_single_tile_swiglu_fusion_workspace = !min_latency_mode && getEnableSingleTileSwigluFusion()
+        && is_gated_activation && activation_type == ActivationType::Swiglu && use_block_scaling
+        && getScalingType() == TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::NVFP4
+        && !use_deepseek_fp8_block_scale && (!use_awq || std::is_same_v<T, WeightType>)
+        && !getForceUnfusedSwiglu() && gemm1_config_.has_value()
+        && moe_gemm_runner_.isTmaWarpSpecialized(*gemm1_config_) && (gemm1_config_->tile_config_sm120
+            == cutlass_extensions::CutlassTileConfigSM120::CtaShape128x128x128B
+            || gemm1_config_->tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape64x128x64B);
+    size_t const fused_swiglu_output_size = prepare_single_tile_swiglu_fusion_workspace ? fc1_result_size : 0;
+    size_t const fp4_act_scale_fc1_size = prepare_single_tile_swiglu_fusion_workspace ? fc1_fp4_act_scale_size : 0;
+    size_t const fp4_act_scale_fc2_size = prepare_single_tile_swiglu_fusion_workspace ? fc2_fp4_act_scale_size : 0;
+    size_t const fp4_act_scale_alias_size = prepare_single_tile_swiglu_fusion_workspace ? 0 : fp4_act_scale_size;
+
     size_t const tma_ws_size
         = using_tma_ws ? TmaWarpSpecializedGroupedGemmInput::workspaceSize(num_experts_per_node, getScalingType()) : 0;
 
@@ -3031,9 +3073,12 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::
     ADD(permuted_token_final_scales);
     ADD(overlapped_gemm1_gemm2_inputs);
     ADD(overlapped_gemm1_gemm2_outputs);
+    ADD_NAME(fused_swiglu_output, fused_swiglu_output_size);
     ADD_NAME(alpha_scale_ptr_array_fc1, alpha_scale_ptr_array_size);
     ADD_NAME(alpha_scale_ptr_array_fc2, alpha_scale_ptr_array_size);
-    ADD(fp4_act_scale);
+    ADD_NAME(fp4_act_scale_fc1, fp4_act_scale_fc1_size);
+    ADD_NAME(fp4_act_scale_fc2, fp4_act_scale_fc2_size);
+    ADD_NAME(fp4_act_scale, fp4_act_scale_alias_size);
     ADD_NAME(tma_ws_gemm1_workspace, tma_ws_size);
     ADD_NAME(tma_ws_gemm2_workspace, tma_ws_size);
     ADD_NAME(tma_ws_dual_tile_gemm1_workspace, tma_ws_size);
@@ -3136,8 +3181,18 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
     fc2_fp4_act_scale_ = nullptr;
     if (use_block_scaling)
     {
-        fc1_fp4_act_scale_ = getWsPtr(TmaWarpSpecializedGroupedGemmInput::ElementSF{}, "fp4_act_scale");
-        fc2_fp4_act_scale_ = getWsPtr(TmaWarpSpecializedGroupedGemmInput::ElementSF{}, "fp4_act_scale");
+        auto* fp4_act_scale_fc1 = getWsPtr(TmaWarpSpecializedGroupedGemmInput::ElementSF{}, "fp4_act_scale_fc1");
+        auto* fp4_act_scale_fc2 = getWsPtr(TmaWarpSpecializedGroupedGemmInput::ElementSF{}, "fp4_act_scale_fc2");
+        if (fp4_act_scale_fc1 != nullptr || fp4_act_scale_fc2 != nullptr)
+        {
+            fc1_fp4_act_scale_ = fp4_act_scale_fc1;
+            fc2_fp4_act_scale_ = fp4_act_scale_fc2;
+        }
+        else
+        {
+            fc1_fp4_act_scale_ = getWsPtr(TmaWarpSpecializedGroupedGemmInput::ElementSF{}, "fp4_act_scale");
+            fc2_fp4_act_scale_ = getWsPtr(TmaWarpSpecializedGroupedGemmInput::ElementSF{}, "fp4_act_scale");
+        }
         TLLM_CHECK(fc1_fp4_act_scale_ != nullptr);
         TLLM_CHECK(fc2_fp4_act_scale_ != nullptr);
     }
@@ -3970,10 +4025,37 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
     }
 
     bool use_awq = useAwq(quant_params);
+    bool const enable_swiglu_fusion = !min_latency_mode && getEnableSingleTileSwigluFusion()
+        && isGatedActivation(fc1_activation_type) && fc1_activation_type.activation_type == ActivationType::Swiglu
+        && use_block_scaling && getScalingType() == TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::NVFP4
+        && !use_deepseek_fp8_block_scale && !usePrequantScaleKernel(quant_params) && !getForceUnfusedSwiglu()
+        && moe_gemm_runner_.isTmaWarpSpecialized(*gemm1_config_) && (gemm1_config_->tile_config_sm120
+            == cutlass_extensions::CutlassTileConfigSM120::CtaShape128x128x128B
+            || gemm1_config_->tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape64x128x64B);
     int const num_experts_per_node = full_num_experts / parallelism_config.ep_size;
 
     configureWsPtrs(workspace_ptr, num_rows, hidden_size, inter_size, num_experts_per_node, experts_per_token,
         fc1_activation_type, parallelism_config, use_lora, use_deepseek_fp8_block_scale, min_latency_mode, use_awq);
+
+    if (enable_swiglu_fusion)
+    {
+        auto workspaces = getWorkspaceDeviceBufferSizes(num_rows, hidden_size, inter_size, num_experts_per_node,
+            experts_per_token, fc1_activation_type, use_lora, use_deepseek_fp8_block_scale, min_latency_mode, use_awq);
+        auto getWsPtr = [&](auto type, std::string const& name)
+        {
+            return workspaces.at(name).first ? reinterpret_cast<decltype(type)*>(workspace_ptr + workspaces.at(name).second)
+                                             : nullptr;
+        };
+
+        fc1_result_ = getWsPtr(T{}, "fused_swiglu_output");
+        fc1_fp4_act_scale_ = getWsPtr(TmaWarpSpecializedGroupedGemmInput::ElementSF{}, "fp4_act_scale_fc1");
+        fc2_fp4_act_scale_ = getWsPtr(TmaWarpSpecializedGroupedGemmInput::ElementSF{}, "fp4_act_scale_fc2");
+        TLLM_CHECK(fc1_result_ != nullptr);
+        TLLM_CHECK(fc1_fp4_act_scale_ != nullptr);
+        TLLM_CHECK(fc2_fp4_act_scale_ != nullptr);
+        TLLM_CUDA_CHECK(cudaMemsetAsync(
+            fc2_fp4_act_scale_, 0, workspaces.at("fp4_act_scale_fc2").first, stream));
+    }
 
     int start_expert = num_experts_per_node * parallelism_config.ep_rank;
     int end_expert = start_expert + num_experts_per_node;
@@ -4001,7 +4083,8 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
             = setupTmaWarpSpecializedInputs(num_rows, expanded_num_rows, fc1_activation_type, hidden_size,
                 unpadded_hidden_size, inter_size, num_experts_per_node, input_activations_void, input_sf, final_output,
                 fc1_expert_weights, fc2_expert_weights, quant_params, fc1_expert_biases, fc2_expert_biases,
-                min_latency_mode, min_latency_params, use_lora, start_expert, parallelism_config, stream);
+                min_latency_mode, min_latency_params, use_lora, enable_swiglu_fusion, start_expert,
+                parallelism_config, stream);
 
         // todo: input_activations_void should be nvfp4, waiting for yuxian's mr ready
         Self::gemm1(moe_gemm_runner_, blockscale_gemm_runner, reinterpret_cast<T const*>(input_activations_void),
@@ -4082,7 +4165,8 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
             = setupTmaWarpSpecializedInputs(num_rows, expanded_num_rows, fc1_activation_type, hidden_size,
                 unpadded_hidden_size, inter_size, num_experts_per_node, input_activations_void, input_sf, final_output,
                 fc1_expert_weights, fc2_expert_weights, quant_params, fc1_expert_biases, fc2_expert_biases,
-                min_latency_mode, min_latency_params, use_lora, start_expert, parallelism_config, stream);
+                min_latency_mode, min_latency_params, use_lora, enable_swiglu_fusion, start_expert,
+                parallelism_config, stream);
 
         if (use_lora)
         {
@@ -4110,7 +4194,7 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
         sync_check_cuda_error(stream);
 
         // Opportunistically apply FC2 prequant scaling in FC1 doActivation kernel if applicable
-        bool const fuse_fc2_prequant_scale = use_awq && is_gated_activation;
+        bool const fuse_fc2_prequant_scale = use_awq && is_gated_activation && !enable_swiglu_fusion;
         void const* fc2_prequant_scale_ptr = fuse_fc2_prequant_scale ? quant_params.groupwise.fc2.act_scales : nullptr;
         // Match the FC2 act buffer bound to respective TMA desc defined in setupTmaWarpSpecializedInputs()
         T* gemm1_output = fuse_fc2_prequant_scale ? reinterpret_cast<T*>(smoothed_act_) : fc1_result_;
@@ -4120,7 +4204,7 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
             fc1_fp4_act_scale_, fc2_fp4_act_scale_, quant_params, num_rows, expanded_num_rows,
             expected_tokens_per_expert, hidden_size, inter_size, num_experts_per_node, fc1_activation_type,
             alpha_scale_ptr_array_fc1_, !use_lora, stream, *gemm1_config_, false, nullptr, nullptr,
-            fc2_prequant_scale_ptr);
+            fc2_prequant_scale_ptr, enable_swiglu_fusion);
         sync_check_cuda_error(stream);
 
         if (use_lora)
@@ -4130,9 +4214,17 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
             sync_check_cuda_error(stream);
         }
 
-        // When fusing, data is already in smoothed_act_; otherwise run applyPrequantScale to get it there
-        T const* gemm2_input{reinterpret_cast<T const*>(smoothed_act_)};
-        if (!fuse_fc2_prequant_scale)
+        T const* gemm2_input{};
+        if (enable_swiglu_fusion)
+        {
+            // Single-tile SWIGLU fusion already materialized packed FC2 input/scales into fc1_result_/fc2_fp4_act_scale_.
+            gemm2_input = fc1_result_;
+        }
+        else if (fuse_fc2_prequant_scale)
+        {
+            gemm2_input = reinterpret_cast<T const*>(smoothed_act_);
+        }
+        else
         {
             // Outputs smoothed_act_
             gemm2_input = applyPrequantScale(smoothed_act_, fc1_result_, quant_params.groupwise.fc2.act_scales,
@@ -4548,8 +4640,8 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::
     TmaWarpSpecializedGroupedGemmInput::ElementSF const* input_sf, void* final_output,
     WeightType const* fc1_expert_weights, WeightType const* fc2_expert_weights, QuantParams quant_params,
     ScaleBiasType const* fc1_expert_biases, ScaleBiasType const* fc2_expert_biases, bool min_latency_mode,
-    MoeMinLatencyParams& min_latency_params, bool use_lora, int start_expert, MOEParallelismConfig parallelism_config,
-    cudaStream_t stream)
+    MoeMinLatencyParams& min_latency_params, bool use_lora, bool enable_swiglu_fusion, int start_expert,
+    MOEParallelismConfig parallelism_config, cudaStream_t stream)
 {
     auto gemm1_tma_ws_input = tma_ws_grouped_gemm1_input_;
     auto gemm2_tma_ws_input = tma_ws_grouped_gemm2_input_;
@@ -4593,7 +4685,9 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::
     {
         auto gemm1_input = use_prequant_scale_kernel ? smoothed_act_ : permuted_data_;
 
-        gemm1_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE;
+        gemm1_tma_ws_input.fusion = enable_swiglu_fusion
+            ? TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU
+            : TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE;
         gemm2_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE;
 
         gemm1_tma_ws_input.swap_ab = gemm1_config_->swap_ab;
@@ -4614,6 +4708,20 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::
             bool use_reduction = expanded_num_rows > num_rows;
             gemm2_tma_ws_input.fusion = TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE;
             gemm2_tma_ws_input.setFinalizeFusionParams(final_output, unpadded_hidden_size, num_rows, use_reduction);
+        }
+
+        if (enable_swiglu_fusion)
+        {
+            TLLM_CHECK_WITH_INFO(use_fp4, "Single-tile SwiGLU epilogue fusion is only supported for NVFP4 activations");
+            TLLM_CHECK_WITH_INFO(fc1_result_ != nullptr, "Single-tile SwiGLU epilogue fusion requires packed output workspace");
+            TLLM_CHECK_WITH_INFO(fc2_fp4_act_scale_ != nullptr,
+                "Single-tile SwiGLU epilogue fusion requires FC2 activation-scale workspace");
+            TLLM_CHECK_WITH_INFO(expert_first_token_offset_ != nullptr,
+                "Single-tile SwiGLU epilogue fusion requires expert token offsets");
+            TLLM_CHECK_WITH_INFO(quant_params.fp4.fc2.act_global_scale != nullptr,
+                "Single-tile SwiGLU epilogue fusion requires FC2 FP4 global activation scale");
+            gemm1_tma_ws_input.setSwigluFusionParams(fc1_result_, fc2_fp4_act_scale_, expert_first_token_offset_,
+                quant_params.fp4.fc2.act_global_scale, inter_size, num_experts_per_node);
         }
 
         // fp8_mxfp4 memsets the scaling factors to 1.0f
