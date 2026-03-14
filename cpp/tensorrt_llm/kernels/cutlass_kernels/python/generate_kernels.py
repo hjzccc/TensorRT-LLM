@@ -18,6 +18,7 @@ class TrtLlm_EpilogueTag(enum.Enum):
 class TrtLlm_EpilogueFusion(enum.Enum):
     epilogue_fusion_none = enum_auto()
     epilogue_fusion_finalize = enum_auto()
+    epilogue_fusion_swiglu = enum_auto()
 
 
 EpiTagNames = {
@@ -44,12 +45,15 @@ EpiFusion = {
     "tensorrt_llm::kernels::cutlass_kernels::TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE",
     TrtLlm_EpilogueFusion.epilogue_fusion_finalize:
     "tensorrt_llm::kernels::cutlass_kernels::TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE",
+    TrtLlm_EpilogueFusion.epilogue_fusion_swiglu:
+    "tensorrt_llm::kernels::cutlass_kernels::TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU",
 }
 
 EpiFusionSuffixes = {
     None: "",
     TrtLlm_EpilogueFusion.epilogue_fusion_none: "EpilogueFusion_NONE",
     TrtLlm_EpilogueFusion.epilogue_fusion_finalize: "EpilogueFusion_FINALIZE",
+    TrtLlm_EpilogueFusion.epilogue_fusion_swiglu: "EpilogueFusion_SWIGLU",
 }
 
 
@@ -677,11 +681,10 @@ def generate_sm120_grouped_gemm_operations(is_arch_enabled):
 
     swap_ab = [True, False]
 
-    partial_args = product(supported_dtypes, quant_ops, epi_tags, epi_fusions,
-                           cta_shapes_mnk, cga_shapes, swap_ab)
+    partial_args = product(supported_dtypes, quant_ops, epi_tags, cta_shapes_mnk, cga_shapes, swap_ab)
 
     operations = list()
-    for dtype, quant_op, epi_tag, epi_fusion, cta_shape_mnk, cga_shape, swap_ab in partial_args:
+    for dtype, quant_op, epi_tag, cta_shape_mnk, cga_shape, swap_ab in partial_args:
 
         # Ignored
         mainloop_schedule = KernelScheduleType.TmaWarpSpecializedCooperative
@@ -697,32 +700,37 @@ def generate_sm120_grouped_gemm_operations(is_arch_enabled):
             if cta_shape_mnk != [128, 128, 128]:
                 continue
 
+        candidate_fusions = list(epi_fusions)
+        if act_type == e2m1 and weight_type == e2m1:
+            candidate_fusions.append(TrtLlm_EpilogueFusion.epilogue_fusion_swiglu)
+
         otypes = [act_type]
         if act_type in [DataType.e4m3, e2m1]:
             otypes = [DataType.f16, DataType.bf16]
 
-        for otype in otypes:
-            moe_gemm_operation = TrtLlm_GemmLauncher(
-                GemmKind.Grouped,
-                arch,
-                act_type,
-                weight_type,
-                act_type,
-                act_type,
-                otype,
-                quant_op,
-                epi_tag,
-                cta_shape_mnk,
-                warp_shape,
-                stages,
-                cga_shape,
-                mainloop_schedule,
-                epi_schedule,
-                epi_fusion,
-                is_mx_fpx=(act_type == DataType.e4m3 and weight_type == e2m1),
-                swap_ab=swap_ab)
+        for epi_fusion in candidate_fusions:
+            for otype in otypes:
+                moe_gemm_operation = TrtLlm_GemmLauncher(
+                    GemmKind.Grouped,
+                    arch,
+                    act_type,
+                    weight_type,
+                    act_type,
+                    act_type,
+                    otype,
+                    quant_op,
+                    epi_tag,
+                    cta_shape_mnk,
+                    warp_shape,
+                    stages,
+                    cga_shape,
+                    mainloop_schedule,
+                    epi_schedule,
+                    epi_fusion,
+                    is_mx_fpx=(act_type == DataType.e4m3 and weight_type == e2m1),
+                    swap_ab=swap_ab)
 
-            operations.append(moe_gemm_operation)
+                operations.append(moe_gemm_operation)
     return operations
 
 

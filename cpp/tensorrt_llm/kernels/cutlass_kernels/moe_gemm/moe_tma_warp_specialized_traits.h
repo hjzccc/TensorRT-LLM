@@ -40,6 +40,9 @@ constexpr bool isValidSM120MOESpecialisation()
     return ((cutlass::platform::is_same<T, __nv_fp4_e2m1>::value && cutlass::platform::is_same<T, WeightType>::value)
                || (cutlass::platform::is_same<T, __nv_fp8_e4m3>::value
                    && cutlass::platform::is_same<WeightType, __nv_fp4_e2m1>::value))
+        && (Fusion != TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU
+            || (cutlass::platform::is_same<T, __nv_fp4_e2m1>::value
+                && cutlass::platform::is_same<T, WeightType>::value))
         && cutlass::platform::is_same<EpilogueTag, cutlass_extensions::EpilogueOpDefault>::value;
 #else
     return false; // CUTLASS_ARCH_MMA_SM100_SUPPORTED is set when Blackwell kernels are enabled
@@ -54,7 +57,8 @@ constexpr bool isValidBlackwellMOESpecialisation()
 #if defined(CUTLASS_ARCH_MMA_SM100_SUPPORTED) // TODO Is there a better choice
     return (cutlass::platform::is_same<T, WeightType>::value
                || (cutlass::platform::is_same<T, __nv_fp8_e4m3>::value
-                   && cutlass::platform::is_same<WeightType, __nv_fp4_e2m1>::value))
+                    && cutlass::platform::is_same<WeightType, __nv_fp4_e2m1>::value))
+        && Fusion != TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU
         && cutlass::platform::is_same<EpilogueTag, cutlass_extensions::EpilogueOpDefault>::value;
 #else
     return false; // CUTLASS_ARCH_MMA_SM100_SUPPORTED is set when Blackwell kernels are enabled
@@ -76,6 +80,7 @@ constexpr bool isValidHopperMOESpecialisation()
 #ifdef ENABLE_FP4
         && !cutlass::platform::is_same<T, __nv_fp4_e2m1>::value
 #endif
+        && Fusion != TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU
         && cutlass::platform::is_same<EpilogueTag, cutlass_extensions::EpilogueOpDefault>::value;
 #else
     return false; // CUTLASS_ARCH_MMA_MODIFIABLE_TMA_SM90_SUPPORTED is set when Hopper kernels are enabled
@@ -88,7 +93,7 @@ template <typename T, typename WeightType, typename EpilogueTag = cutlass_extens
 constexpr bool isValidTmaWarpSpecializedMOESpecialisation()
 {
     // Check at least one of the implementations are valid
-    return isValidSM120MOESpecialisation<T, WeightType>()
+    return isValidSM120MOESpecialisation<T, WeightType, EpilogueTag, Fusion>()
         || isValidBlackwellMOESpecialisation<T, WeightType, EpilogueTag, Fusion>()
         || isValidHopperMOESpecialisation<T, WeightType, EpilogueTag, Fusion>();
 }
