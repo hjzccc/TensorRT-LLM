@@ -1,72 +1,139 @@
 #!/usr/bin/env python3
-"""Minimal script for ncu profiling of M32 vs M64 vs M128 vs M256 single-tile MoE GEMM.
-Run with ncu to get roofline/SOL analysis per tile size.
+"""Deterministic single-tile profiler driver for fused vs unfused SwiGLU runs.
+
+This script keeps the logical workload fixed across profiling runs and only changes
+the FC1 physical layout to match the runtime fusion gate:
+- fused gate on  -> interleaved FC1 [up_i chunk, gate_i chunk]
+- fused gate off -> contiguous FC1 [up | gate]
+
 Usage:
-  ncu --set full --kernel-name-base demangled \
-      --kernel-name regex:'GemmUniversal' \
-      --launch-skip 5 --launch-count 3 \
-      python3 ncu_tile_roofline.py <tactic_id>
+  ENABLE_SINGLE_TILE_SWIGLU_FUSION=1 ncu --set full --kernel-name-base demangled \
+      --kernel-name regex:'GemmUniversal' --launch-skip 10 --launch-count 5 \
+      python3 added_benchmark/ncu_tile_roofline.py 0
 
-  tactic_id: 0=M128, 1=M64, 2=M32, 3=M256
+  FORCE_UNFUSED_SWIGLU=1 nsys profile --trace=cuda,nvtx \
+      --output=.sisyphus/evidence/task-7-single-tile-unfused \
+      python3 added_benchmark/ncu_tile_roofline.py 0
 """
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
 import sys
+
 import torch
-torch.ops.load_library("/code/tensorrt_llm/tensorrt_llm/libs/libth_common.so")
-from test_dual_tile_real_weights import (
-    load_real_weights,
-    NUM_EXPERTS, TOP_K, HIDDEN, SWIGLU, DEVICE, DTYPE
-)
 
-tactic = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-names = {0: "M128", 1: "M64", 2: "M32", 3: "M256"}
-# GEMM1 tactic = tactic, GEMM2 tactic = tactic + NUM_BASE_TACTICS (FIN variant)
-# Exception: M256+FIN exceeds SMEM for GEMM2, so fall back to M128+FIN for GEMM2
-NUM_BASE_TACTICS = 4  # M128, M64, M32, M256
-g1 = tactic
-g2 = tactic + NUM_BASE_TACTICS if tactic != 3 else 0 + NUM_BASE_TACTICS  # M256 GEMM2 → M128+FIN
+try:
+    from .test_single_tile_swiglu_fusion import (
+        DEFAULT_ACTIVATION,
+        DEFAULT_QUANTIZATION,
+        NUM_EXPERTS,
+        TACTIC_NAMES,
+        build_single_tile_case,
+        call_run_moe,
+        compute_fusion_gate_report,
+        create_runner,
+        load_trtllm_library,
+        make_deterministic_inputs,
+        resolve_fc1_layout,
+        validate_fc1_layout_contract,
+    )
+except ImportError:
+    repo_root = str(Path(__file__).resolve().parent.parent)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    from added_benchmark.test_single_tile_swiglu_fusion import (
+        DEFAULT_ACTIVATION,
+        DEFAULT_QUANTIZATION,
+        NUM_EXPERTS,
+        TACTIC_NAMES,
+        build_single_tile_case,
+        call_run_moe,
+        compute_fusion_gate_report,
+        create_runner,
+        load_trtllm_library,
+        make_deterministic_inputs,
+        resolve_fc1_layout,
+        validate_fc1_layout_contract,
+    )
 
-batch = 512  # avg M/expert = 32 — small enough that tile choice matters
-print(f"Profiling tactic {tactic} ({names[tactic]}), batch={batch}, "
-      f"g1={g1}, g2={g2}")
 
-# Equal routing: each token gets experts assigned round-robin so every expert
-# receives exactly (batch * TOP_K / NUM_EXPERTS) tokens.
-assert (batch * TOP_K) % NUM_EXPERTS == 0, (
-    f"batch*TOP_K ({batch*TOP_K}) must be divisible by NUM_EXPERTS ({NUM_EXPERTS})"
-)
-expert_ids = torch.arange(NUM_EXPERTS, device=DEVICE, dtype=torch.int32)
-# Repeat to fill [batch, TOP_K]: assign expert round-robin across all slots
-all_slots = expert_ids.repeat(batch * TOP_K // NUM_EXPERTS)  # length = batch * TOP_K
-all_slots = all_slots[torch.randperm(len(all_slots), device=DEVICE)]  # shuffle
-eidx = all_slots.reshape(batch, TOP_K)
-sc = torch.ones(batch, TOP_K, dtype=torch.float32, device=DEVICE) / TOP_K
+DEFAULT_BATCH = 512
+DEFAULT_SEED = 1234
+DEFAULT_WARMUP_ITERS = 10
+DEFAULT_PROFILE_ITERS = 5
 
-# Verify uniform distribution
-counts = torch.zeros(NUM_EXPERTS, dtype=torch.int32, device=DEVICE)
-counts.scatter_add_(0, eidx.reshape(-1).long(),
-                     torch.ones(batch * TOP_K, dtype=torch.int32, device=DEVICE))
-assert counts.min() == counts.max(), f"Non-uniform routing: min={counts.min()}, max={counts.max()}"
-tokens_per_expert = counts[0].item()
-print(f"Equal routing: {tokens_per_expert} tokens/expert (total slots={batch * TOP_K})")
 
-fc1_w, fc2_w, quant_scales, _gate_w = load_real_weights()
-runner = torch.classes.trtllm.FusedMoeRunner(
-    DTYPE, torch.int64, DTYPE, False, False, False, False, True)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Deterministic single-tile MoE profiler driver")
+    parser.add_argument("tactic", nargs="?", type=int, default=0, choices=sorted(TACTIC_NAMES))
+    parser.add_argument("--batch", type=int, default=DEFAULT_BATCH)
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument("--warmup-iters", type=int, default=DEFAULT_WARMUP_ITERS)
+    parser.add_argument("--profile-iters", type=int, default=DEFAULT_PROFILE_ITERS)
+    parser.add_argument("--layout", choices=("auto", "fused", "unfused"), default="auto")
+    args = parser.parse_args()
 
-inp = torch.randn(batch, HIDDEN, dtype=DTYPE, device=DEVICE)
-isf = torch.ones(batch, HIDDEN // 16, dtype=torch.float8_e4m3fn, device=DEVICE)
+    if args.batch <= 0:
+        parser.error("--batch must be positive")
+    if args.warmup_iters < 0:
+        parser.error("--warmup-iters must be non-negative")
+    if args.profile_iters <= 0:
+        parser.error("--profile-iters must be positive")
+    return args
 
-# Warmup (skipped by ncu with --launch-skip)
-for _ in range(10):
-    runner.run_moe(inp, eidx, sc, fc1_w, None, fc2_w, None,
-        quant_scales, isf, False, None, None, None,
-        1, 0, 1, 0, 1, 0, False, False, [g1, g2], SWIGLU, None, None, None)
+
+def main() -> None:
+    args = parse_args()
+    load_trtllm_library()
+
+    shared_inputs = make_deterministic_inputs(seed=args.seed, num_tokens=args.batch)
+    validate_fc1_layout_contract(shared_inputs)
+
+    gate_report = compute_fusion_gate_report(
+        args.tactic,
+        activation=DEFAULT_ACTIVATION,
+        quantization=DEFAULT_QUANTIZATION,
+        use_prequant_scale=False,
+    )
+    layout = args.layout
+    if layout == "auto":
+        layout = resolve_fc1_layout(
+            args.tactic,
+            activation=DEFAULT_ACTIVATION,
+            quantization=DEFAULT_QUANTIZATION,
+            use_prequant_scale=False,
+        )
+
+    case = build_single_tile_case(shared_inputs, args.tactic, layout)
+    runner = create_runner()
+
+    routing_counts = torch.bincount(shared_inputs["topk_idx"].reshape(-1).to(torch.int64), minlength=NUM_EXPERTS)
+    print(
+        f"Profiling tactic {args.tactic} ({TACTIC_NAMES[args.tactic]}), batch={args.batch}, layout={layout}, "
+        + f"profile_ids={case['profile_ids']}"
+    )
+    print(f"FUSION_GATE={1 if gate_report['enabled'] else 0}")
+    print(f"FUSION_REASON={gate_report['reason']}")
+    print(
+        "Routing distribution: "
+        + f"min={int(routing_counts.min().item())} max={int(routing_counts.max().item())} "
+        + f"total_slots={int(routing_counts.sum().item())}"
+    )
+
+    for _ in range(args.warmup_iters):
+        call_run_moe(runner, shared_inputs, case)
     torch.cuda.synchronize()
 
-print("Warmup done, starting profiled iterations...")
-for i in range(5):
-    runner.run_moe(inp, eidx, sc, fc1_w, None, fc2_w, None,
-        quant_scales, isf, False, None, None, None,
-        1, 0, 1, 0, 1, 0, False, False, [g1, g2], SWIGLU, None, None, None)
+    print("Warmup done, starting profiled iterations...")
+    torch.cuda.nvtx.range_push(f"single_tile_swiglu_{layout}_tactic_{args.tactic}")
+    for _ in range(args.profile_iters):
+        call_run_moe(runner, shared_inputs, case)
     torch.cuda.synchronize()
-print("Done.")
+    torch.cuda.nvtx.range_pop()
+    print("Done.")
+
+
+if __name__ == "__main__":
+    main()
