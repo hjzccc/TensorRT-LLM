@@ -520,8 +520,6 @@ std::vector<CutlassGemmConfig> get_candidate_configs_sm120(CutlassGemmConfig::Ca
                     EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1},
                 CutlassGemmConfig{CutlassTileConfigSM120::CtaShape64x128x64B, MainloopScheduleType::AUTO,
                     EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1},
-                CutlassGemmConfig{CutlassTileConfigSM120::CtaShape32x128x64B, MainloopScheduleType::AUTO,
-                    EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1},
                 CutlassGemmConfig{CutlassTileConfigSM120::CtaShape256x128x64B, MainloopScheduleType::AUTO,
                     EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1}};
     }
@@ -543,18 +541,11 @@ std::vector<CutlassGemmConfig> get_candidate_configs_sm120(CutlassGemmConfig::Ca
         }
         else if (config & CutlassGemmConfig::FP4_ONLY)
         {
-            // FP4 x FP4: allow all four tiles
             candidate_configs.push_back(CutlassGemmConfig{CutlassTileConfigSM120::CtaShape128x128x128B,
-                MainloopScheduleType::AUTO, EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1});
-            candidate_configs.push_back(CutlassGemmConfig{CutlassTileConfigSM120::CtaShape128x128x64B,
-                MainloopScheduleType::AUTO, EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1});
-            candidate_configs.push_back(CutlassGemmConfig{CutlassTileConfigSM120::CtaShape128x256x64B,
-                MainloopScheduleType::AUTO, EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1});
-            candidate_configs.push_back(CutlassGemmConfig{CutlassTileConfigSM120::CtaShape256x128x64B,
                 MainloopScheduleType::AUTO, EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1});
             candidate_configs.push_back(CutlassGemmConfig{CutlassTileConfigSM120::CtaShape64x128x64B,
                 MainloopScheduleType::AUTO, EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1});
-            candidate_configs.push_back(CutlassGemmConfig{CutlassTileConfigSM120::CtaShape32x128x64B,
+            candidate_configs.push_back(CutlassGemmConfig{CutlassTileConfigSM120::CtaShape256x128x64B,
                 MainloopScheduleType::AUTO, EpilogueScheduleType::AUTO, ClusterShape::ClusterShape_1x1x1});
 
             return candidate_configs;

@@ -491,15 +491,28 @@ void dispatchMoeGemmSelectTileShapeTmaWarpSpecialized(TmaWarpSpecializedGroupedG
         TLLM_LOG_TRACE("At %s, SM120 config=%d", __PRETTY_FUNCTION__, (int) gemm_config.tile_config_sm120);
         if constexpr (kernels::cutlass_kernels::isValidSM120MOESpecialisation<T, WeightType, EpilogueTag, FUSION>())
         {
-            switch (gemm_config.tile_config_sm120)
+            if constexpr (FUSION == EpilogueFusion::SWIGLU)
             {
-                SHAPE_CASE(120, 128, 128, 64)
-                SHAPE_CASE(120, 128, 128, 128)
-                SHAPE_CASE(120, 128, 256, 64)
-                SHAPE_CASE(120, 256, 128, 64)
-                SHAPE_CASE(120, 64, 128, 64)
-                SHAPE_CASE(120, 32, 128, 64)
-                DEFAULT_CASE(120)
+                switch (gemm_config.tile_config_sm120)
+                {
+                    SHAPE_CASE(120, 64, 128, 64)
+                    SHAPE_CASE(120, 32, 128, 64)
+                    SHAPE_CASE(120, 128, 128, 128)
+                    DEFAULT_CASE(120)
+                }
+            }
+            else
+            {
+                switch (gemm_config.tile_config_sm120)
+                {
+                    SHAPE_CASE(120, 64, 128, 64)
+                    SHAPE_CASE(120, 32, 128, 64)
+                    SHAPE_CASE(120, 128, 128, 64)
+                    SHAPE_CASE(120, 128, 128, 128)
+                    SHAPE_CASE(120, 128, 256, 64)
+                    SHAPE_CASE(120, 256, 128, 64)
+                    DEFAULT_CASE(120)
+                }
             }
         }
     }

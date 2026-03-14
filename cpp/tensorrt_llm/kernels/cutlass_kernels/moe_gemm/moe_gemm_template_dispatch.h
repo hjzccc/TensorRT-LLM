@@ -768,6 +768,9 @@ void MoeGemmRunner<T, WeightType, OutputType, ScaleBiasType>::dispatchToArch(
                     case TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE:
                         return &cutlass_kernels_oss::dispatchMoeGemmSelectTileShapeTmaWarpSpecialized<T, WeightType,
                             OutputType, EpilogueTag, TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE>;
+                    case TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU:
+                        return &cutlass_kernels_oss::dispatchMoeGemmSelectTileShapeTmaWarpSpecialized<T, WeightType,
+                            OutputType, EpilogueTag, TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU>;
                     case TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE:
                         return &cutlass_kernels_oss::dispatchMoeGemmSelectTileShapeTmaWarpSpecialized<T, WeightType,
                             OutputType, EpilogueTag, TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE>;
@@ -933,6 +936,17 @@ size_t MoeGemmRunner<T, WeightType, OutputType, ScaleBiasType>::calcMaxWorkspace
     } while (0)
 
             CALC_SIZE_FUSION(TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::NONE);
+            if constexpr (use_fp4)
+            {
+                if (sm_ == 120 || sm_ == 121)
+                {
+                    if (conf.tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape128x128x128B
+                        || conf.tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape64x128x64B)
+                    {
+                        CALC_SIZE_FUSION(TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU);
+                    }
+                }
+            }
             if (sm_ == 90)
             {
                 CALC_SIZE_FUSION(TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::FINALIZE);

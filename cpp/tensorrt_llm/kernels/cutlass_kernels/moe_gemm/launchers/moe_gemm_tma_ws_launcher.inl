@@ -34,6 +34,7 @@
 #include "cutlass/gemm/kernel/gemm_universal.hpp"
 
 #include "cutlass_extensions/epilogue/fusion/sm90_visitor_scatter.hpp"
+#include "cutlass_extensions/epilogue/fusion/sm90_visitor_swiglu_store.hpp"
 
 #include "tensorrt_llm/common/assert.h"
 #include "tensorrt_llm/common/config.h"
@@ -79,6 +80,33 @@ ReturnType construct_if_true(Args&&... args)
         return ReturnType{};
     }
 }
+
+template <bool ENABLE, class ArchTag, class EpilogueTensorOp, class MmaTileShape, class ClusterShape,
+    class EpilogueSubTile, class ElementAccumulator, class EpilogueElementC, class LayoutC, int AlignmentC,
+    class ElementD, class LayoutD, int AlignmentD, class EpilogueSchedule, class FusionOp>
+struct LazyCollectiveEpilogueSwiGLU
+{
+    using type = void;
+};
+
+template <class ArchTag, class EpilogueTensorOp, class MmaTileShape, class ClusterShape, class EpilogueSubTile,
+    class ElementAccumulator, class EpilogueElementC, class LayoutC, int AlignmentC, class ElementD,
+    class LayoutD, int AlignmentD, class EpilogueSchedule, class FusionOp>
+struct LazyCollectiveEpilogueSwiGLU<true, ArchTag, EpilogueTensorOp, MmaTileShape, ClusterShape, EpilogueSubTile,
+    ElementAccumulator, EpilogueElementC, LayoutC, AlignmentC, ElementD, LayoutD, AlignmentD, EpilogueSchedule,
+    FusionOp>
+{
+    using type = typename cutlass::epilogue::collective::CollectiveBuilder</**/
+        ArchTag, EpilogueTensorOp,                                                               /**/
+        MmaTileShape, ClusterShape,                                                              /**/
+        EpilogueSubTile,                                                                         /**/
+        ElementAccumulator, ElementAccumulator,                                                  /**/
+        EpilogueElementC, LayoutC*, AlignmentC,                                                  /**/
+        ElementD, LayoutD*, AlignmentD,                                                          /**/
+        EpilogueSchedule,                                                                        /**/
+        FusionOp                                                                                 /**/
+        >::CollectiveOp;
+};
 
 template <bool FLAG, class GemmGrouped, bool A>
 auto deduce_layout_sf()
@@ -270,9 +298,10 @@ using namespace cutlass::epilogue;
             constexpr static bool IsBlockScaled = IsFP4 || IsWFP4AFP8;                                                                                                                                                                                                                                                      \
             static_assert(!IsBlockScaled || IsBlackwell, "Block scaled is only implemented for SM100");                                                                                                                                                                                                                     \
                                                                                                                                                                                                                                                                                                                             \
-            static_assert(FUSION == EpilogueFusion::NONE || FUSION == EpilogueFusion::FINALIZE,                                                                                                                                                                                                                             \
+            static_assert(FUSION == EpilogueFusion::NONE || FUSION == EpilogueFusion::FINALIZE || FUSION == EpilogueFusion::SWIGLU,                                                                                                                                                                                         \
                 "Unimplemented fusion provided to TMA WS MoE gemm launcher");                                                                                                                                                                                                                                               \
             constexpr static bool IsFinalizeFusion = FUSION == EpilogueFusion::FINALIZE;                                                                                                                                                                                                                                    \
+            constexpr static bool IsSwiGLUFusion = FUSION == EpilogueFusion::SWIGLU;                                                                                                                                                                                                                                        \
             constexpr bool IsTmaSM10xEpilogue                                                                                                                                                                                                                                                                               \
                 = std::is_same_v<InputEpilogueSchedule, cutlass::epilogue::PtrArrayTmaWarpSpecialized>;                                                                                                                                                                                                                     \
                                                                                                                                                                                                                                                                                                                             \
@@ -419,9 +448,12 @@ using namespace cutlass::epilogue;
                 EpilogueScheduleSM10xFinalize,                                                           /**/                                                                                                                                                                                                               \
                 EpilogueFusionOp                                                                         /**/                                                                                                                                                                                                               \
                 >::CollectiveOp;                                                                                                                                                                                                                                                                                            \
-                                                                                                                                                                                                                                                                                                                            \
+            using SwiGLUFusionOp = cutlass::epilogue::fusion::ScaledAcc<ElementD, ElementAccumulator, ElementAccumulator>;                                                                                                                                                                                                   \
+            using CollectiveEpilogueSwiGLU = typename LazyCollectiveEpilogueSwiGLU<IsSwiGLUFusion, ArchTag, EpilogueTensorOp, MmaTileShape, ClusterShape, EpilogueSubTile, ElementAccumulator, EpilogueElementC, LayoutC, AlignmentC, ElementD, LayoutD, AlignmentD, EpilogueSchedule, SwiGLUFusionOp>::type;                                                                                                        \
+                                                                                                                                                                                                                                                                                                                             \
             using CollectiveEpilogue                                                                                                                                                                                                                                                                                        \
-                = std::conditional_t<IsFinalizeFusion, CollectiveEpilogueFinalize, CollectiveEpilogueDefault>;                                                                                                                                                                                                              \
+                = std::conditional_t<IsSwiGLUFusion, CollectiveEpilogueSwiGLU,                                                                                                                                                                                                                                              \
+                    std::conditional_t<IsFinalizeFusion, CollectiveEpilogueFinalize, CollectiveEpilogueDefault>>;                                                                                                                                                                                                           \
                                                                                                                                                                                                                                                                                                                             \
             using StageCountAutoCarveout = cutlass::gemm::collective::StageCountAutoCarveout<static_cast<int>(                                                                                                                                                                                                              \
                 sizeof(typename CollectiveEpilogue::SharedStorage))>;                                                                                                                                                                                                                                                       \
@@ -447,9 +479,13 @@ using namespace cutlass::epilogue;
                 cutlass::gemm::KernelPtrArrayTmaWarpSpecialized2SmBlockScaledMxNvf4UltraVs16Sm103,                                                                                                                                                                                                                          \
                 cutlass::gemm::KernelPtrArrayTmaWarpSpecialized1SmBlockScaledMxNvf4UltraVs16Sm103>;                                                                                                                                                                                                                         \
             using KernelScheduleSM10x = std::conditional_t<IsSM103, KernelScheduleSM103, KernelScheduleSM100>;                                                                                                                                                                                                              \
-            using KernelScheduleSM120 = std::conditional_t<(CTA_M_ < 64),                                                                                                                                                                                                                                                \
+            using KernelScheduleSM120SmallM = cutlass::gemm::KernelPtrArrayTmaWarpSpecializedPingpong;                                                                                                                                                                                                                      \
+            using KernelScheduleSM120LargeM = std::conditional_t<IsBlockScaled && IsSwiGLUFusion && CTA_M_ == 128,                                                                                                                                                                                                          \
                 cutlass::gemm::KernelPtrArrayTmaWarpSpecializedPingpong,                                                                                                                                                                                                                                                     \
-                cutlass::gemm::KernelPtrArrayTmaWarpSpecializedCooperative>;                                                                                                                                                                                                                                                    \
+                cutlass::gemm::KernelPtrArrayTmaWarpSpecializedCooperative>;                                                                                                                                                                                                                                                 \
+            using KernelScheduleSM120 = std::conditional_t<(CTA_M_ < 128),                                                                                                                                                                                                                                                  \
+                KernelScheduleSM120SmallM,                                                                                                                                                                                                                                                                                  \
+                KernelScheduleSM120LargeM>;                                                                                                                                                                                                                                                                                \
             using KernelScheduleBW = std::conditional_t<IsSM120, KernelScheduleSM120, KernelScheduleSM10x>;                                                                                                                                                                                                                 \
                                                                                                                                                                                                                                                                                                                             \
             using KernelSchedule = std::conditional_t<IsBlackwell, KernelScheduleBW, KernelScheduleSM90>;                                                                                                                                                                                                                   \
@@ -623,6 +659,15 @@ using namespace cutlass::epilogue;
                             epi_params.stride_final_output, epi_params.ptr_source_token_index,                                                                                                                                                                                                                              \
                             epi_params.num_rows_in_final_output, epi_params.shape_override, epi_params.use_reduction);                                                                                                                                                                                                      \
                     }                                                                                                                                                                                                                                                                                                       \
+                }                                                                                                                                                                                                                                                                                                           \
+                else if constexpr (IsSwiGLUFusion)                                                                                                                                                                                                                                                                          \
+                {                                                                                                                                                                                                                                                                                                           \
+                    auto epi_params = tma_ws_input.fused_swiglu_epilogue;                                                                                                                                                                                                                                                   \
+                    return construct_if_true<IsSwiGLUFusion, EpilogueScalars>(                                                                                                                                                                                                                                              \
+                        reinterpret_cast<ElementD**>(epi_params.ptr_swiglu_output_array),                                                                                                                                                                                                                                   \
+                        epi_params.stride_swiglu_output, epi_params.fc2_act_sf_flat,                                                                                                                                                                                                                                        \
+                        epi_params.expert_first_token_offset, epi_params.global_sf_scale_ptr,                                                                                                                                                                                                                               \
+                        epi_params.inter_size, epi_params.num_experts);                                                                                                                                                                                                                                                     \
                 }                                                                                                                                                                                                                                                                                                           \
                 else if constexpr (!IsSimpleAlphaBeta)                                                                                                                                                                                                                                                                      \
                 {                                                                                                                                                                                                                                                                                                           \
