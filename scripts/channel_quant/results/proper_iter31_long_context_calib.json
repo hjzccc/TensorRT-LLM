@@ -1,0 +1,1064 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "seed": 0,
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true,
+      "truncated": false
+    },
+    "standard_calibration_reference": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "experiment": "Iteration 31 long-context calibration sweep",
+    "hypothesis": "iter29 showed uniform-4096 (PPL 6.5676) beats all mixed-length MaCa variants. However, iter29's maca_with_8k was silently truncated to 4096 tokens because MACA_PAD_LENGTH=4096. This iteration tests truly longer calibration by using chunk_length as the pad length. If longer context improves Hessian quality, uniform_8k should beat uniform_4k.",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/proper_eval.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen",
+      "calibration_total_chunks": 128,
+      "no_padding": true
+    },
+    "configs": [
+      {
+        "name": "uniform_4k",
+        "chunk_length": 4096,
+        "description": "Control: 128 \u00d7 4096-token chunks. Should reproduce iter29 maca_uniform_4k at PPL 6.5676."
+      },
+      {
+        "name": "uniform_8k",
+        "chunk_length": 8192,
+        "description": "128 \u00d7 8192-token chunks with pad_length=8192. Tests whether truly longer context improves sensitivity estimation beyond 4096."
+      },
+      {
+        "name": "uniform_16k",
+        "chunk_length": 16384,
+        "description": "128 \u00d7 16384-token chunks with pad_length=16384. Pushes to 1/2 of the model's 32k context window."
+      }
+    ],
+    "requested_configs": [
+      "uniform_16k",
+      "uniform_8k"
+    ]
+  },
+  "calibration_sets": {
+    "uniform_4k": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "base_seed": 0,
+      "sampling_seed": "iter31:0:uniform_4k",
+      "config_name": "uniform_4k",
+      "description": "Control: 128 \u00d7 4096-token chunks. Should reproduce iter29 maca_uniform_4k at PPL 6.5676.",
+      "chunk_length": 4096,
+      "samples": 128,
+      "sample_shape": [
+        128,
+        4096
+      ],
+      "padding_value": 0,
+      "actual_token_total": 524288,
+      "padded_token_total": 524288,
+      "real_token_fraction": 1.0,
+      "train_tokens": 2505800,
+      "standard_reference_tokens": 262144,
+      "summary": {
+        "active_experts_per_layer": {
+          "0": 256,
+          "1": 256,
+          "2": 256,
+          "3": 256,
+          "4": 256,
+          "5": 256,
+          "6": 256,
+          "7": 256,
+          "8": 256,
+          "9": 256,
+          "10": 256,
+          "11": 256,
+          "12": 256,
+          "13": 256,
+          "14": 256,
+          "15": 256,
+          "16": 256,
+          "17": 256,
+          "18": 256,
+          "19": 256,
+          "20": 256,
+          "21": 256,
+          "22": 256,
+          "23": 256,
+          "24": 256,
+          "25": 256,
+          "26": 256,
+          "27": 256,
+          "28": 256,
+          "29": 256,
+          "30": 256,
+          "31": 256,
+          "32": 256,
+          "33": 256,
+          "34": 255,
+          "35": 256,
+          "36": 256,
+          "37": 256,
+          "38": 256,
+          "39": 256
+        },
+        "routing_top5_per_layer": {
+          "0": [
+            {
+              "expert_idx": 31,
+              "count": 66960
+            },
+            {
+              "expert_idx": 108,
+              "count": 63690
+            },
+            {
+              "expert_idx": 89,
+              "count": 47392
+            },
+            {
+              "expert_idx": 242,
+              "count": 44537
+            },
+            {
+              "expert_idx": 64,
+              "count": 42255
+            }
+          ],
+          "1": [
+            {
+              "expert_idx": 238,
+              "count": 78736
+            },
+            {
+              "expert_idx": 42,
+              "count": 54029
+            },
+            {
+              "expert_idx": 205,
+              "count": 50309
+            },
+            {
+              "expert_idx": 138,
+              "count": 50199
+            },
+            {
+              "expert_idx": 11,
+              "count": 48550
+            }
+          ],
+          "2": [
+            {
+              "expert_idx": 223,
+              "count": 55518
+            },
+            {
+              "expert_idx": 88,
+              "count": 51612
+            },
+            {
+              "expert_idx": 6,
+              "count": 46281
+            },
+            {
+              "expert_idx": 40,
+              "count": 45013
+            },
+            {
+              "expert_idx": 41,
+              "count": 42939
+            }
+          ],
+          "3": [
+            {
+              "expert_idx": 39,
+              "count": 110603
+            },
+            {
+              "expert_idx": 61,
+              "count": 110349
+            },
+            {
+              "expert_idx": 94,
+              "count": 94189
+            },
+            {
+              "expert_idx": 19,
+              "count": 81305
+            },
+            {
+              "expert_idx": 101,
+              "count": 64685
+            }
+          ],
+          "4": [
+            {
+              "expert_idx": 25,
+              "count": 149111
+            },
+            {
+              "expert_idx": 212,
+              "count": 89779
+            },
+            {
+              "expert_idx": 204,
+              "count": 60822
+            },
+            {
+              "expert_idx": 93,
+              "count": 60092
+            },
+            {
+              "expert_idx": 206,
+              "count": 56608
+            }
+          ],
+          "5": [
+            {
+              "expert_idx": 240,
+              "count": 62221
+            },
+            {
+              "expert_idx": 46,
+              "count": 61898
+            },
+            {
+              "expert_idx": 203,
+              "count": 58071
+            },
+            {
+              "expert_idx": 64,
+              "count": 57215
+            },
+            {
+              "expert_idx": 253,
+              "count": 55635
+            }
+          ],
+          "6": [
+            {
+              "expert_idx": 100,
+              "count": 95045
+            },
+            {
+              "expert_idx": 162,
+              "count": 91873
+            },
+            {
+              "expert_idx": 126,
+              "count": 83142
+            },
+            {
+              "expert_idx": 85,
+              "count": 72695
+            },
+            {
+              "expert_idx": 250,
+              "count": 68916
+            }
+          ],
+          "7": [
+            {
+              "expert_idx": 215,
+              "count": 113039
+            },
+            {
+              "expert_idx": 210,
+              "count": 104965
+            },
+            {
+              "expert_idx": 254,
+              "count": 101138
+            },
+            {
+              "expert_idx": 74,
+              "count": 79465
+            },
+            {
+              "expert_idx": 130,
+              "count": 77463
+            }
+          ],
+          "8": [
+            {
+              "expert_idx": 150,
+              "count": 307987
+            },
+            {
+              "expert_idx": 199,
+              "count": 92125
+            },
+            {
+              "expert_idx": 28,
+              "count": 77084
+            },
+            {
+              "expert_idx": 228,
+              "count": 76644
+            },
+            {
+              "expert_idx": 211,
+              "count": 70377
+            }
+          ],
+          "9": [
+            {
+              "expert_idx": 42,
+              "count": 101325
+            },
+            {
+              "expert_idx": 66,
+              "count": 85785
+            },
+            {
+              "expert_idx": 192,
+              "count": 78703
+            },
+            {
+              "expert_idx": 65,
+              "count": 77996
+            },
+            {
+              "expert_idx": 0,
+              "count": 75771
+            }
+          ],
+          "10": [
+            {
+              "expert_idx": 246,
+              "count": 89542
+            },
+            {
+              "expert_idx": 20,
+              "count": 74252
+            },
+            {
+              "expert_idx": 85,
+              "count": 70301
+            },
+            {
+              "expert_idx": 181,
+              "count": 68744
+            },
+            {
+              "expert_idx": 28,
+              "count": 63781
+            }
+          ],
+          "11": [
+            {
+              "expert_idx": 115,
+              "count": 143764
+            },
+            {
+              "expert_idx": 250,
+              "count": 82778
+            },
+            {
+              "expert_idx": 110,
+              "count": 71525
+            },
+            {
+              "expert_idx": 240,
+              "count": 66631
+            },
+            {
+              "expert_idx": 56,
+              "count": 54383
+            }
+          ],
+          "12": [
+            {
+              "expert_idx": 241,
+              "count": 132429
+            },
+            {
+              "expert_idx": 20,
+              "count": 91729
+            },
+            {
+              "expert_idx": 36,
+              "count": 87901
+            },
+            {
+              "expert_idx": 3,
+              "count": 74566
+            },
+            {
+              "expert_idx": 125,
+              "count": 69984
+            }
+          ],
+          "13": [
+            {
+              "expert_idx": 224,
+              "count": 153652
+            },
+            {
+              "expert_idx": 41,
+              "count": 151301
+            },
+            {
+              "expert_idx": 124,
+              "count": 110131
+            },
+            {
+              "expert_idx": 175,
+              "count": 84390
+            },
+            {
+              "expert_idx": 237,
+              "count": 84057
+            }
+          ],
+          "14": [
+            {
+              "expert_idx": 105,
+              "count": 146147
+            },
+            {
+              "expert_idx": 168,
+              "count": 113777
+            },
+            {
+              "expert_idx": 247,
+              "count": 103583
+            },
+            {
+              "expert_idx": 250,
+              "count": 79072
+            },
+            {
+              "expert_idx": 188,
+              "count": 74864
+            }
+          ],
+          "15": [
+            {
+              "expert_idx": 245,
+              "count": 174765
+            },
+            {
+              "expert_idx": 63,
+              "count": 103449
+            },
+            {
+              "expert_idx": 26,
+              "count": 85075
+            },
+            {
+              "expert_idx": 32,
+              "count": 77891
+            },
+            {
+              "expert_idx": 135,
+              "count": 77366
+            }
+          ],
+          "16": [
+            {
+              "expert_idx": 224,
+              "count": 184093
+            },
+            {
+              "expert_idx": 6,
+              "count": 151404
+            },
+            {
+              "expert_idx": 184,
+              "count": 114502
+            },
+            {
+              "expert_idx": 30,
+              "count": 75554
+            },
+            {
+              "expert_idx": 180,
+              "count": 70652
+            }
+          ],
+          "17": [
+            {
+              "expert_idx": 220,
+              "count": 202696
+            },
+            {
+              "expert_idx": 255,
+              "count": 111293
+            },
+            {
+              "expert_idx": 191,
+              "count": 84611
+            },
+            {
+              "expert_idx": 232,
+              "count": 83701
+            },
+            {
+              "expert_idx": 237,
+              "count": 73305
+            }
+          ],
+          "18": [
+            {
+              "expert_idx": 21,
+              "count": 109749
+            },
+            {
+              "expert_idx": 196,
+              "count": 99127
+            },
+            {
+              "expert_idx": 25,
+              "count": 95640
+            },
+            {
+              "expert_idx": 235,
+              "count": 89188
+            },
+            {
+              "expert_idx": 145,
+              "count": 80977
+            }
+          ],
+          "19": [
+            {
+              "expert_idx": 160,
+              "count": 149612
+            },
+            {
+              "expert_idx": 197,
+              "count": 136708
+            },
+            {
+              "expert_idx": 253,
+              "count": 103273
+            },
+            {
+              "expert_idx": 175,
+              "count": 84089
+            },
+            {
+              "expert_idx": 13,
+              "count": 76756
+            }
+          ],
+          "20": [
+            {
+              "expert_idx": 150,
+              "count": 281002
+            },
+            {
+              "expert_idx": 211,
+              "count": 86186
+            },
+            {
+              "expert_idx": 28,
+              "count": 78655
+            },
+            {
+              "expert_idx": 228,
+              "count": 78471
+            },
+            {
+              "expert_idx": 156,
+              "count": 69127
+            }
+          ],
+          "21": [
+            {
+              "expert_idx": 42,
+              "count": 111109
+            },
+            {
+              "expert_idx": 6,
+              "count": 103607
+            },
+            {
+              "expert_idx": 66,
+              "count": 95837
+            },
+            {
+              "expert_idx": 44,
+              "count": 95320
+            },
+            {
+              "expert_idx": 34,
+              "count": 92993
+            }
+          ],
+          "22": [
+            {
+              "expert_idx": 246,
+              "count": 90021
+            },
+            {
+              "expert_idx": 28,
+              "count": 78880
+            },
+            {
+              "expert_idx": 20,
+              "count": 78364
+            },
+            {
+              "expert_idx": 85,
+              "count": 73800
+            },
+            {
+              "expert_idx": 181,
+              "count": 69007
+            }
+          ],
+          "23": [
+            {
+              "expert_idx": 115,
+              "count": 152831
+            },
+            {
+              "expert_idx": 110,
+              "count": 85384
+            },
+            {
+              "expert_idx": 131,
+              "count": 67701
+            },
+            {
+              "expert_idx": 240,
+              "count": 66152
+            },
+            {
+              "expert_idx": 71,
+              "count": 62589
+            }
+          ],
+          "24": [
+            {
+              "expert_idx": 241,
+              "count": 119733
+            },
+            {
+              "expert_idx": 20,
+              "count": 89500
+            },
+            {
+              "expert_idx": 36,
+              "count": 80835
+            },
+            {
+              "expert_idx": 230,
+              "count": 65090
+            },
+            {
+              "expert_idx": 55,
+              "count": 60784
+            }
+          ],
+          "25": [
+            {
+              "expert_idx": 224,
+              "count": 204525
+            },
+            {
+              "expert_idx": 47,
+              "count": 111680
+            },
+            {
+              "expert_idx": 124,
+              "count": 106319
+            },
+            {
+              "expert_idx": 237,
+              "count": 103523
+            },
+            {
+              "expert_idx": 41,
+              "count": 97849
+            }
+          ],
+          "26": [
+            {
+              "expert_idx": 105,
+              "count": 126507
+            },
+            {
+              "expert_idx": 168,
+              "count": 111399
+            },
+            {
+              "expert_idx": 160,
+              "count": 80830
+            },
+            {
+              "expert_idx": 247,
+              "count": 80509
+            },
+            {
+              "expert_idx": 250,
+              "count": 69935
+            }
+          ],
+          "27": [
+            {
+              "expert_idx": 218,
+              "count": 299090
+            },
+            {
+              "expert_idx": 245,
+              "count": 154109
+            },
+            {
+              "expert_idx": 63,
+              "count": 87931
+            },
+            {
+              "expert_idx": 26,
+              "count": 70289
+            },
+            {
+              "expert_idx": 95,
+              "count": 68080
+            }
+          ],
+          "28": [
+            {
+              "expert_idx": 224,
+              "count": 147190
+            },
+            {
+              "expert_idx": 130,
+              "count": 144414
+            },
+            {
+              "expert_idx": 6,
+              "count": 141677
+            },
+            {
+              "expert_idx": 184,
+              "count": 95941
+            },
+            {
+              "expert_idx": 105,
+              "count": 74293
+            }
+          ],
+          "29": [
+            {
+              "expert_idx": 220,
+              "count": 169262
+            },
+            {
+              "expert_idx": 247,
+              "count": 89088
+            },
+            {
+              "expert_idx": 73,
+              "count": 83979
+            },
+            {
+              "expert_idx": 32,
+              "count": 75906
+            },
+            {
+              "expert_idx": 232,
+              "count": 75375
+            }
+          ],
+          "30": [
+            {
+              "expert_idx": 235,
+              "count": 91334
+            },
+            {
+              "expert_idx": 196,
+              "count": 83146
+            },
+            {
+              "expert_idx": 25,
+              "count": 81048
+            },
+            {
+              "expert_idx": 209,
+              "count": 72750
+            },
+            {
+              "expert_idx": 27,
+              "count": 72381
+            }
+          ],
+          "31": [
+            {
+              "expert_idx": 197,
+              "count": 106483
+            },
+            {
+              "expert_idx": 253,
+              "count": 96634
+            },
+            {
+              "expert_idx": 190,
+              "count": 83392
+            },
+            {
+              "expert_idx": 13,
+              "count": 76452
+            },
+            {
+              "expert_idx": 160,
+              "count": 67347
+            }
+          ],
+          "32": [
+            {
+              "expert_idx": 66,
+              "count": 251745
+            },
+            {
+              "expert_idx": 117,
+              "count": 167054
+            },
+            {
+              "expert_idx": 212,
+              "count": 84325
+            },
+            {
+              "expert_idx": 103,
+              "count": 78924
+            },
+            {
+              "expert_idx": 50,
+              "count": 62804
+            }
+          ],
+          "33": [
+            {
+              "expert_idx": 29,
+              "count": 102732
+            },
+            {
+              "expert_idx": 47,
+              "count": 71499
+            },
+            {
+              "expert_idx": 212,
+              "count": 64428
+            },
+            {
+              "expert_idx": 124,
+              "count": 57075
+            },
+            {
+              "expert_idx": 25,
+              "count": 55223
+            }
+          ],
+          "34": [
+            {
+              "expert_idx": 202,
+              "count": 179957
+            },
+            {
+              "expert_idx": 48,
+              "count": 80599
+            },
+            {
+              "expert_idx": 102,
+              "count": 76172
+            },
+            {
+              "expert_idx": 173,
+              "count": 76121
+            },
+            {
+              "expert_idx": 47,
+              "count": 71553
+            }
+          ],
+          "35": [
+            {
+              "expert_idx": 126,
+              "count": 95889
+            },
+            {
+              "expert_idx": 34,
+              "count": 83855
+            },
+            {
+              "expert_idx": 3,
+              "count": 75841
+            },
+            {
+              "expert_idx": 255,
+              "count": 73064
+            },
+            {
+              "expert_idx": 9,
+              "count": 73063
+            }
+          ],
+          "36": [
+            {
+              "expert_idx": 84,
+              "count": 87227
+            },
+            {
+              "expert_idx": 31,
+              "count": 79048
+            },
+            {
+              "expert_idx": 15,
+              "count": 73564
+            },
+            {
+              "expert_idx": 1,
+              "count": 72031
+            },
+            {
+              "expert_idx": 160,
+              "count": 68933
+            }
+          ],
+          "37": [
+            {
+              "expert_idx": 55,
+              "count": 157277
+            },
+            {
+              "expert_idx": 3,
+              "count": 101106
+            },
+            {
+              "expert_idx": 59,
+              "count": 100864
+            },
+            {
+              "expert_idx": 102,
+              "count": 81337
+            },
+            {
+              "expert_idx": 97,
+              "count": 72255
+            }
+          ],
+          "38": [
+            {
+              "expert_idx": 33,
+              "count": 125448
+            },
+            {
+              "expert_idx": 209,
+              "count": 120778
+            },
+            {
+              "expert_idx": 228,
+              "count": 105094
+            },
+            {
+              "expert_idx": 4,
+              "count": 97056
+            },
+            {
+              "expert_idx": 173,
+              "count": 90289
+            }
+          ],
+          "39": [
+            {
+              "expert_idx": 35,
+              "count": 293578
+            },
+            {
+              "expert_idx": 239,
+              "count": 96511
+            },
+            {
+              "expert_idx": 52,
+              "count": 95427
+            },
+            {
+              "expert_idx": 181,
+              "count": 93001
+            },
+            {
+              "expert_idx": 213,
+              "count": 91953
+            }
+          ]
+        }
+      }
+    },
+    "uniform_8k": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "base_seed": 0,
+      "sampling_seed": "iter31:0:uniform_8k",
+      "config_name": "uniform_8k",
+      "description": "128 \u00d7 8192-token chunks with pad_length=8192. Tests whether truly longer context improves sensitivity estimation beyond 4096.",
+      "chunk_length": 8192,
+      "samples": 128,
+      "sample_shape": [
+        128,
+        8192
+      ],
+      "padding_value": 0,
+      "actual_token_total": 1048576,
+      "padded_token_total": 1048576,
+      "real_token_fraction": 1.0,
+      "train_tokens": 2505800,
+      "standard_reference_tokens": 262144
+    }
+  },
+  "results": {
+    "uniform_4k": {
+      "description": "Control: 128 \u00d7 4096-token chunks. Should reproduce iter29 maca_uniform_4k at PPL 6.5676.",
+      "mode": "per_channel",
+      "ppl": 6.57012,
+      "nll": 1.882532,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697937920,
+      "fp8_fraction": 0.27002,
+      "w1_pair_fraction": 0.27002,
+      "w2_channel_fraction": 0.27002,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 250.8,
+      "budget_source": "global_perturbation_percentile_buckets_with_medium_topup",
+      "joint_precision_threshold_p50": 3.1269145011901855,
+      "joint_precision_threshold_p75": 6.294490814208984,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2560,
+      "joint_precision_low_experts": 5120,
+      "medium_tier_w1_fraction": 0.08,
+      "medium_tier_w2_fraction": 0.08,
+      "medium_tier_w1_pairs": 41,
+      "medium_tier_w2_channels": 164,
+      "calibration_variant": "uniform_4k",
+      "chunk_length": 4096,
+      "source_base": "joint_w1w2_with_topup",
+      "joint_topup_fraction": 0.08
+    }
+  }
+}

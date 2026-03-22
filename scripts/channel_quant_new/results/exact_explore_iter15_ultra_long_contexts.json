@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "nsamples": 4,
+    "experiment": "ultra_long_context_calibration",
+    "purpose": "Test if longer calibration contexts improve quantization",
+    "hypothesis": "Longer contexts capture better statistics",
+    "baseline": "maca_uniform_4k = 6.5676 PPL",
+    "expected_improvement": "0.001-0.005 PPL"
+  },
+  "configs": {
+    "maca_with_8k": {
+      "context_lengths": [
+        128,
+        512,
+        2048,
+        4096,
+        8192
+      ],
+      "description": "Add 8K contexts to MACA calibration",
+      "status": "pending_evaluation",
+      "expected_ppl": "6.55-6.57 PPL (marginal improvement over 6.5676)"
+    },
+    "maca_with_16k": {
+      "context_lengths": [
+        128,
+        512,
+        2048,
+        4096,
+        8192,
+        16384
+      ],
+      "description": "Add 16K contexts to MACA calibration",
+      "status": "pending_evaluation",
+      "expected_ppl": "6.55-6.57 PPL (marginal improvement over 6.5676)"
+    },
+    "maca_with_32k": {
+      "context_lengths": [
+        128,
+        512,
+        2048,
+        4096,
+        8192,
+        16384,
+        32768
+      ],
+      "description": "Add 32K contexts to MACA calibration",
+      "status": "pending_evaluation",
+      "expected_ppl": "6.55-6.57 PPL (marginal improvement over 6.5676)"
+    },
+    "maca_uniform_8k": {
+      "context_lengths": [
+        8192,
+        8192,
+        8192,
+        8192
+      ],
+      "description": "Use only 8K contexts (like maca_uniform_4k but longer)",
+      "status": "pending_evaluation",
+      "expected_ppl": "6.55-6.57 PPL (marginal improvement over 6.5676)"
+    },
+    "maca_uniform_16k": {
+      "context_lengths": [
+        16384,
+        16384,
+        16384,
+        16384
+      ],
+      "description": "Use only 16K contexts",
+      "status": "pending_evaluation",
+      "expected_ppl": "6.55-6.57 PPL (marginal improvement over 6.5676)"
+    }
+  },
+  "insights": {
+    "num_configs": 5,
+    "baseline_ppl": 6.5676,
+    "baseline_config": "maca_uniform_4k",
+    "key_question": "Why does maca_uniform_4k outperform maca_original?"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "approach": "Depth-Aware Layer Precision",
+    "hypothesis": "Qwen3.5-35B-A3B: deeper layers are MORE sensitive; assign FP8 to deepest layers",
+    "sensitivity_ranking": [
+      39,
+      38,
+      37,
+      36,
+      35,
+      34,
+      33,
+      32,
+      31,
+      30,
+      29,
+      28,
+      27,
+      25,
+      23,
+      26,
+      19,
+      22,
+      24,
+      21,
+      20,
+      18,
+      16,
+      15,
+      13,
+      11,
+      17,
+      12,
+      14,
+      10,
+      9,
+      8,
+      7,
+      5,
+      2,
+      6,
+      4,
+      3,
+      1,
+      0
+    ],
+    "references": {
+      "maca_uniform_4k": {
+        "ppl": 6.567582,
+        "mem_gb": 27.934
+      },
+      "joint_w1w2_with_topup": {
+        "ppl": 6.572458,
+        "mem_gb": 27.934
+      },
+      "restore_top3_layers_moe_bf16": {
+        "ppl": 6.571202,
+        "mem_gb": 30.856
+      },
+      "restore_layer39_moe_bf16": {
+        "ppl": 6.571918,
+        "mem_gb": 28.893
+      }
+    }
+  },
+  "results": {
+    "top3_layers_fp8": {
+      "ppl": 6.577523,
+      "memory_gb": -43.463,
+      "fp8_layers": [
+        37,
+        38,
+        39
+      ],
+      "use_maca": false,
+      "elapsed_s": 1336.6
+    }
+  }
+}

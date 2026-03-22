@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "calibration": {
+      "split": "train",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 128,
+      "max_eval_tokens": 128,
+      "preview": "= Valkyria Chronicles III =\n\nSenj\u014d no Valkyria 3 : Unrecorded Chronicles ( Japanese : \u6226\u5834\u306e\u30f4\u30a1\u30eb\u30ad\u30e5\u30ea\u30a23 , lit . Valkyria of the Battlefield 3 ) , commonly referred to as Valkyria Chronicles III outside Japan , is a tactical role @-@ playing video game developed by Sega and Media.Vision for the PlayStation Portable . Released in January 2011 in Japan , it is the third game in the Valkyria series . Employing the same fusion of tactical and real @-@ time gameplay as its predecessors , the story runs parallel to the first"
+    },
+    "evaluation": {
+      "split": "test",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 512,
+      "max_eval_tokens": 512,
+      "preview": "= Robert Boulter =\n\nRobert Boulter is an English film , television and theatre actor . He had a guest @-@ starring role on the television series The Bill in 2000 . This was followed by a starring role in the play Herons written by Simon Stephens , which was performed in 2001 at the Royal Court Theatre . He had a guest role in the television series Judge John Deed in 2002 . In 2004 Boulter landed a role as \" Craig \" in the episode \" Teddy 's Story \" of the television series The Long Firm ; he starred alongside"
+    },
+    "eval_chunk_tokens": 1024,
+    "metric": "gate_aware_act_qerror",
+    "note": "W1 uses pair-wise gate_up_proj assignment because SwiGLU gate/up rows are coupled.",
+    "runtime_seconds": 656.687
+  },
+  "per_projection": {
+    "uniform_25_25": {
+      "avg_nll": 1.6757510683541195,
+      "ppl": 5.342806455352808,
+      "memory_gb": 27.612
+    },
+    "w2_heavy_50_0": {
+      "avg_nll": 1.6805652088381773,
+      "ppl": 5.3685894879831,
+      "memory_gb": 26.27
+    },
+    "w2_heavy_40_10": {
+      "avg_nll": 1.6845358682471945,
+      "ppl": 5.389948705372774,
+      "memory_gb": 26.806
+    },
+    "w1_heavy_0_50": {
+      "avg_nll": 1.6805425371442522,
+      "ppl": 5.368467774345151,
+      "memory_gb": 28.954
+    }
+  },
+  "budget_sweep": [
+    {
+      "fp8_pct": 0,
+      "avg_nll": 1.688829933360598,
+      "ppl": 5.413143259894901,
+      "memory_gb": 23.585
+    },
+    {
+      "fp8_pct": 10,
+      "avg_nll": 1.6883371730140044,
+      "ppl": 5.410476534628187,
+      "memory_gb": 25.196
+    },
+    {
+      "fp8_pct": 20,
+      "avg_nll": 1.6768753066688133,
+      "ppl": 5.348816420761596,
+      "memory_gb": 26.806
+    },
+    {
+      "fp8_pct": 30,
+      "avg_nll": 1.6758110695855726,
+      "ppl": 5.343127039937184,
+      "memory_gb": 28.417
+    },
+    {
+      "fp8_pct": 40,
+      "avg_nll": 1.6720035873980439,
+      "ppl": 5.322821859244032,
+      "memory_gb": 30.028
+    },
+    {
+      "fp8_pct": 50,
+      "avg_nll": 1.6746317271850346,
+      "ppl": 5.336829377947354,
+      "memory_gb": 31.638
+    },
+    {
+      "fp8_pct": 60,
+      "avg_nll": 1.6787731708145888,
+      "ppl": 5.358977386685462,
+      "memory_gb": 33.249
+    },
+    {
+      "fp8_pct": 70,
+      "avg_nll": 1.6769268312099628,
+      "ppl": 5.3490920231734504,
+      "memory_gb": 34.86
+    },
+    {
+      "fp8_pct": 80,
+      "avg_nll": 1.6768199636978178,
+      "ppl": 5.348520409560706,
+      "memory_gb": 36.47
+    },
+    {
+      "fp8_pct": 90,
+      "avg_nll": 1.6776475925034973,
+      "ppl": 5.352948831411389,
+      "memory_gb": 38.081
+    },
+    {
+      "fp8_pct": 100,
+      "avg_nll": 1.6775350813296444,
+      "ppl": 5.35234659873438,
+      "memory_gb": 39.691
+    }
+  ],
+  "hierarchy_comparison": {
+    "expert_only": {
+      "avg_nll": 1.6815492439643278,
+      "ppl": 5.373874968740015,
+      "memory_gb": 27.612
+    },
+    "channel_only": {
+      "avg_nll": 1.6819619031335042,
+      "ppl": 5.376093005134925,
+      "memory_gb": 27.612
+    },
+    "two_level": {
+      "avg_nll": 1.6757510683541195,
+      "ppl": 5.342806455352808,
+      "memory_gb": 27.612
+    },
+    "aggressive_two_level": {
+      "avg_nll": 1.6836429267480182,
+      "ppl": 5.385137944678901,
+      "memory_gb": 27.628
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "active_plan": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/.sisyphus/plans/single-tile-sm120-swiglu-fusion.md",
+  "started_at": "2026-03-13T03:20:06.289Z",
+  "session_ids": [
+    "ses_31d599a0fffe0oY4XbDY3Y5HjL"
+  ],
+  "plan_name": "single-tile-sm120-swiglu-fusion",
+  "agent": "atlas",
+  "worktree_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile"
+}

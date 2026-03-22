@@ -1,0 +1,936 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+    "metric_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter22_wush_transform_metric_cache.pt",
+    "router_metric_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter10_novel_perchannel_metric_cache.pt",
+    "quantization": "WUSH-diagonal approximation: per-expert second-moment preconditioning, transformed-weight quantization, matched activation rescaling, BF16 F.linear, FP32 logits/loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/proper_eval.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "CrossEntropyLoss(reduction='sum') chunked over logits, normalized per chunk, then accumulated as loss * seqlen"
+    },
+    "wushdiag": {
+      "diag_eps": 0.0001,
+      "weight_transform": "W_tilde = W @ D^{-1}",
+      "activation_transform": "x_tilde = x @ D",
+      "mask_family": "existing proper-iteration mask builders"
+    },
+    "router_metric_cache": {
+      "metric_name": "iter10_novel_perchannel_artifacts",
+      "runtime_seconds": 270.433,
+      "calibration_chunks": 128,
+      "micromix_threshold_formula": "weight_absmax / (2 * 6.0)",
+      "cross_expert_outlier_fraction": 0.05
+    },
+    "wush_metric_cache": {
+      "metric_name": "wushdiag_second_moment_scales",
+      "diag_eps": 0.0001,
+      "calibration_chunks": 128,
+      "formula": {
+        "sigma": "sqrt(E[x^2])",
+        "D": "diag(1 / (sigma + eps))",
+        "weight_transform": "W_tilde = W @ D^{-1}",
+        "activation_transform": "x_tilde = x @ D"
+      },
+      "layer_scale_summary": {
+        "0": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.04846301,
+            "median": 0.39561167,
+            "mean": 0.42970881,
+            "max": 18.28283501
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.0171924,
+            "mean": 0.02232955,
+            "max": 1.43481743
+          }
+        },
+        "1": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.1351801,
+            "median": 0.4614923,
+            "mean": 0.49554813,
+            "max": 9.520298
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.0360567,
+            "mean": 0.04533944,
+            "max": 0.99136585
+          }
+        },
+        "2": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.2247266,
+            "median": 0.4911457,
+            "mean": 0.53068393,
+            "max": 9.26131916
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.04080031,
+            "mean": 0.04506757,
+            "max": 1.29738116
+          }
+        },
+        "3": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.19583291,
+            "median": 0.55289543,
+            "mean": 0.5942831,
+            "max": 11.62150383
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.04549467,
+            "mean": 0.05075364,
+            "max": 1.24785542
+          }
+        },
+        "4": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.18106806,
+            "median": 0.57949769,
+            "mean": 0.62170696,
+            "max": 15.20663738
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.05023097,
+            "mean": 0.05862816,
+            "max": 1.25933254
+          }
+        },
+        "5": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.08824328,
+            "median": 0.59968036,
+            "mean": 0.64368904,
+            "max": 12.33437061
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.05579141,
+            "mean": 0.06367092,
+            "max": 1.39561534
+          }
+        },
+        "6": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.29047117,
+            "median": 0.59373808,
+            "mean": 0.63940454,
+            "max": 10.29222202
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.05899296,
+            "mean": 0.06436691,
+            "max": 1.60742474
+          }
+        },
+        "7": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.39291689,
+            "median": 0.67174941,
+            "mean": 0.71977222,
+            "max": 12.91952229
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.06871826,
+            "mean": 0.0743753,
+            "max": 2.16785645
+          }
+        },
+        "8": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.4106957,
+            "median": 0.72109425,
+            "mean": 0.76888341,
+            "max": 9.61789227
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.07604077,
+            "mean": 0.08172715,
+            "max": 2.24864435
+          }
+        },
+        "9": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.25213233,
+            "median": 0.70690703,
+            "mean": 0.76108253,
+            "max": 13.33107567
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.07823151,
+            "mean": 0.08417794,
+            "max": 1.11223888
+          }
+        },
+        "10": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.38264892,
+            "median": 0.68219531,
+            "mean": 0.74024773,
+            "max": 13.94157028
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.07928392,
+            "mean": 0.08565719,
+            "max": 0.93035161
+          }
+        },
+        "11": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.37034941,
+            "median": 0.72913861,
+            "mean": 0.7829262,
+            "max": 15.0173645
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.08700183,
+            "mean": 0.0957713,
+            "max": 1.48043525
+          }
+        },
+        "12": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.31923708,
+            "median": 0.7568664,
+            "mean": 0.80621618,
+            "max": 14.69978428
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.01850709,
+            "median": 0.08596795,
+            "mean": 0.09346043,
+            "max": 1.55207634
+          }
+        },
+        "13": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.37519848,
+            "median": 0.79270667,
+            "mean": 0.8404187,
+            "max": 13.72020245
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.09541245,
+            "mean": 0.10385945,
+            "max": 1.11343777
+          }
+        },
+        "14": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.75789404,
+            "mean": 0.80217516,
+            "max": 14.87093067
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.08963261,
+            "mean": 0.09687881,
+            "max": 1.46569932
+          }
+        },
+        "15": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.35580978,
+            "median": 0.79752845,
+            "mean": 0.84196788,
+            "max": 14.13766003
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.09586103,
+            "mean": 0.1041106,
+            "max": 1.28295112
+          }
+        },
+        "16": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.00535335,
+            "median": 0.78306037,
+            "mean": 0.82599497,
+            "max": 12.21008015
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.09566347,
+            "mean": 0.1048784,
+            "max": 1.33031583
+          }
+        },
+        "17": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.29086459,
+            "median": 0.77110344,
+            "mean": 0.81890893,
+            "max": 15.84593582
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.09147038,
+            "mean": 0.09899544,
+            "max": 3.59928513
+          }
+        },
+        "18": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.33911121,
+            "median": 0.79029483,
+            "mean": 0.84283459,
+            "max": 14.04061794
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.09845479,
+            "mean": 0.10687263,
+            "max": 4.51557302
+          }
+        },
+        "19": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.29119191,
+            "median": 0.84079987,
+            "mean": 0.89513505,
+            "max": 22.45862579
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.02306778,
+            "median": 0.10753772,
+            "mean": 0.11684238,
+            "max": 1.40718949
+          }
+        },
+        "20": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.15553953,
+            "median": 0.8805272,
+            "mean": 0.93417078,
+            "max": 18.33654213
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.10559047,
+            "mean": 0.11424632,
+            "max": 2.46295142
+          }
+        },
+        "21": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.09185846,
+            "median": 0.85637349,
+            "mean": 0.91754675,
+            "max": 17.27647972
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.10453792,
+            "mean": 0.11383286,
+            "max": 1.53795075
+          }
+        },
+        "22": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.00345267,
+            "median": 0.79078639,
+            "mean": 0.86629379,
+            "max": 23.3189888
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.10217932,
+            "mean": 0.11018366,
+            "max": 3.08635998
+          }
+        },
+        "23": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.40591431,
+            "median": 0.813842,
+            "mean": 0.88695818,
+            "max": 28.27674103
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.10731218,
+            "mean": 0.11746239,
+            "max": 1.79345453
+          }
+        },
+        "24": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.83715802,
+            "mean": 0.89776963,
+            "max": 24.55701447
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.00020599,
+            "median": 0.10296703,
+            "mean": 0.11125463,
+            "max": 1.57355869
+          }
+        },
+        "25": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.28193375,
+            "median": 0.85914856,
+            "mean": 0.92383248,
+            "max": 28.38106155
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.11219949,
+            "mean": 0.12365936,
+            "max": 1.30216169
+          }
+        },
+        "26": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.43597209,
+            "median": 0.81949657,
+            "mean": 0.88368392,
+            "max": 25.87985229
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.10769401,
+            "mean": 0.11649609,
+            "max": 1.13649094
+          }
+        },
+        "27": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.34669572,
+            "median": 0.86067212,
+            "mean": 0.93153799,
+            "max": 31.44380951
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.12036694,
+            "mean": 0.1329436,
+            "max": 1.3528527
+          }
+        },
+        "28": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.37577778,
+            "median": 0.83203912,
+            "mean": 0.91038913,
+            "max": 31.25919151
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.12127391,
+            "mean": 0.13554427,
+            "max": 2.96357799
+          }
+        },
+        "29": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.82586151,
+            "mean": 0.91582757,
+            "max": 26.42295647
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.12168467,
+            "mean": 0.13827568,
+            "max": 1.99599349
+          }
+        },
+        "30": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.52408928,
+            "median": 0.86603338,
+            "mean": 0.95665091,
+            "max": 29.08371925
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.13523868,
+            "mean": 0.15352795,
+            "max": 3.9318428
+          }
+        },
+        "31": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.53411585,
+            "median": 0.94617885,
+            "mean": 1.04099298,
+            "max": 22.54819489
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0530917,
+            "median": 0.15706536,
+            "mean": 0.18007894,
+            "max": 2.88767886
+          }
+        },
+        "32": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.96766979,
+            "mean": 1.09979987,
+            "max": 23.89961243
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.18779111,
+            "mean": 0.22272785,
+            "max": 4.78452063
+          }
+        },
+        "33": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.33875513,
+            "median": 1.0015111,
+            "mean": 1.14957035,
+            "max": 27.32429314
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.19758794,
+            "mean": 0.24115224,
+            "max": 5.39596653
+          }
+        },
+        "34": {
+          "w1_input_scales": {
+            "active_experts": 254,
+            "min": 0.373265,
+            "median": 1.02456772,
+            "mean": 1.16669774,
+            "max": 20.32407951
+          },
+          "w2_input_scales": {
+            "active_experts": 254,
+            "min": 0.03170295,
+            "median": 0.20816444,
+            "mean": 0.25053865,
+            "max": 8.39877796
+          }
+        },
+        "35": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.09550289,
+            "median": 1.16661572,
+            "mean": 1.27015531,
+            "max": 15.96970272
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.00751509,
+            "median": 0.22673048,
+            "mean": 0.27425081,
+            "max": 4.5252676
+          }
+        },
+        "36": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.01664778,
+            "median": 1.21320701,
+            "mean": 1.32548451,
+            "max": 16.28653145
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.24148637,
+            "mean": 0.29090479,
+            "max": 5.68228722
+          }
+        },
+        "37": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.07386132,
+            "median": 1.24240685,
+            "mean": 1.35600793,
+            "max": 15.94395542
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.26593223,
+            "mean": 0.32584757,
+            "max": 11.45251846
+          }
+        },
+        "38": {
+          "w1_input_scales": {
+            "active_experts": 256,
+            "min": 0.03176711,
+            "median": 1.22979057,
+            "mean": 1.34955716,
+            "max": 16.9022541
+          },
+          "w2_input_scales": {
+            "active_experts": 256,
+            "min": 0.0001,
+            "median": 0.26609525,
+            "mean": 0.33712548,
+            "max": 20.82463646
+          }
+        },
+        "39": {
+          "w1_input_scales": {
+            "active_experts": 255,
+            "min": 0.35690343,
+            "median": 1.10006618,
+            "mean": 1.1804285,
+            "max": 21.50522614
+          },
+          "w2_input_scales": {
+            "active_experts": 255,
+            "min": 0.0001,
+            "median": 0.30598363,
+            "mean": 0.37976709,
+            "max": 16.69005203
+          }
+        }
+      },
+      "runtime_seconds": 589.263
+    },
+    "wushdiag_active_experts_per_layer": {
+      "0": 256,
+      "1": 256,
+      "2": 256,
+      "3": 256,
+      "4": 256,
+      "5": 256,
+      "6": 256,
+      "7": 256,
+      "8": 256,
+      "9": 256,
+      "10": 256,
+      "11": 256,
+      "12": 256,
+      "13": 256,
+      "14": 256,
+      "15": 256,
+      "16": 256,
+      "17": 256,
+      "18": 256,
+      "19": 256,
+      "20": 256,
+      "21": 256,
+      "22": 256,
+      "23": 256,
+      "24": 256,
+      "25": 256,
+      "26": 256,
+      "27": 256,
+      "28": 256,
+      "29": 256,
+      "30": 256,
+      "31": 256,
+      "32": 256,
+      "33": 256,
+      "34": 254,
+      "35": 256,
+      "36": 256,
+      "37": 256,
+      "38": 256,
+      "39": 255
+    },
+    "runtime_seconds": 2867.233
+  },
+  "results": {
+    "wushdiag_joint_base": {
+      "description": "Joint W1/W2 percentile bucket base only: high-tier experts keep full W1+W2 in FP8, medium-tier experts keep full W2 in FP8, and no within-expert topups are added.",
+      "mode": "wushdiag_per_channel",
+      "ppl": 6.588455,
+      "nll": 1.885319,
+      "memory_gb": 28.953,
+      "fp8_weights": 10736369664,
+      "fp8_fraction": 0.333301,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.499902,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 723.6,
+      "budget_source": "global_perturbation_percentile_buckets",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "mxmoe_promoted_w1_projections": 2560,
+      "mxmoe_promoted_w2_projections": 5119,
+      "base_assignment": "joint_precision_base",
+      "channel_metric_requested": "none",
+      "channel_metric_effective": "none",
+      "channel_metric_fallback_used": false,
+      "wushdiag_enabled": true,
+      "wushdiag_diag_eps": 0.0001,
+      "wushdiag_scale_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter22_wush_transform_metric_cache.pt"
+    },
+    "wushdiag_joint_topup_5pct": {
+      "description": "Start from the joint W1/W2 base and add 5% activation-kurtosis topups inside the medium tier before WUSH-diagonal quantization.",
+      "mode": "wushdiag_per_channel",
+      "ppl": 6.594819,
+      "nll": 1.886284,
+      "memory_gb": 27.815,
+      "fp8_weights": 8459228160,
+      "fp8_fraction": 0.262609,
+      "w1_pair_fraction": 0.26269,
+      "w2_channel_fraction": 0.262446,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 544.2,
+      "budget_source": "global_perturbation_percentile_buckets_with_medium_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "medium_tier_w1_fraction": 0.05,
+      "medium_tier_w2_fraction": 0.05,
+      "medium_tier_w1_pairs": 26,
+      "medium_tier_w2_channels": 102,
+      "base_assignment": "joint_precision_base_plus_activation_topup",
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false,
+      "wushdiag_enabled": true,
+      "wushdiag_diag_eps": 0.0001,
+      "wushdiag_scale_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter22_wush_transform_metric_cache.pt"
+    },
+    "wushdiag_mxmoe_topup_5pct": {
+      "description": "Start from the MxMoE per-block base and add 5% activation-kurtosis within-expert topups before WUSH-diagonal quantization.",
+      "mode": "wushdiag_per_channel",
+      "ppl": 6.589036,
+      "nll": 1.885407,
+      "memory_gb": 28.222,
+      "fp8_weights": 9273524224,
+      "fp8_fraction": 0.287888,
+      "w1_pair_fraction": 0.220602,
+      "w2_channel_fraction": 0.422459,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 306.9,
+      "mxmoe_promoted_w1_projections": 1832,
+      "mxmoe_promoted_w2_projections": 4016,
+      "topup_fraction": 0.05,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false,
+      "wushdiag_enabled": true,
+      "wushdiag_diag_eps": 0.0001,
+      "wushdiag_scale_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter22_wush_transform_metric_cache.pt"
+    },
+    "wushdiag_union_topup_5pct": {
+      "description": "Union the MxMoE and joint bases, then apply the existing 5% router-affinity topup before WUSH-diagonal quantization.",
+      "mode": "wushdiag_per_channel",
+      "ppl": 6.588998,
+      "nll": 1.885401,
+      "memory_gb": 29.498,
+      "fp8_weights": 11825207296,
+      "fp8_fraction": 0.367103,
+      "w1_pair_fraction": 0.288071,
+      "w2_channel_fraction": 0.525166,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 227.5,
+      "budget_source": "mxmoe_plus_joint_base_plus_router_affinity_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "mxmoe_promoted_w1_projections": 2560,
+      "mxmoe_promoted_w2_projections": 5123,
+      "merged_base_w1_projections": 2560,
+      "merged_base_w2_projections": 5123,
+      "w1_topup_fraction": 0.05,
+      "w2_topup_fraction": 0.05,
+      "mxmoe_base_fraction": 0.25,
+      "topup_fraction": 0.05,
+      "channel_metric_requested": "router_affinity_weighted_qerror",
+      "channel_metric_effective": "router_affinity_weighted_qerror",
+      "channel_metric_fallback_used": false,
+      "wushdiag_enabled": true,
+      "wushdiag_diag_eps": 0.0001,
+      "wushdiag_scale_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter22_wush_transform_metric_cache.pt"
+    },
+    "wushdiag_perchannel_ra_20pct": {
+      "description": "Pure router-affinity per-channel assignment at a 20% total budget with the usual 1:4 W1:W2 split, evaluated under WUSH-diagonal preconditioning.",
+      "mode": "wushdiag_per_channel",
+      "ppl": 6.59304,
+      "nll": 1.886015,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576979456,
+      "fp8_fraction": 0.08,
+      "w1_pair_fraction": 0.04,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 226.7,
+      "budget_source": "router_affinity_weighted_global_topk",
+      "w1_fraction_target": 0.04,
+      "w2_fraction_target": 0.16,
+      "global_w1_selected": 209715,
+      "global_w2_selected": 3355443,
+      "global_w1_total": 5242880,
+      "global_w2_total": 20971520,
+      "channel_metric_requested": "router_affinity_weighted_qerror",
+      "channel_metric_effective": "router_affinity_weighted_qerror",
+      "channel_metric_fallback_used": false,
+      "total_budget_fraction": 0.2,
+      "per_projection_split": "1:4",
+      "wushdiag_enabled": true,
+      "wushdiag_diag_eps": 0.0001,
+      "wushdiag_scale_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter22_wush_transform_metric_cache.pt"
+    },
+    "wushdiag_joint_residual_2pct": {
+      "description": "Start from the current `joint_w1w2_with_topup` base and add a 2% router-affinity residual branch on the remaining FP4 channels before WUSH-diagonal quantization.",
+      "mode": "wushdiag_per_channel",
+      "ppl": 6.592798,
+      "nll": 1.885978,
+      "memory_gb": 28.172,
+      "fp8_weights": 9173291520,
+      "fp8_fraction": 0.284776,
+      "w1_pair_fraction": 0.284654,
+      "w2_channel_fraction": 0.28502,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 228.2,
+      "budget_source": "joint_w1w2_with_topup_plus_residual",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "medium_tier_w1_fraction": 0.08,
+      "medium_tier_w2_fraction": 0.08,
+      "medium_tier_w1_pairs": 41,
+      "medium_tier_w2_channels": 164,
+      "residual_selection_scope": "remaining_fp4_only",
+      "residual_fraction": 0.02,
+      "w1_residual_fraction": 0.02,
+      "w2_residual_fraction": 0.02,
+      "base_assignment": "joint_w1w2_with_topup",
+      "source_base": "joint_w1w2_with_topup",
+      "channel_metric_requested": "activation_kurtosis_plus_router_affinity_residual",
+      "channel_metric_effective": "activation_kurtosis_plus_router_affinity_residual",
+      "channel_metric_fallback_used": false,
+      "residual_metric_requested": "router_affinity_weighted_qerror",
+      "wushdiag_enabled": true,
+      "wushdiag_diag_eps": 0.0001,
+      "wushdiag_scale_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter22_wush_transform_metric_cache.pt"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+
+NOTICE: Existing SQLite export found: .sisyphus/evidence/pingpong-single-tile-fused.sqlite
+        It is assumed file was previously exported from: .sisyphus/evidence/pingpong-single-tile-fused.nsys-rep
+        Consider using --force-export=true if needed.
+
+Processing [.sisyphus/evidence/pingpong-single-tile-fused.sqlite] with [/usr/local/cuda-13.1/NsightSystems-cli-2025.5.2/target-linux-x64/reports/cuda_gpu_kern_sum.py](base)... 
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+34.0,3663205,30,122106.8,122579.5,75714,161253,35029.4,device_kernel
+14.8,1589806,36,44161.3,832.0,672,521198,145537.1,vectorized_elementwise_kernel
+13.6,1464968,7,209281.1,28001.0,3296,1070462,388938.6,CatArrayBatchedCopy_vectorized
+11.3,1211939,258,4697.4,4384.0,2688,6465,1006.9,quantize_with_block_size
+10.0,1072412,8,134051.5,1568.0,1248,1057980,373326.0,elementwise_kernel
+7.8,836502,4,209125.5,275767.5,3808,281159,136906.0,distribution_elementwise_grid_stride_kernel
+4.0,425734,259,1643.8,1665.0,1504,1824,85.0,block_scale_interleave_kernel
+2.6,281224,15,18748.3,18752.0,18112,19329,278.9,expandInputRowsKernel
+0.7,72065,15,4804.3,4960.0,1856,5280,826.0,computeStridesTmaWarpSpecializedKernel
+0.5,49953,32,1561.0,1248.0,1216,5152,886.5,reduce_kernel
+0.3,34742,15,2316.1,2303.0,2271,2495,60.2,blockExpertPrefixSumKernel
+0.2,18433,28,658.3,640.0,608,768,34.3,elementwise_kernel_with_index
+0.2,18208,15,1213.9,1216.0,992,1408,109.2,mergeExpertPrefixSumKernel
+0.1,15873,15,1058.2,1056.0,1024,1088,19.0,globalExpertPrefixSumKernel
+0.0,2816,1,2816.0,2816.0,2816,2816,0.0,unrolled_elementwise_kernel
+0.0,1984,1,1984.0,1984.0,1984,1984,0.0,kernelHistogram1D
+0.0,1632,1,1632.0,1632.0,1632,1632,0.0,block_scale_interleave_reverse_kernel
+

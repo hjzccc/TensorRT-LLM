@@ -1,0 +1,512 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "split": "train",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 128,
+      "preview": "= Valkyria Chronicles III =\n\nSenj\u014d no Valkyria 3 : Unrecorded Chronicles ( Japanese : \u6226\u5834\u306e\u30f4\u30a1\u30eb\u30ad\u30e5\u30ea\u30a23 , lit . Valkyria of the Battlefield 3 ) , commonly referred to as Valkyria Chronicles III outside Japan , is a tactical role @-@ playing video game developed by Sega and Media.Vision for the PlayStation Portable . Released in January 2011 in Japan , it is the third game in the Valkyria series . Employing the same fusion of tactical and real @-@ time gameplay as its predecessors , the story runs parallel to the first"
+    },
+    "evaluation": {
+      "split": "test",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 512,
+      "preview": "= Robert Boulter =\n\nRobert Boulter is an English film , television and theatre actor . He had a guest @-@ starring role on the television series The Bill in 2000 . This was followed by a starring role in the play Herons written by Simon Stephens , which was performed in 2001 at the Royal Court Theatre . He had a guest role in the television series Judge John Deed in 2002 . In 2004 Boulter landed a role as \" Craig \" in the episode \" Teddy 's Story \" of the television series The Long Firm ; he starred alongside"
+    },
+    "calibration_tokens": 128,
+    "eval_tokens": 512,
+    "mini_batch_tokens": 32,
+    "iter01_json": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/exploration_iter01.json",
+    "mxmoe_target_ppl": 5.337,
+    "focused_budget_sweep_pct": [
+      16,
+      18,
+      20,
+      22,
+      24
+    ],
+    "base_ratio_pct": {
+      "w1": 10.0,
+      "w2": 40.0,
+      "total_reference": 25.0
+    },
+    "layer_adaptive_split_pct": {
+      "first_10": [
+        15.0,
+        35.0
+      ],
+      "middle_20": [
+        10.0,
+        40.0
+      ],
+      "last_10": [
+        5.0,
+        45.0
+      ]
+    },
+    "expert_adaptive_total_budget_pct": {
+      "hot": 30.0,
+      "medium": 15.0,
+      "cold": 5.0
+    },
+    "gt_targets": {
+      "5": [
+        46,
+        52,
+        242
+      ],
+      "20": [
+        0,
+        147,
+        200
+      ],
+      "35": [
+        19,
+        30,
+        165
+      ]
+    },
+    "gt_target_labels": [
+      "L05_E046",
+      "L05_E052",
+      "L05_E242",
+      "L20_E000",
+      "L20_E147",
+      "L20_E200",
+      "L35_E019",
+      "L35_E030",
+      "L35_E165"
+    ],
+    "iter03_reference": {
+      "name": "total_20",
+      "ppl": 5.329197,
+      "memory_gb": 26.162,
+      "w1_pct": 8.0,
+      "w2_pct": 32.0
+    },
+    "gt_hybrid": {
+      "target_count": 9,
+      "used_labels": [
+        "L05_E046",
+        "L05_E052",
+        "L05_E242",
+        "L20_E000",
+        "L20_E147",
+        "L20_E200",
+        "L35_E019",
+        "L35_E030",
+        "L35_E165"
+      ],
+      "missing_labels": []
+    }
+  },
+  "focused_budget_sweep": {
+    "total_16": {
+      "description": "Routing-aware activation_kurtosis split around the Iteration 3 sweet spot: total=16.0% with W1=6.4% and W2=25.6% FP8.",
+      "ppl": 5.330272,
+      "nll": 1.673402,
+      "memory_gb": 25.647,
+      "fp8_weights": 4123238400,
+      "fp8_fraction": 0.128002,
+      "w1_pair_fraction": 0.064003,
+      "w2_channel_fraction": 0.256001,
+      "time_s": 42.9,
+      "metric": "activation_kurtosis",
+      "total_budget_pct": 16.0,
+      "w1_pct": 6.4,
+      "w2_pct": 25.6,
+      "target_realized_fp8_fraction": 0.128
+    },
+    "total_18": {
+      "description": "Routing-aware activation_kurtosis split around the Iteration 3 sweet spot: total=18.0% with W1=7.2% and W2=28.8% FP8.",
+      "ppl": 5.336713,
+      "nll": 1.67461,
+      "memory_gb": 25.905,
+      "fp8_weights": 4638535680,
+      "fp8_fraction": 0.143999,
+      "w1_pair_fraction": 0.071999,
+      "w2_channel_fraction": 0.288,
+      "time_s": 40.4,
+      "metric": "activation_kurtosis",
+      "total_budget_pct": 18.0,
+      "w1_pct": 7.2,
+      "w2_pct": 28.8,
+      "target_realized_fp8_fraction": 0.144
+    },
+    "total_20": {
+      "description": "Routing-aware activation_kurtosis split around the Iteration 3 sweet spot: total=20.0% with W1=8.0% and W2=32.0% FP8.",
+      "ppl": 5.329197,
+      "nll": 1.673201,
+      "memory_gb": 26.162,
+      "fp8_weights": 5153996800,
+      "fp8_fraction": 0.160001,
+      "w1_pair_fraction": 0.080002,
+      "w2_channel_fraction": 0.32,
+      "time_s": 40.8,
+      "metric": "activation_kurtosis",
+      "total_budget_pct": 20.0,
+      "w1_pct": 8.0,
+      "w2_pct": 32.0,
+      "target_realized_fp8_fraction": 0.16
+    },
+    "total_22": {
+      "description": "Routing-aware activation_kurtosis split around the Iteration 3 sweet spot: total=22.0% with W1=8.8% and W2=35.2% FP8.",
+      "ppl": 5.339808,
+      "nll": 1.67519,
+      "memory_gb": 26.42,
+      "fp8_weights": 5669294080,
+      "fp8_fraction": 0.175998,
+      "w1_pair_fraction": 0.087997,
+      "w2_channel_fraction": 0.351999,
+      "time_s": 40.9,
+      "metric": "activation_kurtosis",
+      "total_budget_pct": 22.0,
+      "w1_pct": 8.8,
+      "w2_pct": 35.2,
+      "target_realized_fp8_fraction": 0.176
+    },
+    "total_24": {
+      "description": "Routing-aware activation_kurtosis split around the Iteration 3 sweet spot: total=24.0% with W1=9.6% and W2=38.4% FP8.",
+      "ppl": 5.330125,
+      "nll": 1.673375,
+      "memory_gb": 26.678,
+      "fp8_weights": 6184775680,
+      "fp8_fraction": 0.192001,
+      "w1_pair_fraction": 0.096001,
+      "w2_channel_fraction": 0.384001,
+      "time_s": 40.4,
+      "metric": "activation_kurtosis",
+      "total_budget_pct": 24.0,
+      "w1_pct": 9.6,
+      "w2_pct": 38.4,
+      "target_realized_fp8_fraction": 0.192
+    }
+  },
+  "variants": {
+    "gt_assisted_hybrid": {
+      "description": "GT-assisted hybrid metric at the 20% operating point: output-perturbation W2 ranking on the 9 ground-truth experts, activation_kurtosis everywhere else.",
+      "ppl": 5.329197,
+      "nll": 1.673201,
+      "memory_gb": 26.162,
+      "fp8_weights": 5153996800,
+      "fp8_fraction": 0.160001,
+      "w1_pair_fraction": 0.080002,
+      "w2_channel_fraction": 0.32,
+      "time_s": 41.2,
+      "metric": "gt_assisted_output_perturbation",
+      "total_budget_pct": 20.0,
+      "w1_pct": 8.0,
+      "w2_pct": 32.0,
+      "target_realized_fp8_fraction": 0.16,
+      "gt_scope": "W2 uses output perturbation for the 9 iter01/spike1 experts; all W1 and all remaining W2 experts use activation_kurtosis."
+    },
+    "layer_adaptive_ratio": {
+      "description": "Layer-adaptive W1/W2 split: first 10 layers use 15/35, middle 20 use 10/40, and last 10 use 5/45, with activation_kurtosis ranking inside each layer.",
+      "ppl": 5.376679,
+      "nll": 1.682071,
+      "memory_gb": 26.807,
+      "fp8_weights": 6442460160,
+      "fp8_fraction": 0.2,
+      "w1_pair_fraction": 0.1,
+      "w2_channel_fraction": 0.4,
+      "time_s": 40.6,
+      "metric": "activation_kurtosis",
+      "layer_split_pct": {
+        "first_10": [
+          15.0,
+          35.0
+        ],
+        "middle_20": [
+          10.0,
+          40.0
+        ],
+        "last_10": [
+          5.0,
+          45.0
+        ]
+      }
+    },
+    "expert_adaptive_budget": {
+      "description": "Active experts are split into routing-frequency quartiles per layer, then assigned 30/15/5 total-budget tiers with the 1:4 W1:W2 ratio inside each expert.",
+      "ppl": 5.355284,
+      "nll": 1.678084,
+      "memory_gb": 24.71,
+      "fp8_weights": 2249333760,
+      "fp8_fraction": 0.069829,
+      "w1_pair_fraction": 0.034883,
+      "w2_channel_fraction": 0.13972,
+      "time_s": 41.1,
+      "metric": "activation_kurtosis",
+      "tier_budget_pct": {
+        "hot": 30.0,
+        "medium": 15.0,
+        "cold": 5.0
+      },
+      "tier_counts": {
+        "0": {
+          "hot": 58,
+          "medium": 116,
+          "cold": 58
+        },
+        "1": {
+          "hot": 55,
+          "medium": 110,
+          "cold": 55
+        },
+        "2": {
+          "hot": 53,
+          "medium": 107,
+          "cold": 53
+        },
+        "3": {
+          "hot": 48,
+          "medium": 97,
+          "cold": 48
+        },
+        "4": {
+          "hot": 42,
+          "medium": 84,
+          "cold": 42
+        },
+        "5": {
+          "hot": 36,
+          "medium": 73,
+          "cold": 36
+        },
+        "6": {
+          "hot": 36,
+          "medium": 73,
+          "cold": 36
+        },
+        "7": {
+          "hot": 33,
+          "medium": 66,
+          "cold": 33
+        },
+        "8": {
+          "hot": 29,
+          "medium": 58,
+          "cold": 29
+        },
+        "9": {
+          "hot": 30,
+          "medium": 60,
+          "cold": 30
+        },
+        "10": {
+          "hot": 37,
+          "medium": 74,
+          "cold": 37
+        },
+        "11": {
+          "hot": 36,
+          "medium": 74,
+          "cold": 36
+        },
+        "12": {
+          "hot": 26,
+          "medium": 55,
+          "cold": 26
+        },
+        "13": {
+          "hot": 30,
+          "medium": 61,
+          "cold": 30
+        },
+        "14": {
+          "hot": 27,
+          "medium": 55,
+          "cold": 27
+        },
+        "15": {
+          "hot": 26,
+          "medium": 52,
+          "cold": 26
+        },
+        "16": {
+          "hot": 27,
+          "medium": 54,
+          "cold": 27
+        },
+        "17": {
+          "hot": 30,
+          "medium": 61,
+          "cold": 30
+        },
+        "18": {
+          "hot": 30,
+          "medium": 62,
+          "cold": 30
+        },
+        "19": {
+          "hot": 29,
+          "medium": 61,
+          "cold": 29
+        },
+        "20": {
+          "hot": 28,
+          "medium": 56,
+          "cold": 28
+        },
+        "21": {
+          "hot": 28,
+          "medium": 58,
+          "cold": 28
+        },
+        "22": {
+          "hot": 33,
+          "medium": 68,
+          "cold": 33
+        },
+        "23": {
+          "hot": 37,
+          "medium": 74,
+          "cold": 37
+        },
+        "24": {
+          "hot": 29,
+          "medium": 58,
+          "cold": 29
+        },
+        "25": {
+          "hot": 32,
+          "medium": 65,
+          "cold": 32
+        },
+        "26": {
+          "hot": 28,
+          "medium": 57,
+          "cold": 28
+        },
+        "27": {
+          "hot": 28,
+          "medium": 57,
+          "cold": 28
+        },
+        "28": {
+          "hot": 32,
+          "medium": 67,
+          "cold": 32
+        },
+        "29": {
+          "hot": 32,
+          "medium": 66,
+          "cold": 32
+        },
+        "30": {
+          "hot": 32,
+          "medium": 67,
+          "cold": 32
+        },
+        "31": {
+          "hot": 30,
+          "medium": 61,
+          "cold": 30
+        },
+        "32": {
+          "hot": 35,
+          "medium": 71,
+          "cold": 35
+        },
+        "33": {
+          "hot": 39,
+          "medium": 79,
+          "cold": 39
+        },
+        "34": {
+          "hot": 36,
+          "medium": 72,
+          "cold": 36
+        },
+        "35": {
+          "hot": 29,
+          "medium": 59,
+          "cold": 29
+        },
+        "36": {
+          "hot": 33,
+          "medium": 66,
+          "cold": 33
+        },
+        "37": {
+          "hot": 36,
+          "medium": 74,
+          "cold": 36
+        },
+        "38": {
+          "hot": 33,
+          "medium": 67,
+          "cold": 33
+        },
+        "39": {
+          "hot": 38,
+          "medium": 76,
+          "cold": 38
+        }
+      }
+    },
+    "combined_best": {
+      "description": "Best-of-everything combination: start from the best focused budget (20.0%), keep the better metric between activation_kurtosis and the GT-assisted hybrid, then apply the stronger of the layer-adaptive and expert-adaptive allocation ideas.",
+      "ppl": 5.329197,
+      "nll": 1.673201,
+      "memory_gb": 26.162,
+      "fp8_weights": 5153996800,
+      "fp8_fraction": 0.160001,
+      "w1_pair_fraction": 0.080002,
+      "w2_channel_fraction": 0.32,
+      "time_s": 41.3,
+      "metric": "activation_kurtosis",
+      "metric_source_note": "Activation-kurtosis everywhere.",
+      "combined_budget_pct": 20.0,
+      "combined_allocation_mode": "uniform",
+      "combined_allocation_note": "Use the best focused total budget with the uniform routing-aware 1:4 split.",
+      "selection_reference": {
+        "best_focused_budget_ppl": 5.329197,
+        "baseline_20_ppl": 5.329197
+      }
+    }
+  },
+  "best_focused_budget": {
+    "key": "total_20",
+    "description": "Routing-aware activation_kurtosis split around the Iteration 3 sweet spot: total=20.0% with W1=8.0% and W2=32.0% FP8.",
+    "ppl": 5.329197,
+    "nll": 1.673201,
+    "memory_gb": 26.162,
+    "fp8_weights": 5153996800,
+    "fp8_fraction": 0.160001,
+    "w1_pair_fraction": 0.080002,
+    "w2_channel_fraction": 0.32,
+    "time_s": 40.8,
+    "metric": "activation_kurtosis",
+    "total_budget_pct": 20.0,
+    "w1_pct": 8.0,
+    "w2_pct": 32.0,
+    "target_realized_fp8_fraction": 0.16
+  },
+  "best_overall": {
+    "key": "combined_best",
+    "description": "Best-of-everything combination: start from the best focused budget (20.0%), keep the better metric between activation_kurtosis and the GT-assisted hybrid, then apply the stronger of the layer-adaptive and expert-adaptive allocation ideas.",
+    "ppl": 5.329197,
+    "nll": 1.673201,
+    "memory_gb": 26.162,
+    "fp8_weights": 5153996800,
+    "fp8_fraction": 0.160001,
+    "w1_pair_fraction": 0.080002,
+    "w2_channel_fraction": 0.32,
+    "time_s": 41.3,
+    "metric": "activation_kurtosis",
+    "metric_source_note": "Activation-kurtosis everywhere.",
+    "combined_budget_pct": 20.0,
+    "combined_allocation_mode": "uniform",
+    "combined_allocation_note": "Use the best focused total budget with the uniform routing-aware 1:4 split.",
+    "selection_reference": {
+      "best_focused_budget_ppl": 5.329197,
+      "baseline_20_ppl": 5.329197
+    }
+  },
+  "runtime_seconds": 839.033
+}

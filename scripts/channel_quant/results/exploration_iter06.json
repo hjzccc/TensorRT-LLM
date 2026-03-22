@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "eval_tokens": 512,
+    "calib_tokens": 128,
+    "note": "Iteration 6: fundamentally different approaches"
+  },
+  "results": {
+    "w2_all_fp8_w1_all_fp4": {
+      "ppl": 5.355,
+      "nll": 1.678023,
+      "memory_gb": 21.475,
+      "fp8_frac": 0.3333,
+      "time_s": 41.0
+    },
+    "outlier_1pct": {
+      "ppl": 5.4078,
+      "nll": 1.687838,
+      "memory_gb": 16.262,
+      "fp8_frac": 0.0097,
+      "time_s": 41.3
+    },
+    "outlier_5pct": {
+      "ppl": 5.338,
+      "nll": 1.674858,
+      "memory_gb": 16.893,
+      "fp8_frac": 0.0488,
+      "time_s": 41.2
+    },
+    "w2_only_20pct": {
+      "ppl": 5.3875,
+      "nll": 1.684084,
+      "memory_gb": 16.903,
+      "fp8_frac": 0.0495,
+      "time_s": 41.2
+    },
+    "w2_only_30pct": {
+      "ppl": 5.3916,
+      "nll": 1.684835,
+      "memory_gb": 17.163,
+      "fp8_frac": 0.0656,
+      "time_s": 41.8
+    },
+    "w1_5_w2_50": {
+      "ppl": 5.357,
+      "nll": 1.678396,
+      "memory_gb": 18.089,
+      "fp8_frac": 0.1231,
+      "time_s": 41.7
+    },
+    "w2_only_40pct": {
+      "ppl": 5.3845,
+      "nll": 1.683519,
+      "memory_gb": 17.38,
+      "fp8_frac": 0.0791,
+      "time_s": 42.2
+    }
+  }
+}

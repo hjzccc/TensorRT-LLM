@@ -1,0 +1,6520 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/MC-MoE/eval_ppl_utils.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+    "metric_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter09_perchannel_metric_cache.pt",
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      },
+      "mxmoe_perturbation_perchannel": {
+        "ppl": 6.59972,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_25pct": {
+        "ppl": 6.590387,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_w1_4_w2_16": {
+        "ppl": 6.606149,
+        "memory_gb": 24.874
+      },
+      "mxmoe_block_plus_channel_topup": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "output_perturbation_per_channel_9experts": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "topup_01pct": {
+        "ppl": 6.5769,
+        "memory_gb": 20.251
+      },
+      "topup_02pct": {
+        "ppl": 6.5788,
+        "memory_gb": 20.37
+      },
+      "topup_03pct": {
+        "ppl": 6.5791,
+        "memory_gb": 20.488
+      },
+      "topup_05pct": {
+        "ppl": 6.5763,
+        "memory_gb": 20.743
+      },
+      "topup_08pct": {
+        "ppl": 6.5798,
+        "memory_gb": 21.1
+      },
+      "topup_10pct": {
+        "ppl": 6.5791,
+        "memory_gb": 21.337
+      },
+      "topup_15pct": {
+        "ppl": 6.5872,
+        "memory_gb": 21.948
+      },
+      "topup_20pct": {
+        "ppl": 6.5939,
+        "memory_gb": 22.542
+      },
+      "perchannel_hessian_25pct": {
+        "ppl": 6.614806,
+        "memory_gb": 27.612
+      },
+      "perchannel_hessian_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_30pct": {
+        "ppl": 6.627915,
+        "memory_gb": 28.417
+      },
+      "perchannel_akurt_40pct": {
+        "ppl": 6.614058,
+        "memory_gb": 30.028
+      },
+      "mxmoe_topup_hessian_5pct": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "perturbation_proportional_30pct": {
+        "ppl": 6.5893,
+        "memory_gb": 28.417
+      },
+      "perturbation_proportional_40pct": {
+        "ppl": 6.596071,
+        "memory_gb": 30.028
+      },
+      "mxmoe_block_35pct": {
+        "ppl": 6.57889,
+        "memory_gb": 29.222
+      },
+      "mxmoe_layer_adaptive": {
+        "ppl": 6.583283,
+        "memory_gb": 27.813
+      },
+      "global_channel_ranking": {
+        "ppl": 6.612899,
+        "memory_gb": 25.281
+      },
+      "mxmoe_block_15pct": {
+        "ppl": 6.584293,
+        "memory_gb": 26.001
+      },
+      "mxmoe_block_20pct": {
+        "ppl": 6.58199,
+        "memory_gb": 26.806
+      },
+      "mxmoe_block_10pct": {
+        "ppl": 6.58375,
+        "memory_gb": 25.196
+      },
+      "perchannel_akurt_w1_0_w2_25": {
+        "ppl": 6.618204,
+        "memory_gb": 24.927
+      },
+      "perchannel_akurt_w1_0_w2_40": {
+        "ppl": 6.615269,
+        "memory_gb": 25.733
+      },
+      "mxmoe_topup_w2_only_5pct": {
+        "ppl": 6.583489,
+        "memory_gb": 27.774
+      },
+      "mxmoe_topup_perturbation_channel": {
+        "ppl": 6.580924,
+        "memory_gb": 28.222
+      },
+      "mxmoe_topup_perturbation_10pct": {
+        "ppl": 6.578362,
+        "memory_gb": 28.817
+      },
+      "mxmoe_topup_perturbation_15pct": {
+        "ppl": 6.582766,
+        "memory_gb": 29.427
+      },
+      "pure_perturbation_perchannel_25pct": {
+        "ppl": 6.613174,
+        "memory_gb": 27.612
+      },
+      "mxmoe_block_w2_heavy": {
+        "ppl": 6.598593,
+        "memory_gb": 27.612
+      },
+      "joint_w1_w2_optimization": {
+        "ppl": 6.576243,
+        "memory_gb": 28.953
+      },
+      "mxmoe_topup_combined_5pct": {
+        "ppl": 6.581458,
+        "memory_gb": 28.222
+      },
+      "perturbation_per_channel_w1_4_w2_16": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "scalebits_topup_5pct": {
+        "ppl": 6.578943,
+        "memory_gb": 28.222
+      },
+      "scalebits_perchannel_w1_4_w2_16": {
+        "ppl": 6.604948,
+        "memory_gb": 24.874
+      },
+      "dynamic_oracle_25pct": {
+        "ppl": 6.600562,
+        "memory_gb": 27.612
+      },
+      "dynamic_oracle_10pct": {
+        "ppl": 6.593817,
+        "memory_gb": 25.221
+      },
+      "cascade_aware_25pct": {
+        "ppl": 6.628183,
+        "memory_gb": 27.601
+      },
+      "cascade_aware_reverse": {
+        "ppl": 6.581219,
+        "memory_gb": 27.601
+      },
+      "mxmoe_topup_8pct_at_20pct_budget": {
+        "ppl": 6.580448,
+        "memory_gb": 27.838
+      },
+      "joint_w1w2_with_topup": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_topup_1pct": {
+        "ppl": 6.578734,
+        "memory_gb": 29.058
+      },
+      "joint_topup_3pct": {
+        "ppl": 6.574401,
+        "memory_gb": 29.269
+      },
+      "joint_topup_5pct": {
+        "ppl": 6.573759,
+        "memory_gb": 29.496
+      },
+      "joint_topup_10pct": {
+        "ppl": 6.581485,
+        "memory_gb": 30.024
+      },
+      "joint_topup_15pct": {
+        "ppl": 6.590167,
+        "memory_gb": 30.567
+      },
+      "joint_cascade_reverse_topup_5pct": {
+        "ppl": 6.574862,
+        "memory_gb": 29.486
+      },
+      "joint_cascade_reverse_topup_10pct": {
+        "ppl": 6.580087,
+        "memory_gb": 30.015
+      },
+      "mxmoe_cascade_reverse_topup_5pct": {
+        "ppl": 6.581586,
+        "memory_gb": 28.212
+      },
+      "replicate_iter07_joint": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_w1w2_topup_w2_only_5pct": {
+        "ppl": 6.579621,
+        "memory_gb": 29.087
+      },
+      "joint_w1w2_topup_w2_only_3pct": {
+        "ppl": 6.582795,
+        "memory_gb": 29.033
+      },
+      "joint_w1w2_at_30pct_base": {
+        "ppl": 6.582143,
+        "memory_gb": 30.516
+      },
+      "joint_w1w2_at_40pct_base": {
+        "ppl": 6.577684,
+        "memory_gb": 30.006
+      },
+      "mxmoe_topup_w1_0_w2_10": {
+        "ppl": 6.584496,
+        "memory_gb": 27.938
+      },
+      "ensemble_metric_topup_5pct": {
+        "ppl": 6.578666,
+        "memory_gb": 28.222
+      },
+      "adaptive_topup_per_expert": {
+        "ppl": 6.5804,
+        "memory_gb": 27.863
+      }
+    },
+    "experiment": "Iteration 9 per-channel rerun with routed real Hessian scores and hot-expert W2 output perturbation fallback",
+    "hot_expert_selection": {
+      "hot_experts_per_layer": 20,
+      "min_hot_routing_count": 1,
+      "selection": {
+        "0": [
+          {
+            "expert_idx": 108,
+            "routing_count": 32486
+          },
+          {
+            "expert_idx": 31,
+            "routing_count": 32478
+          },
+          {
+            "expert_idx": 89,
+            "routing_count": 26609
+          },
+          {
+            "expert_idx": 64,
+            "routing_count": 25557
+          },
+          {
+            "expert_idx": 242,
+            "routing_count": 22152
+          },
+          {
+            "expert_idx": 177,
+            "routing_count": 20077
+          },
+          {
+            "expert_idx": 191,
+            "routing_count": 19554
+          },
+          {
+            "expert_idx": 58,
+            "routing_count": 18982
+          },
+          {
+            "expert_idx": 152,
+            "routing_count": 18916
+          },
+          {
+            "expert_idx": 226,
+            "routing_count": 18066
+          },
+          {
+            "expert_idx": 120,
+            "routing_count": 17598
+          },
+          {
+            "expert_idx": 117,
+            "routing_count": 17518
+          },
+          {
+            "expert_idx": 55,
+            "routing_count": 17195
+          },
+          {
+            "expert_idx": 249,
+            "routing_count": 16681
+          },
+          {
+            "expert_idx": 181,
+            "routing_count": 16477
+          },
+          {
+            "expert_idx": 2,
+            "routing_count": 16373
+          },
+          {
+            "expert_idx": 185,
+            "routing_count": 16204
+          },
+          {
+            "expert_idx": 109,
+            "routing_count": 16118
+          },
+          {
+            "expert_idx": 101,
+            "routing_count": 15781
+          },
+          {
+            "expert_idx": 74,
+            "routing_count": 15763
+          }
+        ],
+        "1": [
+          {
+            "expert_idx": 238,
+            "routing_count": 36946
+          },
+          {
+            "expert_idx": 205,
+            "routing_count": 28231
+          },
+          {
+            "expert_idx": 138,
+            "routing_count": 27117
+          },
+          {
+            "expert_idx": 42,
+            "routing_count": 26926
+          },
+          {
+            "expert_idx": 11,
+            "routing_count": 23465
+          },
+          {
+            "expert_idx": 236,
+            "routing_count": 23252
+          },
+          {
+            "expert_idx": 239,
+            "routing_count": 22232
+          },
+          {
+            "expert_idx": 20,
+            "routing_count": 21680
+          },
+          {
+            "expert_idx": 84,
+            "routing_count": 21250
+          },
+          {
+            "expert_idx": 213,
+            "routing_count": 20647
+          },
+          {
+            "expert_idx": 153,
+            "routing_count": 20270
+          },
+          {
+            "expert_idx": 167,
+            "routing_count": 18812
+          },
+          {
+            "expert_idx": 235,
+            "routing_count": 17735
+          },
+          {
+            "expert_idx": 191,
+            "routing_count": 17133
+          },
+          {
+            "expert_idx": 69,
+            "routing_count": 16419
+          },
+          {
+            "expert_idx": 226,
+            "routing_count": 16323
+          },
+          {
+            "expert_idx": 232,
+            "routing_count": 15670
+          },
+          {
+            "expert_idx": 125,
+            "routing_count": 15426
+          },
+          {
+            "expert_idx": 198,
+            "routing_count": 15231
+          },
+          {
+            "expert_idx": 86,
+            "routing_count": 15175
+          }
+        ],
+        "2": [
+          {
+            "expert_idx": 88,
+            "routing_count": 27729
+          },
+          {
+            "expert_idx": 223,
+            "routing_count": 26575
+          },
+          {
+            "expert_idx": 41,
+            "routing_count": 23791
+          },
+          {
+            "expert_idx": 40,
+            "routing_count": 22729
+          },
+          {
+            "expert_idx": 6,
+            "routing_count": 22340
+          },
+          {
+            "expert_idx": 230,
+            "routing_count": 19719
+          },
+          {
+            "expert_idx": 180,
+            "routing_count": 18423
+          },
+          {
+            "expert_idx": 150,
+            "routing_count": 17977
+          },
+          {
+            "expert_idx": 164,
+            "routing_count": 17576
+          },
+          {
+            "expert_idx": 187,
+            "routing_count": 17231
+          },
+          {
+            "expert_idx": 3,
+            "routing_count": 16840
+          },
+          {
+            "expert_idx": 184,
+            "routing_count": 16756
+          },
+          {
+            "expert_idx": 17,
+            "routing_count": 16694
+          },
+          {
+            "expert_idx": 221,
+            "routing_count": 15995
+          },
+          {
+            "expert_idx": 104,
+            "routing_count": 15770
+          },
+          {
+            "expert_idx": 42,
+            "routing_count": 15620
+          },
+          {
+            "expert_idx": 8,
+            "routing_count": 15151
+          },
+          {
+            "expert_idx": 219,
+            "routing_count": 15043
+          },
+          {
+            "expert_idx": 13,
+            "routing_count": 14789
+          },
+          {
+            "expert_idx": 110,
+            "routing_count": 14766
+          }
+        ],
+        "3": [
+          {
+            "expert_idx": 61,
+            "routing_count": 56163
+          },
+          {
+            "expert_idx": 39,
+            "routing_count": 51599
+          },
+          {
+            "expert_idx": 94,
+            "routing_count": 51474
+          },
+          {
+            "expert_idx": 19,
+            "routing_count": 35783
+          },
+          {
+            "expert_idx": 101,
+            "routing_count": 31973
+          },
+          {
+            "expert_idx": 0,
+            "routing_count": 27959
+          },
+          {
+            "expert_idx": 211,
+            "routing_count": 24234
+          },
+          {
+            "expert_idx": 163,
+            "routing_count": 23096
+          },
+          {
+            "expert_idx": 129,
+            "routing_count": 22844
+          },
+          {
+            "expert_idx": 155,
+            "routing_count": 22751
+          },
+          {
+            "expert_idx": 108,
+            "routing_count": 20881
+          },
+          {
+            "expert_idx": 16,
+            "routing_count": 20480
+          },
+          {
+            "expert_idx": 156,
+            "routing_count": 20288
+          },
+          {
+            "expert_idx": 8,
+            "routing_count": 18364
+          },
+          {
+            "expert_idx": 58,
+            "routing_count": 18186
+          },
+          {
+            "expert_idx": 206,
+            "routing_count": 18152
+          },
+          {
+            "expert_idx": 197,
+            "routing_count": 17776
+          },
+          {
+            "expert_idx": 63,
+            "routing_count": 16845
+          },
+          {
+            "expert_idx": 250,
+            "routing_count": 16474
+          },
+          {
+            "expert_idx": 120,
+            "routing_count": 15981
+          }
+        ],
+        "4": [
+          {
+            "expert_idx": 25,
+            "routing_count": 73143
+          },
+          {
+            "expert_idx": 204,
+            "routing_count": 34852
+          },
+          {
+            "expert_idx": 212,
+            "routing_count": 33057
+          },
+          {
+            "expert_idx": 93,
+            "routing_count": 30583
+          },
+          {
+            "expert_idx": 206,
+            "routing_count": 29553
+          },
+          {
+            "expert_idx": 129,
+            "routing_count": 28649
+          },
+          {
+            "expert_idx": 117,
+            "routing_count": 26704
+          },
+          {
+            "expert_idx": 170,
+            "routing_count": 26343
+          },
+          {
+            "expert_idx": 1,
+            "routing_count": 26137
+          },
+          {
+            "expert_idx": 169,
+            "routing_count": 25024
+          },
+          {
+            "expert_idx": 151,
+            "routing_count": 24832
+          },
+          {
+            "expert_idx": 33,
+            "routing_count": 23918
+          },
+          {
+            "expert_idx": 243,
+            "routing_count": 23858
+          },
+          {
+            "expert_idx": 166,
+            "routing_count": 20856
+          },
+          {
+            "expert_idx": 29,
+            "routing_count": 20212
+          },
+          {
+            "expert_idx": 51,
+            "routing_count": 20085
+          },
+          {
+            "expert_idx": 217,
+            "routing_count": 19984
+          },
+          {
+            "expert_idx": 71,
+            "routing_count": 19889
+          },
+          {
+            "expert_idx": 139,
+            "routing_count": 19747
+          },
+          {
+            "expert_idx": 113,
+            "routing_count": 19477
+          }
+        ],
+        "5": [
+          {
+            "expert_idx": 203,
+            "routing_count": 34353
+          },
+          {
+            "expert_idx": 46,
+            "routing_count": 32763
+          },
+          {
+            "expert_idx": 64,
+            "routing_count": 29125
+          },
+          {
+            "expert_idx": 52,
+            "routing_count": 28791
+          },
+          {
+            "expert_idx": 253,
+            "routing_count": 28337
+          },
+          {
+            "expert_idx": 240,
+            "routing_count": 27237
+          },
+          {
+            "expert_idx": 133,
+            "routing_count": 27130
+          },
+          {
+            "expert_idx": 62,
+            "routing_count": 25085
+          },
+          {
+            "expert_idx": 232,
+            "routing_count": 23338
+          },
+          {
+            "expert_idx": 77,
+            "routing_count": 23285
+          },
+          {
+            "expert_idx": 65,
+            "routing_count": 22659
+          },
+          {
+            "expert_idx": 174,
+            "routing_count": 22567
+          },
+          {
+            "expert_idx": 24,
+            "routing_count": 21367
+          },
+          {
+            "expert_idx": 48,
+            "routing_count": 21254
+          },
+          {
+            "expert_idx": 226,
+            "routing_count": 20613
+          },
+          {
+            "expert_idx": 14,
+            "routing_count": 20196
+          },
+          {
+            "expert_idx": 1,
+            "routing_count": 19968
+          },
+          {
+            "expert_idx": 75,
+            "routing_count": 19639
+          },
+          {
+            "expert_idx": 69,
+            "routing_count": 19374
+          },
+          {
+            "expert_idx": 249,
+            "routing_count": 19236
+          }
+        ],
+        "6": [
+          {
+            "expert_idx": 162,
+            "routing_count": 47584
+          },
+          {
+            "expert_idx": 100,
+            "routing_count": 46196
+          },
+          {
+            "expert_idx": 126,
+            "routing_count": 42282
+          },
+          {
+            "expert_idx": 85,
+            "routing_count": 35482
+          },
+          {
+            "expert_idx": 250,
+            "routing_count": 32207
+          },
+          {
+            "expert_idx": 108,
+            "routing_count": 27017
+          },
+          {
+            "expert_idx": 178,
+            "routing_count": 25513
+          },
+          {
+            "expert_idx": 195,
+            "routing_count": 25269
+          },
+          {
+            "expert_idx": 2,
+            "routing_count": 23657
+          },
+          {
+            "expert_idx": 58,
+            "routing_count": 23656
+          },
+          {
+            "expert_idx": 10,
+            "routing_count": 22716
+          },
+          {
+            "expert_idx": 174,
+            "routing_count": 22360
+          },
+          {
+            "expert_idx": 3,
+            "routing_count": 22338
+          },
+          {
+            "expert_idx": 25,
+            "routing_count": 22273
+          },
+          {
+            "expert_idx": 114,
+            "routing_count": 22187
+          },
+          {
+            "expert_idx": 103,
+            "routing_count": 21504
+          },
+          {
+            "expert_idx": 223,
+            "routing_count": 21046
+          },
+          {
+            "expert_idx": 232,
+            "routing_count": 20524
+          },
+          {
+            "expert_idx": 187,
+            "routing_count": 20519
+          },
+          {
+            "expert_idx": 104,
+            "routing_count": 20228
+          }
+        ],
+        "7": [
+          {
+            "expert_idx": 215,
+            "routing_count": 60715
+          },
+          {
+            "expert_idx": 254,
+            "routing_count": 54031
+          },
+          {
+            "expert_idx": 210,
+            "routing_count": 48121
+          },
+          {
+            "expert_idx": 130,
+            "routing_count": 43871
+          },
+          {
+            "expert_idx": 74,
+            "routing_count": 39121
+          },
+          {
+            "expert_idx": 121,
+            "routing_count": 36590
+          },
+          {
+            "expert_idx": 163,
+            "routing_count": 33431
+          },
+          {
+            "expert_idx": 94,
+            "routing_count": 31440
+          },
+          {
+            "expert_idx": 119,
+            "routing_count": 28817
+          },
+          {
+            "expert_idx": 166,
+            "routing_count": 26466
+          },
+          {
+            "expert_idx": 182,
+            "routing_count": 25791
+          },
+          {
+            "expert_idx": 202,
+            "routing_count": 25628
+          },
+          {
+            "expert_idx": 38,
+            "routing_count": 24354
+          },
+          {
+            "expert_idx": 219,
+            "routing_count": 23060
+          },
+          {
+            "expert_idx": 243,
+            "routing_count": 22942
+          },
+          {
+            "expert_idx": 43,
+            "routing_count": 20475
+          },
+          {
+            "expert_idx": 224,
+            "routing_count": 19704
+          },
+          {
+            "expert_idx": 190,
+            "routing_count": 19450
+          },
+          {
+            "expert_idx": 32,
+            "routing_count": 19370
+          },
+          {
+            "expert_idx": 65,
+            "routing_count": 19226
+          }
+        ],
+        "8": [
+          {
+            "expert_idx": 150,
+            "routing_count": 150864
+          },
+          {
+            "expert_idx": 228,
+            "routing_count": 44088
+          },
+          {
+            "expert_idx": 28,
+            "routing_count": 43366
+          },
+          {
+            "expert_idx": 9,
+            "routing_count": 34979
+          },
+          {
+            "expert_idx": 199,
+            "routing_count": 33051
+          },
+          {
+            "expert_idx": 123,
+            "routing_count": 31612
+          },
+          {
+            "expert_idx": 103,
+            "routing_count": 31132
+          },
+          {
+            "expert_idx": 156,
+            "routing_count": 29093
+          },
+          {
+            "expert_idx": 158,
+            "routing_count": 27667
+          },
+          {
+            "expert_idx": 211,
+            "routing_count": 26781
+          },
+          {
+            "expert_idx": 0,
+            "routing_count": 25747
+          },
+          {
+            "expert_idx": 129,
+            "routing_count": 25518
+          },
+          {
+            "expert_idx": 236,
+            "routing_count": 24857
+          },
+          {
+            "expert_idx": 128,
+            "routing_count": 24666
+          },
+          {
+            "expert_idx": 220,
+            "routing_count": 24408
+          },
+          {
+            "expert_idx": 68,
+            "routing_count": 22491
+          },
+          {
+            "expert_idx": 232,
+            "routing_count": 22271
+          },
+          {
+            "expert_idx": 83,
+            "routing_count": 20901
+          },
+          {
+            "expert_idx": 190,
+            "routing_count": 20663
+          },
+          {
+            "expert_idx": 202,
+            "routing_count": 20227
+          }
+        ],
+        "9": [
+          {
+            "expert_idx": 42,
+            "routing_count": 48837
+          },
+          {
+            "expert_idx": 66,
+            "routing_count": 48239
+          },
+          {
+            "expert_idx": 65,
+            "routing_count": 44686
+          },
+          {
+            "expert_idx": 37,
+            "routing_count": 39239
+          },
+          {
+            "expert_idx": 34,
+            "routing_count": 34751
+          },
+          {
+            "expert_idx": 102,
+            "routing_count": 33356
+          },
+          {
+            "expert_idx": 13,
+            "routing_count": 33080
+          },
+          {
+            "expert_idx": 0,
+            "routing_count": 31953
+          },
+          {
+            "expert_idx": 192,
+            "routing_count": 30779
+          },
+          {
+            "expert_idx": 111,
+            "routing_count": 29367
+          },
+          {
+            "expert_idx": 52,
+            "routing_count": 29201
+          },
+          {
+            "expert_idx": 244,
+            "routing_count": 26487
+          },
+          {
+            "expert_idx": 95,
+            "routing_count": 26088
+          },
+          {
+            "expert_idx": 105,
+            "routing_count": 25823
+          },
+          {
+            "expert_idx": 162,
+            "routing_count": 25174
+          },
+          {
+            "expert_idx": 139,
+            "routing_count": 24971
+          },
+          {
+            "expert_idx": 58,
+            "routing_count": 24557
+          },
+          {
+            "expert_idx": 253,
+            "routing_count": 24170
+          },
+          {
+            "expert_idx": 83,
+            "routing_count": 23440
+          },
+          {
+            "expert_idx": 44,
+            "routing_count": 23422
+          }
+        ],
+        "10": [
+          {
+            "expert_idx": 246,
+            "routing_count": 43051
+          },
+          {
+            "expert_idx": 181,
+            "routing_count": 41607
+          },
+          {
+            "expert_idx": 20,
+            "routing_count": 37864
+          },
+          {
+            "expert_idx": 85,
+            "routing_count": 30697
+          },
+          {
+            "expert_idx": 187,
+            "routing_count": 28316
+          },
+          {
+            "expert_idx": 159,
+            "routing_count": 27718
+          },
+          {
+            "expert_idx": 28,
+            "routing_count": 26350
+          },
+          {
+            "expert_idx": 92,
+            "routing_count": 25339
+          },
+          {
+            "expert_idx": 158,
+            "routing_count": 24914
+          },
+          {
+            "expert_idx": 170,
+            "routing_count": 24102
+          },
+          {
+            "expert_idx": 73,
+            "routing_count": 23386
+          },
+          {
+            "expert_idx": 31,
+            "routing_count": 22804
+          },
+          {
+            "expert_idx": 253,
+            "routing_count": 22285
+          },
+          {
+            "expert_idx": 163,
+            "routing_count": 22020
+          },
+          {
+            "expert_idx": 68,
+            "routing_count": 21747
+          },
+          {
+            "expert_idx": 225,
+            "routing_count": 21624
+          },
+          {
+            "expert_idx": 204,
+            "routing_count": 21609
+          },
+          {
+            "expert_idx": 42,
+            "routing_count": 20073
+          },
+          {
+            "expert_idx": 223,
+            "routing_count": 19980
+          },
+          {
+            "expert_idx": 125,
+            "routing_count": 19779
+          }
+        ],
+        "11": [
+          {
+            "expert_idx": 115,
+            "routing_count": 67278
+          },
+          {
+            "expert_idx": 250,
+            "routing_count": 41251
+          },
+          {
+            "expert_idx": 240,
+            "routing_count": 34727
+          },
+          {
+            "expert_idx": 110,
+            "routing_count": 33487
+          },
+          {
+            "expert_idx": 71,
+            "routing_count": 27712
+          },
+          {
+            "expert_idx": 56,
+            "routing_count": 27069
+          },
+          {
+            "expert_idx": 109,
+            "routing_count": 26812
+          },
+          {
+            "expert_idx": 154,
+            "routing_count": 23895
+          },
+          {
+            "expert_idx": 131,
+            "routing_count": 23884
+          },
+          {
+            "expert_idx": 19,
+            "routing_count": 23668
+          },
+          {
+            "expert_idx": 18,
+            "routing_count": 22032
+          },
+          {
+            "expert_idx": 174,
+            "routing_count": 20588
+          },
+          {
+            "expert_idx": 142,
+            "routing_count": 20579
+          },
+          {
+            "expert_idx": 94,
+            "routing_count": 20425
+          },
+          {
+            "expert_idx": 116,
+            "routing_count": 20413
+          },
+          {
+            "expert_idx": 37,
+            "routing_count": 19667
+          },
+          {
+            "expert_idx": 114,
+            "routing_count": 19621
+          },
+          {
+            "expert_idx": 95,
+            "routing_count": 18992
+          },
+          {
+            "expert_idx": 64,
+            "routing_count": 18356
+          },
+          {
+            "expert_idx": 201,
+            "routing_count": 18240
+          }
+        ],
+        "12": [
+          {
+            "expert_idx": 241,
+            "routing_count": 63173
+          },
+          {
+            "expert_idx": 20,
+            "routing_count": 53619
+          },
+          {
+            "expert_idx": 36,
+            "routing_count": 42001
+          },
+          {
+            "expert_idx": 3,
+            "routing_count": 40088
+          },
+          {
+            "expert_idx": 125,
+            "routing_count": 39822
+          },
+          {
+            "expert_idx": 200,
+            "routing_count": 35584
+          },
+          {
+            "expert_idx": 1,
+            "routing_count": 33856
+          },
+          {
+            "expert_idx": 107,
+            "routing_count": 32071
+          },
+          {
+            "expert_idx": 230,
+            "routing_count": 31723
+          },
+          {
+            "expert_idx": 57,
+            "routing_count": 29315
+          },
+          {
+            "expert_idx": 18,
+            "routing_count": 29179
+          },
+          {
+            "expert_idx": 112,
+            "routing_count": 28528
+          },
+          {
+            "expert_idx": 84,
+            "routing_count": 28039
+          },
+          {
+            "expert_idx": 172,
+            "routing_count": 27828
+          },
+          {
+            "expert_idx": 97,
+            "routing_count": 25984
+          },
+          {
+            "expert_idx": 205,
+            "routing_count": 25162
+          },
+          {
+            "expert_idx": 66,
+            "routing_count": 24491
+          },
+          {
+            "expert_idx": 7,
+            "routing_count": 24379
+          },
+          {
+            "expert_idx": 132,
+            "routing_count": 23913
+          },
+          {
+            "expert_idx": 67,
+            "routing_count": 21687
+          }
+        ],
+        "13": [
+          {
+            "expert_idx": 224,
+            "routing_count": 86181
+          },
+          {
+            "expert_idx": 41,
+            "routing_count": 68572
+          },
+          {
+            "expert_idx": 124,
+            "routing_count": 54219
+          },
+          {
+            "expert_idx": 175,
+            "routing_count": 49590
+          },
+          {
+            "expert_idx": 207,
+            "routing_count": 39736
+          },
+          {
+            "expert_idx": 237,
+            "routing_count": 37952
+          },
+          {
+            "expert_idx": 27,
+            "routing_count": 37577
+          },
+          {
+            "expert_idx": 126,
+            "routing_count": 33966
+          },
+          {
+            "expert_idx": 122,
+            "routing_count": 33541
+          },
+          {
+            "expert_idx": 226,
+            "routing_count": 29956
+          },
+          {
+            "expert_idx": 244,
+            "routing_count": 28411
+          },
+          {
+            "expert_idx": 157,
+            "routing_count": 28338
+          },
+          {
+            "expert_idx": 110,
+            "routing_count": 27663
+          },
+          {
+            "expert_idx": 225,
+            "routing_count": 24947
+          },
+          {
+            "expert_idx": 168,
+            "routing_count": 21991
+          },
+          {
+            "expert_idx": 100,
+            "routing_count": 21865
+          },
+          {
+            "expert_idx": 38,
+            "routing_count": 20385
+          },
+          {
+            "expert_idx": 200,
+            "routing_count": 20328
+          },
+          {
+            "expert_idx": 43,
+            "routing_count": 20321
+          },
+          {
+            "expert_idx": 156,
+            "routing_count": 19564
+          }
+        ],
+        "14": [
+          {
+            "expert_idx": 105,
+            "routing_count": 77395
+          },
+          {
+            "expert_idx": 168,
+            "routing_count": 61447
+          },
+          {
+            "expert_idx": 247,
+            "routing_count": 47811
+          },
+          {
+            "expert_idx": 250,
+            "routing_count": 42582
+          },
+          {
+            "expert_idx": 16,
+            "routing_count": 38314
+          },
+          {
+            "expert_idx": 152,
+            "routing_count": 38137
+          },
+          {
+            "expert_idx": 27,
+            "routing_count": 35165
+          },
+          {
+            "expert_idx": 69,
+            "routing_count": 33723
+          },
+          {
+            "expert_idx": 60,
+            "routing_count": 32933
+          },
+          {
+            "expert_idx": 188,
+            "routing_count": 30593
+          },
+          {
+            "expert_idx": 235,
+            "routing_count": 30344
+          },
+          {
+            "expert_idx": 141,
+            "routing_count": 28787
+          },
+          {
+            "expert_idx": 70,
+            "routing_count": 28241
+          },
+          {
+            "expert_idx": 175,
+            "routing_count": 25561
+          },
+          {
+            "expert_idx": 199,
+            "routing_count": 25299
+          },
+          {
+            "expert_idx": 172,
+            "routing_count": 24692
+          },
+          {
+            "expert_idx": 80,
+            "routing_count": 22709
+          },
+          {
+            "expert_idx": 170,
+            "routing_count": 21529
+          },
+          {
+            "expert_idx": 219,
+            "routing_count": 21329
+          },
+          {
+            "expert_idx": 162,
+            "routing_count": 21085
+          }
+        ],
+        "15": [
+          {
+            "expert_idx": 245,
+            "routing_count": 85201
+          },
+          {
+            "expert_idx": 63,
+            "routing_count": 51628
+          },
+          {
+            "expert_idx": 135,
+            "routing_count": 41368
+          },
+          {
+            "expert_idx": 26,
+            "routing_count": 40568
+          },
+          {
+            "expert_idx": 32,
+            "routing_count": 35252
+          },
+          {
+            "expert_idx": 95,
+            "routing_count": 34953
+          },
+          {
+            "expert_idx": 85,
+            "routing_count": 34030
+          },
+          {
+            "expert_idx": 222,
+            "routing_count": 33421
+          },
+          {
+            "expert_idx": 220,
+            "routing_count": 32803
+          },
+          {
+            "expert_idx": 49,
+            "routing_count": 30204
+          },
+          {
+            "expert_idx": 38,
+            "routing_count": 30128
+          },
+          {
+            "expert_idx": 174,
+            "routing_count": 28498
+          },
+          {
+            "expert_idx": 17,
+            "routing_count": 27432
+          },
+          {
+            "expert_idx": 239,
+            "routing_count": 27037
+          },
+          {
+            "expert_idx": 209,
+            "routing_count": 25882
+          },
+          {
+            "expert_idx": 67,
+            "routing_count": 24789
+          },
+          {
+            "expert_idx": 101,
+            "routing_count": 22898
+          },
+          {
+            "expert_idx": 214,
+            "routing_count": 22210
+          },
+          {
+            "expert_idx": 175,
+            "routing_count": 21435
+          },
+          {
+            "expert_idx": 186,
+            "routing_count": 21190
+          }
+        ],
+        "16": [
+          {
+            "expert_idx": 224,
+            "routing_count": 85098
+          },
+          {
+            "expert_idx": 6,
+            "routing_count": 65850
+          },
+          {
+            "expert_idx": 184,
+            "routing_count": 54412
+          },
+          {
+            "expert_idx": 30,
+            "routing_count": 42551
+          },
+          {
+            "expert_idx": 180,
+            "routing_count": 33918
+          },
+          {
+            "expert_idx": 150,
+            "routing_count": 33131
+          },
+          {
+            "expert_idx": 108,
+            "routing_count": 32322
+          },
+          {
+            "expert_idx": 87,
+            "routing_count": 31072
+          },
+          {
+            "expert_idx": 241,
+            "routing_count": 30810
+          },
+          {
+            "expert_idx": 8,
+            "routing_count": 28603
+          },
+          {
+            "expert_idx": 200,
+            "routing_count": 27523
+          },
+          {
+            "expert_idx": 123,
+            "routing_count": 25251
+          },
+          {
+            "expert_idx": 249,
+            "routing_count": 25115
+          },
+          {
+            "expert_idx": 114,
+            "routing_count": 24986
+          },
+          {
+            "expert_idx": 73,
+            "routing_count": 23626
+          },
+          {
+            "expert_idx": 161,
+            "routing_count": 22030
+          },
+          {
+            "expert_idx": 70,
+            "routing_count": 22015
+          },
+          {
+            "expert_idx": 167,
+            "routing_count": 20629
+          },
+          {
+            "expert_idx": 61,
+            "routing_count": 19758
+          },
+          {
+            "expert_idx": 233,
+            "routing_count": 19546
+          }
+        ],
+        "17": [
+          {
+            "expert_idx": 220,
+            "routing_count": 102300
+          },
+          {
+            "expert_idx": 255,
+            "routing_count": 55862
+          },
+          {
+            "expert_idx": 232,
+            "routing_count": 47075
+          },
+          {
+            "expert_idx": 247,
+            "routing_count": 33810
+          },
+          {
+            "expert_idx": 237,
+            "routing_count": 33681
+          },
+          {
+            "expert_idx": 180,
+            "routing_count": 32303
+          },
+          {
+            "expert_idx": 32,
+            "routing_count": 32142
+          },
+          {
+            "expert_idx": 130,
+            "routing_count": 31237
+          },
+          {
+            "expert_idx": 191,
+            "routing_count": 30433
+          },
+          {
+            "expert_idx": 147,
+            "routing_count": 30218
+          },
+          {
+            "expert_idx": 90,
+            "routing_count": 29637
+          },
+          {
+            "expert_idx": 73,
+            "routing_count": 29484
+          },
+          {
+            "expert_idx": 202,
+            "routing_count": 25508
+          },
+          {
+            "expert_idx": 170,
+            "routing_count": 24767
+          },
+          {
+            "expert_idx": 31,
+            "routing_count": 23910
+          },
+          {
+            "expert_idx": 213,
+            "routing_count": 23728
+          },
+          {
+            "expert_idx": 197,
+            "routing_count": 23538
+          },
+          {
+            "expert_idx": 131,
+            "routing_count": 21862
+          },
+          {
+            "expert_idx": 155,
+            "routing_count": 21205
+          },
+          {
+            "expert_idx": 67,
+            "routing_count": 20120
+          }
+        ],
+        "18": [
+          {
+            "expert_idx": 196,
+            "routing_count": 56188
+          },
+          {
+            "expert_idx": 21,
+            "routing_count": 48048
+          },
+          {
+            "expert_idx": 235,
+            "routing_count": 44295
+          },
+          {
+            "expert_idx": 25,
+            "routing_count": 42841
+          },
+          {
+            "expert_idx": 145,
+            "routing_count": 42509
+          },
+          {
+            "expert_idx": 17,
+            "routing_count": 39236
+          },
+          {
+            "expert_idx": 229,
+            "routing_count": 36706
+          },
+          {
+            "expert_idx": 27,
+            "routing_count": 36144
+          },
+          {
+            "expert_idx": 87,
+            "routing_count": 33291
+          },
+          {
+            "expert_idx": 116,
+            "routing_count": 32009
+          },
+          {
+            "expert_idx": 222,
+            "routing_count": 30147
+          },
+          {
+            "expert_idx": 28,
+            "routing_count": 26808
+          },
+          {
+            "expert_idx": 173,
+            "routing_count": 26139
+          },
+          {
+            "expert_idx": 48,
+            "routing_count": 26111
+          },
+          {
+            "expert_idx": 36,
+            "routing_count": 25759
+          },
+          {
+            "expert_idx": 163,
+            "routing_count": 25462
+          },
+          {
+            "expert_idx": 231,
+            "routing_count": 25202
+          },
+          {
+            "expert_idx": 98,
+            "routing_count": 24465
+          },
+          {
+            "expert_idx": 56,
+            "routing_count": 23927
+          },
+          {
+            "expert_idx": 57,
+            "routing_count": 23411
+          }
+        ],
+        "19": [
+          {
+            "expert_idx": 160,
+            "routing_count": 73973
+          },
+          {
+            "expert_idx": 197,
+            "routing_count": 68270
+          },
+          {
+            "expert_idx": 253,
+            "routing_count": 53127
+          },
+          {
+            "expert_idx": 42,
+            "routing_count": 39691
+          },
+          {
+            "expert_idx": 13,
+            "routing_count": 35001
+          },
+          {
+            "expert_idx": 175,
+            "routing_count": 34093
+          },
+          {
+            "expert_idx": 16,
+            "routing_count": 30811
+          },
+          {
+            "expert_idx": 132,
+            "routing_count": 30436
+          },
+          {
+            "expert_idx": 118,
+            "routing_count": 30166
+          },
+          {
+            "expert_idx": 106,
+            "routing_count": 30104
+          },
+          {
+            "expert_idx": 216,
+            "routing_count": 29685
+          },
+          {
+            "expert_idx": 47,
+            "routing_count": 28879
+          },
+          {
+            "expert_idx": 31,
+            "routing_count": 28597
+          },
+          {
+            "expert_idx": 177,
+            "routing_count": 26128
+          },
+          {
+            "expert_idx": 179,
+            "routing_count": 25769
+          },
+          {
+            "expert_idx": 80,
+            "routing_count": 25032
+          },
+          {
+            "expert_idx": 8,
+            "routing_count": 24293
+          },
+          {
+            "expert_idx": 94,
+            "routing_count": 24288
+          },
+          {
+            "expert_idx": 162,
+            "routing_count": 23621
+          },
+          {
+            "expert_idx": 38,
+            "routing_count": 23385
+          }
+        ],
+        "20": [
+          {
+            "expert_idx": 150,
+            "routing_count": 137868
+          },
+          {
+            "expert_idx": 228,
+            "routing_count": 47578
+          },
+          {
+            "expert_idx": 9,
+            "routing_count": 42577
+          },
+          {
+            "expert_idx": 28,
+            "routing_count": 41895
+          },
+          {
+            "expert_idx": 211,
+            "routing_count": 34418
+          },
+          {
+            "expert_idx": 156,
+            "routing_count": 33216
+          },
+          {
+            "expert_idx": 129,
+            "routing_count": 32420
+          },
+          {
+            "expert_idx": 236,
+            "routing_count": 30552
+          },
+          {
+            "expert_idx": 0,
+            "routing_count": 29654
+          },
+          {
+            "expert_idx": 83,
+            "routing_count": 29401
+          },
+          {
+            "expert_idx": 64,
+            "routing_count": 29307
+          },
+          {
+            "expert_idx": 158,
+            "routing_count": 27916
+          },
+          {
+            "expert_idx": 202,
+            "routing_count": 27651
+          },
+          {
+            "expert_idx": 106,
+            "routing_count": 25014
+          },
+          {
+            "expert_idx": 115,
+            "routing_count": 24305
+          },
+          {
+            "expert_idx": 215,
+            "routing_count": 23500
+          },
+          {
+            "expert_idx": 128,
+            "routing_count": 22555
+          },
+          {
+            "expert_idx": 26,
+            "routing_count": 22484
+          },
+          {
+            "expert_idx": 190,
+            "routing_count": 22444
+          },
+          {
+            "expert_idx": 80,
+            "routing_count": 22422
+          }
+        ],
+        "21": [
+          {
+            "expert_idx": 42,
+            "routing_count": 54241
+          },
+          {
+            "expert_idx": 66,
+            "routing_count": 52786
+          },
+          {
+            "expert_idx": 6,
+            "routing_count": 51275
+          },
+          {
+            "expert_idx": 44,
+            "routing_count": 49300
+          },
+          {
+            "expert_idx": 65,
+            "routing_count": 47472
+          },
+          {
+            "expert_idx": 34,
+            "routing_count": 44697
+          },
+          {
+            "expert_idx": 52,
+            "routing_count": 44466
+          },
+          {
+            "expert_idx": 37,
+            "routing_count": 37933
+          },
+          {
+            "expert_idx": 139,
+            "routing_count": 34006
+          },
+          {
+            "expert_idx": 192,
+            "routing_count": 33451
+          },
+          {
+            "expert_idx": 111,
+            "routing_count": 33334
+          },
+          {
+            "expert_idx": 13,
+            "routing_count": 28200
+          },
+          {
+            "expert_idx": 244,
+            "routing_count": 26861
+          },
+          {
+            "expert_idx": 105,
+            "routing_count": 26384
+          },
+          {
+            "expert_idx": 162,
+            "routing_count": 26022
+          },
+          {
+            "expert_idx": 253,
+            "routing_count": 25204
+          },
+          {
+            "expert_idx": 83,
+            "routing_count": 25139
+          },
+          {
+            "expert_idx": 102,
+            "routing_count": 24171
+          },
+          {
+            "expert_idx": 95,
+            "routing_count": 23956
+          },
+          {
+            "expert_idx": 0,
+            "routing_count": 23845
+          }
+        ],
+        "22": [
+          {
+            "expert_idx": 181,
+            "routing_count": 44031
+          },
+          {
+            "expert_idx": 246,
+            "routing_count": 42351
+          },
+          {
+            "expert_idx": 20,
+            "routing_count": 39515
+          },
+          {
+            "expert_idx": 28,
+            "routing_count": 34854
+          },
+          {
+            "expert_idx": 85,
+            "routing_count": 30480
+          },
+          {
+            "expert_idx": 79,
+            "routing_count": 30454
+          },
+          {
+            "expert_idx": 170,
+            "routing_count": 30421
+          },
+          {
+            "expert_idx": 70,
+            "routing_count": 27928
+          },
+          {
+            "expert_idx": 158,
+            "routing_count": 26946
+          },
+          {
+            "expert_idx": 73,
+            "routing_count": 26271
+          },
+          {
+            "expert_idx": 92,
+            "routing_count": 26102
+          },
+          {
+            "expert_idx": 159,
+            "routing_count": 25598
+          },
+          {
+            "expert_idx": 42,
+            "routing_count": 25305
+          },
+          {
+            "expert_idx": 187,
+            "routing_count": 24559
+          },
+          {
+            "expert_idx": 204,
+            "routing_count": 22916
+          },
+          {
+            "expert_idx": 154,
+            "routing_count": 21991
+          },
+          {
+            "expert_idx": 225,
+            "routing_count": 21981
+          },
+          {
+            "expert_idx": 137,
+            "routing_count": 21969
+          },
+          {
+            "expert_idx": 239,
+            "routing_count": 21899
+          },
+          {
+            "expert_idx": 223,
+            "routing_count": 21809
+          }
+        ],
+        "23": [
+          {
+            "expert_idx": 115,
+            "routing_count": 74919
+          },
+          {
+            "expert_idx": 110,
+            "routing_count": 37487
+          },
+          {
+            "expert_idx": 131,
+            "routing_count": 36598
+          },
+          {
+            "expert_idx": 240,
+            "routing_count": 35656
+          },
+          {
+            "expert_idx": 71,
+            "routing_count": 31791
+          },
+          {
+            "expert_idx": 95,
+            "routing_count": 26972
+          },
+          {
+            "expert_idx": 250,
+            "routing_count": 26018
+          },
+          {
+            "expert_idx": 109,
+            "routing_count": 25053
+          },
+          {
+            "expert_idx": 37,
+            "routing_count": 23426
+          },
+          {
+            "expert_idx": 154,
+            "routing_count": 23371
+          },
+          {
+            "expert_idx": 56,
+            "routing_count": 23326
+          },
+          {
+            "expert_idx": 19,
+            "routing_count": 22207
+          },
+          {
+            "expert_idx": 135,
+            "routing_count": 21291
+          },
+          {
+            "expert_idx": 86,
+            "routing_count": 19753
+          },
+          {
+            "expert_idx": 201,
+            "routing_count": 19517
+          },
+          {
+            "expert_idx": 188,
+            "routing_count": 19201
+          },
+          {
+            "expert_idx": 94,
+            "routing_count": 19179
+          },
+          {
+            "expert_idx": 18,
+            "routing_count": 19139
+          },
+          {
+            "expert_idx": 142,
+            "routing_count": 18950
+          },
+          {
+            "expert_idx": 62,
+            "routing_count": 17100
+          }
+        ],
+        "24": [
+          {
+            "expert_idx": 241,
+            "routing_count": 58066
+          },
+          {
+            "expert_idx": 20,
+            "routing_count": 50447
+          },
+          {
+            "expert_idx": 36,
+            "routing_count": 38759
+          },
+          {
+            "expert_idx": 125,
+            "routing_count": 33264
+          },
+          {
+            "expert_idx": 230,
+            "routing_count": 31576
+          },
+          {
+            "expert_idx": 55,
+            "routing_count": 30239
+          },
+          {
+            "expert_idx": 200,
+            "routing_count": 29702
+          },
+          {
+            "expert_idx": 18,
+            "routing_count": 28038
+          },
+          {
+            "expert_idx": 1,
+            "routing_count": 26929
+          },
+          {
+            "expert_idx": 7,
+            "routing_count": 26858
+          },
+          {
+            "expert_idx": 71,
+            "routing_count": 26567
+          },
+          {
+            "expert_idx": 172,
+            "routing_count": 26329
+          },
+          {
+            "expert_idx": 112,
+            "routing_count": 24948
+          },
+          {
+            "expert_idx": 3,
+            "routing_count": 24478
+          },
+          {
+            "expert_idx": 97,
+            "routing_count": 23949
+          },
+          {
+            "expert_idx": 140,
+            "routing_count": 23605
+          },
+          {
+            "expert_idx": 234,
+            "routing_count": 23551
+          },
+          {
+            "expert_idx": 205,
+            "routing_count": 22929
+          },
+          {
+            "expert_idx": 132,
+            "routing_count": 22575
+          },
+          {
+            "expert_idx": 107,
+            "routing_count": 21864
+          }
+        ],
+        "25": [
+          {
+            "expert_idx": 224,
+            "routing_count": 102164
+          },
+          {
+            "expert_idx": 47,
+            "routing_count": 53237
+          },
+          {
+            "expert_idx": 124,
+            "routing_count": 51235
+          },
+          {
+            "expert_idx": 237,
+            "routing_count": 48997
+          },
+          {
+            "expert_idx": 41,
+            "routing_count": 44242
+          },
+          {
+            "expert_idx": 244,
+            "routing_count": 38923
+          },
+          {
+            "expert_idx": 207,
+            "routing_count": 34593
+          },
+          {
+            "expert_idx": 197,
+            "routing_count": 30480
+          },
+          {
+            "expert_idx": 175,
+            "routing_count": 30094
+          },
+          {
+            "expert_idx": 126,
+            "routing_count": 27954
+          },
+          {
+            "expert_idx": 122,
+            "routing_count": 26680
+          },
+          {
+            "expert_idx": 27,
+            "routing_count": 26514
+          },
+          {
+            "expert_idx": 157,
+            "routing_count": 24548
+          },
+          {
+            "expert_idx": 101,
+            "routing_count": 23345
+          },
+          {
+            "expert_idx": 168,
+            "routing_count": 23226
+          },
+          {
+            "expert_idx": 91,
+            "routing_count": 22363
+          },
+          {
+            "expert_idx": 226,
+            "routing_count": 20578
+          },
+          {
+            "expert_idx": 219,
+            "routing_count": 20001
+          },
+          {
+            "expert_idx": 2,
+            "routing_count": 19984
+          },
+          {
+            "expert_idx": 110,
+            "routing_count": 19697
+          }
+        ],
+        "26": [
+          {
+            "expert_idx": 105,
+            "routing_count": 66877
+          },
+          {
+            "expert_idx": 168,
+            "routing_count": 57623
+          },
+          {
+            "expert_idx": 160,
+            "routing_count": 43232
+          },
+          {
+            "expert_idx": 250,
+            "routing_count": 38197
+          },
+          {
+            "expert_idx": 247,
+            "routing_count": 36869
+          },
+          {
+            "expert_idx": 16,
+            "routing_count": 35471
+          },
+          {
+            "expert_idx": 27,
+            "routing_count": 34272
+          },
+          {
+            "expert_idx": 152,
+            "routing_count": 31469
+          },
+          {
+            "expert_idx": 60,
+            "routing_count": 30474
+          },
+          {
+            "expert_idx": 141,
+            "routing_count": 29136
+          },
+          {
+            "expert_idx": 70,
+            "routing_count": 28568
+          },
+          {
+            "expert_idx": 6,
+            "routing_count": 27504
+          },
+          {
+            "expert_idx": 69,
+            "routing_count": 26901
+          },
+          {
+            "expert_idx": 226,
+            "routing_count": 25006
+          },
+          {
+            "expert_idx": 188,
+            "routing_count": 25001
+          },
+          {
+            "expert_idx": 175,
+            "routing_count": 23406
+          },
+          {
+            "expert_idx": 171,
+            "routing_count": 23385
+          },
+          {
+            "expert_idx": 172,
+            "routing_count": 22996
+          },
+          {
+            "expert_idx": 144,
+            "routing_count": 21052
+          },
+          {
+            "expert_idx": 66,
+            "routing_count": 21008
+          }
+        ],
+        "27": [
+          {
+            "expert_idx": 218,
+            "routing_count": 144410
+          },
+          {
+            "expert_idx": 245,
+            "routing_count": 73259
+          },
+          {
+            "expert_idx": 63,
+            "routing_count": 44880
+          },
+          {
+            "expert_idx": 26,
+            "routing_count": 35116
+          },
+          {
+            "expert_idx": 95,
+            "routing_count": 34162
+          },
+          {
+            "expert_idx": 38,
+            "routing_count": 31920
+          },
+          {
+            "expert_idx": 135,
+            "routing_count": 31902
+          },
+          {
+            "expert_idx": 18,
+            "routing_count": 30072
+          },
+          {
+            "expert_idx": 174,
+            "routing_count": 29873
+          },
+          {
+            "expert_idx": 222,
+            "routing_count": 28581
+          },
+          {
+            "expert_idx": 32,
+            "routing_count": 28522
+          },
+          {
+            "expert_idx": 17,
+            "routing_count": 28076
+          },
+          {
+            "expert_idx": 220,
+            "routing_count": 25538
+          },
+          {
+            "expert_idx": 188,
+            "routing_count": 25066
+          },
+          {
+            "expert_idx": 209,
+            "routing_count": 22368
+          },
+          {
+            "expert_idx": 214,
+            "routing_count": 21483
+          },
+          {
+            "expert_idx": 186,
+            "routing_count": 20529
+          },
+          {
+            "expert_idx": 106,
+            "routing_count": 20144
+          },
+          {
+            "expert_idx": 51,
+            "routing_count": 20101
+          },
+          {
+            "expert_idx": 239,
+            "routing_count": 19760
+          }
+        ],
+        "28": [
+          {
+            "expert_idx": 224,
+            "routing_count": 68527
+          },
+          {
+            "expert_idx": 130,
+            "routing_count": 68100
+          },
+          {
+            "expert_idx": 6,
+            "routing_count": 62619
+          },
+          {
+            "expert_idx": 184,
+            "routing_count": 45270
+          },
+          {
+            "expert_idx": 105,
+            "routing_count": 36217
+          },
+          {
+            "expert_idx": 30,
+            "routing_count": 32915
+          },
+          {
+            "expert_idx": 241,
+            "routing_count": 31166
+          },
+          {
+            "expert_idx": 18,
+            "routing_count": 29809
+          },
+          {
+            "expert_idx": 200,
+            "routing_count": 29797
+          },
+          {
+            "expert_idx": 87,
+            "routing_count": 29761
+          },
+          {
+            "expert_idx": 218,
+            "routing_count": 29104
+          },
+          {
+            "expert_idx": 114,
+            "routing_count": 27837
+          },
+          {
+            "expert_idx": 12,
+            "routing_count": 27518
+          },
+          {
+            "expert_idx": 70,
+            "routing_count": 25012
+          },
+          {
+            "expert_idx": 220,
+            "routing_count": 23571
+          },
+          {
+            "expert_idx": 123,
+            "routing_count": 22592
+          },
+          {
+            "expert_idx": 8,
+            "routing_count": 21944
+          },
+          {
+            "expert_idx": 61,
+            "routing_count": 21898
+          },
+          {
+            "expert_idx": 248,
+            "routing_count": 21519
+          },
+          {
+            "expert_idx": 73,
+            "routing_count": 21338
+          }
+        ],
+        "29": [
+          {
+            "expert_idx": 220,
+            "routing_count": 86249
+          },
+          {
+            "expert_idx": 247,
+            "routing_count": 43218
+          },
+          {
+            "expert_idx": 232,
+            "routing_count": 40808
+          },
+          {
+            "expert_idx": 73,
+            "routing_count": 38748
+          },
+          {
+            "expert_idx": 180,
+            "routing_count": 36574
+          },
+          {
+            "expert_idx": 37,
+            "routing_count": 35846
+          },
+          {
+            "expert_idx": 32,
+            "routing_count": 35259
+          },
+          {
+            "expert_idx": 198,
+            "routing_count": 30464
+          },
+          {
+            "expert_idx": 90,
+            "routing_count": 30392
+          },
+          {
+            "expert_idx": 173,
+            "routing_count": 27267
+          },
+          {
+            "expert_idx": 147,
+            "routing_count": 27210
+          },
+          {
+            "expert_idx": 237,
+            "routing_count": 27012
+          },
+          {
+            "expert_idx": 99,
+            "routing_count": 26680
+          },
+          {
+            "expert_idx": 155,
+            "routing_count": 24021
+          },
+          {
+            "expert_idx": 170,
+            "routing_count": 23585
+          },
+          {
+            "expert_idx": 244,
+            "routing_count": 21184
+          },
+          {
+            "expert_idx": 10,
+            "routing_count": 20511
+          },
+          {
+            "expert_idx": 202,
+            "routing_count": 19738
+          },
+          {
+            "expert_idx": 31,
+            "routing_count": 19472
+          },
+          {
+            "expert_idx": 235,
+            "routing_count": 19167
+          }
+        ],
+        "30": [
+          {
+            "expert_idx": 196,
+            "routing_count": 49740
+          },
+          {
+            "expert_idx": 235,
+            "routing_count": 45612
+          },
+          {
+            "expert_idx": 25,
+            "routing_count": 37382
+          },
+          {
+            "expert_idx": 27,
+            "routing_count": 37327
+          },
+          {
+            "expert_idx": 209,
+            "routing_count": 37298
+          },
+          {
+            "expert_idx": 87,
+            "routing_count": 33474
+          },
+          {
+            "expert_idx": 116,
+            "routing_count": 31046
+          },
+          {
+            "expert_idx": 21,
+            "routing_count": 31001
+          },
+          {
+            "expert_idx": 48,
+            "routing_count": 30778
+          },
+          {
+            "expert_idx": 145,
+            "routing_count": 30099
+          },
+          {
+            "expert_idx": 122,
+            "routing_count": 28618
+          },
+          {
+            "expert_idx": 222,
+            "routing_count": 26729
+          },
+          {
+            "expert_idx": 17,
+            "routing_count": 26632
+          },
+          {
+            "expert_idx": 229,
+            "routing_count": 24716
+          },
+          {
+            "expert_idx": 98,
+            "routing_count": 24672
+          },
+          {
+            "expert_idx": 36,
+            "routing_count": 23082
+          },
+          {
+            "expert_idx": 84,
+            "routing_count": 22830
+          },
+          {
+            "expert_idx": 231,
+            "routing_count": 22379
+          },
+          {
+            "expert_idx": 99,
+            "routing_count": 22175
+          },
+          {
+            "expert_idx": 173,
+            "routing_count": 21494
+          }
+        ],
+        "31": [
+          {
+            "expert_idx": 197,
+            "routing_count": 52619
+          },
+          {
+            "expert_idx": 253,
+            "routing_count": 50656
+          },
+          {
+            "expert_idx": 190,
+            "routing_count": 38119
+          },
+          {
+            "expert_idx": 13,
+            "routing_count": 36471
+          },
+          {
+            "expert_idx": 160,
+            "routing_count": 34815
+          },
+          {
+            "expert_idx": 47,
+            "routing_count": 33835
+          },
+          {
+            "expert_idx": 16,
+            "routing_count": 30840
+          },
+          {
+            "expert_idx": 216,
+            "routing_count": 29710
+          },
+          {
+            "expert_idx": 179,
+            "routing_count": 28821
+          },
+          {
+            "expert_idx": 38,
+            "routing_count": 28744
+          },
+          {
+            "expert_idx": 80,
+            "routing_count": 28476
+          },
+          {
+            "expert_idx": 177,
+            "routing_count": 27264
+          },
+          {
+            "expert_idx": 94,
+            "routing_count": 26853
+          },
+          {
+            "expert_idx": 118,
+            "routing_count": 26813
+          },
+          {
+            "expert_idx": 247,
+            "routing_count": 26706
+          },
+          {
+            "expert_idx": 132,
+            "routing_count": 26684
+          },
+          {
+            "expert_idx": 37,
+            "routing_count": 25558
+          },
+          {
+            "expert_idx": 154,
+            "routing_count": 25407
+          },
+          {
+            "expert_idx": 31,
+            "routing_count": 25387
+          },
+          {
+            "expert_idx": 224,
+            "routing_count": 24928
+          }
+        ],
+        "32": [
+          {
+            "expert_idx": 66,
+            "routing_count": 108338
+          },
+          {
+            "expert_idx": 117,
+            "routing_count": 94408
+          },
+          {
+            "expert_idx": 103,
+            "routing_count": 45047
+          },
+          {
+            "expert_idx": 55,
+            "routing_count": 35319
+          },
+          {
+            "expert_idx": 212,
+            "routing_count": 34314
+          },
+          {
+            "expert_idx": 50,
+            "routing_count": 33826
+          },
+          {
+            "expert_idx": 171,
+            "routing_count": 32505
+          },
+          {
+            "expert_idx": 26,
+            "routing_count": 30551
+          },
+          {
+            "expert_idx": 13,
+            "routing_count": 30219
+          },
+          {
+            "expert_idx": 25,
+            "routing_count": 28082
+          },
+          {
+            "expert_idx": 28,
+            "routing_count": 25407
+          },
+          {
+            "expert_idx": 78,
+            "routing_count": 24175
+          },
+          {
+            "expert_idx": 92,
+            "routing_count": 22837
+          },
+          {
+            "expert_idx": 17,
+            "routing_count": 22690
+          },
+          {
+            "expert_idx": 135,
+            "routing_count": 22647
+          },
+          {
+            "expert_idx": 176,
+            "routing_count": 22539
+          },
+          {
+            "expert_idx": 252,
+            "routing_count": 22327
+          },
+          {
+            "expert_idx": 224,
+            "routing_count": 21357
+          },
+          {
+            "expert_idx": 144,
+            "routing_count": 21308
+          },
+          {
+            "expert_idx": 86,
+            "routing_count": 21069
+          }
+        ],
+        "33": [
+          {
+            "expert_idx": 29,
+            "routing_count": 53359
+          },
+          {
+            "expert_idx": 47,
+            "routing_count": 35304
+          },
+          {
+            "expert_idx": 10,
+            "routing_count": 33150
+          },
+          {
+            "expert_idx": 212,
+            "routing_count": 28514
+          },
+          {
+            "expert_idx": 197,
+            "routing_count": 27341
+          },
+          {
+            "expert_idx": 250,
+            "routing_count": 27264
+          },
+          {
+            "expert_idx": 124,
+            "routing_count": 27254
+          },
+          {
+            "expert_idx": 98,
+            "routing_count": 27053
+          },
+          {
+            "expert_idx": 104,
+            "routing_count": 26668
+          },
+          {
+            "expert_idx": 68,
+            "routing_count": 26146
+          },
+          {
+            "expert_idx": 142,
+            "routing_count": 25450
+          },
+          {
+            "expert_idx": 214,
+            "routing_count": 22963
+          },
+          {
+            "expert_idx": 237,
+            "routing_count": 22654
+          },
+          {
+            "expert_idx": 23,
+            "routing_count": 22554
+          },
+          {
+            "expert_idx": 84,
+            "routing_count": 22328
+          },
+          {
+            "expert_idx": 90,
+            "routing_count": 22320
+          },
+          {
+            "expert_idx": 28,
+            "routing_count": 21870
+          },
+          {
+            "expert_idx": 94,
+            "routing_count": 21816
+          },
+          {
+            "expert_idx": 25,
+            "routing_count": 21458
+          },
+          {
+            "expert_idx": 117,
+            "routing_count": 21449
+          }
+        ],
+        "34": [
+          {
+            "expert_idx": 202,
+            "routing_count": 96643
+          },
+          {
+            "expert_idx": 102,
+            "routing_count": 40773
+          },
+          {
+            "expert_idx": 48,
+            "routing_count": 40497
+          },
+          {
+            "expert_idx": 173,
+            "routing_count": 38447
+          },
+          {
+            "expert_idx": 47,
+            "routing_count": 36903
+          },
+          {
+            "expert_idx": 239,
+            "routing_count": 36785
+          },
+          {
+            "expert_idx": 61,
+            "routing_count": 31900
+          },
+          {
+            "expert_idx": 163,
+            "routing_count": 29424
+          },
+          {
+            "expert_idx": 114,
+            "routing_count": 28514
+          },
+          {
+            "expert_idx": 91,
+            "routing_count": 28505
+          },
+          {
+            "expert_idx": 170,
+            "routing_count": 27420
+          },
+          {
+            "expert_idx": 44,
+            "routing_count": 26785
+          },
+          {
+            "expert_idx": 187,
+            "routing_count": 26082
+          },
+          {
+            "expert_idx": 103,
+            "routing_count": 25999
+          },
+          {
+            "expert_idx": 153,
+            "routing_count": 23594
+          },
+          {
+            "expert_idx": 58,
+            "routing_count": 23296
+          },
+          {
+            "expert_idx": 238,
+            "routing_count": 22756
+          },
+          {
+            "expert_idx": 94,
+            "routing_count": 22719
+          },
+          {
+            "expert_idx": 225,
+            "routing_count": 22691
+          },
+          {
+            "expert_idx": 215,
+            "routing_count": 21307
+          }
+        ],
+        "35": [
+          {
+            "expert_idx": 126,
+            "routing_count": 47855
+          },
+          {
+            "expert_idx": 3,
+            "routing_count": 43255
+          },
+          {
+            "expert_idx": 34,
+            "routing_count": 41847
+          },
+          {
+            "expert_idx": 255,
+            "routing_count": 40286
+          },
+          {
+            "expert_idx": 159,
+            "routing_count": 40086
+          },
+          {
+            "expert_idx": 9,
+            "routing_count": 36451
+          },
+          {
+            "expert_idx": 223,
+            "routing_count": 31824
+          },
+          {
+            "expert_idx": 71,
+            "routing_count": 30606
+          },
+          {
+            "expert_idx": 72,
+            "routing_count": 28375
+          },
+          {
+            "expert_idx": 201,
+            "routing_count": 27126
+          },
+          {
+            "expert_idx": 206,
+            "routing_count": 26136
+          },
+          {
+            "expert_idx": 148,
+            "routing_count": 25055
+          },
+          {
+            "expert_idx": 184,
+            "routing_count": 24715
+          },
+          {
+            "expert_idx": 190,
+            "routing_count": 24683
+          },
+          {
+            "expert_idx": 131,
+            "routing_count": 24501
+          },
+          {
+            "expert_idx": 30,
+            "routing_count": 24329
+          },
+          {
+            "expert_idx": 145,
+            "routing_count": 23503
+          },
+          {
+            "expert_idx": 165,
+            "routing_count": 23427
+          },
+          {
+            "expert_idx": 252,
+            "routing_count": 22925
+          },
+          {
+            "expert_idx": 85,
+            "routing_count": 21716
+          }
+        ],
+        "36": [
+          {
+            "expert_idx": 1,
+            "routing_count": 41937
+          },
+          {
+            "expert_idx": 84,
+            "routing_count": 40657
+          },
+          {
+            "expert_idx": 31,
+            "routing_count": 36661
+          },
+          {
+            "expert_idx": 18,
+            "routing_count": 35425
+          },
+          {
+            "expert_idx": 15,
+            "routing_count": 35381
+          },
+          {
+            "expert_idx": 25,
+            "routing_count": 35232
+          },
+          {
+            "expert_idx": 2,
+            "routing_count": 32992
+          },
+          {
+            "expert_idx": 202,
+            "routing_count": 32833
+          },
+          {
+            "expert_idx": 204,
+            "routing_count": 32699
+          },
+          {
+            "expert_idx": 39,
+            "routing_count": 31051
+          },
+          {
+            "expert_idx": 160,
+            "routing_count": 30951
+          },
+          {
+            "expert_idx": 58,
+            "routing_count": 29167
+          },
+          {
+            "expert_idx": 192,
+            "routing_count": 27317
+          },
+          {
+            "expert_idx": 0,
+            "routing_count": 27210
+          },
+          {
+            "expert_idx": 145,
+            "routing_count": 27158
+          },
+          {
+            "expert_idx": 63,
+            "routing_count": 27011
+          },
+          {
+            "expert_idx": 227,
+            "routing_count": 26911
+          },
+          {
+            "expert_idx": 244,
+            "routing_count": 26606
+          },
+          {
+            "expert_idx": 195,
+            "routing_count": 26245
+          },
+          {
+            "expert_idx": 116,
+            "routing_count": 24055
+          }
+        ],
+        "37": [
+          {
+            "expert_idx": 55,
+            "routing_count": 67296
+          },
+          {
+            "expert_idx": 3,
+            "routing_count": 54991
+          },
+          {
+            "expert_idx": 59,
+            "routing_count": 51414
+          },
+          {
+            "expert_idx": 87,
+            "routing_count": 41143
+          },
+          {
+            "expert_idx": 102,
+            "routing_count": 40917
+          },
+          {
+            "expert_idx": 221,
+            "routing_count": 35868
+          },
+          {
+            "expert_idx": 97,
+            "routing_count": 35370
+          },
+          {
+            "expert_idx": 14,
+            "routing_count": 33246
+          },
+          {
+            "expert_idx": 139,
+            "routing_count": 31802
+          },
+          {
+            "expert_idx": 174,
+            "routing_count": 31773
+          },
+          {
+            "expert_idx": 27,
+            "routing_count": 31624
+          },
+          {
+            "expert_idx": 84,
+            "routing_count": 30366
+          },
+          {
+            "expert_idx": 159,
+            "routing_count": 30281
+          },
+          {
+            "expert_idx": 101,
+            "routing_count": 29857
+          },
+          {
+            "expert_idx": 37,
+            "routing_count": 28288
+          },
+          {
+            "expert_idx": 220,
+            "routing_count": 27009
+          },
+          {
+            "expert_idx": 161,
+            "routing_count": 26649
+          },
+          {
+            "expert_idx": 233,
+            "routing_count": 25775
+          },
+          {
+            "expert_idx": 112,
+            "routing_count": 24867
+          },
+          {
+            "expert_idx": 60,
+            "routing_count": 24814
+          }
+        ],
+        "38": [
+          {
+            "expert_idx": 33,
+            "routing_count": 64734
+          },
+          {
+            "expert_idx": 209,
+            "routing_count": 61976
+          },
+          {
+            "expert_idx": 157,
+            "routing_count": 52336
+          },
+          {
+            "expert_idx": 4,
+            "routing_count": 46563
+          },
+          {
+            "expert_idx": 168,
+            "routing_count": 46419
+          },
+          {
+            "expert_idx": 228,
+            "routing_count": 44412
+          },
+          {
+            "expert_idx": 244,
+            "routing_count": 43133
+          },
+          {
+            "expert_idx": 173,
+            "routing_count": 39866
+          },
+          {
+            "expert_idx": 97,
+            "routing_count": 38357
+          },
+          {
+            "expert_idx": 95,
+            "routing_count": 36634
+          },
+          {
+            "expert_idx": 75,
+            "routing_count": 35866
+          },
+          {
+            "expert_idx": 242,
+            "routing_count": 34029
+          },
+          {
+            "expert_idx": 30,
+            "routing_count": 32510
+          },
+          {
+            "expert_idx": 215,
+            "routing_count": 31520
+          },
+          {
+            "expert_idx": 234,
+            "routing_count": 31443
+          },
+          {
+            "expert_idx": 9,
+            "routing_count": 28648
+          },
+          {
+            "expert_idx": 44,
+            "routing_count": 28158
+          },
+          {
+            "expert_idx": 210,
+            "routing_count": 27292
+          },
+          {
+            "expert_idx": 232,
+            "routing_count": 25902
+          },
+          {
+            "expert_idx": 80,
+            "routing_count": 25415
+          }
+        ],
+        "39": [
+          {
+            "expert_idx": 35,
+            "routing_count": 147375
+          },
+          {
+            "expert_idx": 52,
+            "routing_count": 50223
+          },
+          {
+            "expert_idx": 239,
+            "routing_count": 48599
+          },
+          {
+            "expert_idx": 213,
+            "routing_count": 45184
+          },
+          {
+            "expert_idx": 181,
+            "routing_count": 42520
+          },
+          {
+            "expert_idx": 62,
+            "routing_count": 40052
+          },
+          {
+            "expert_idx": 61,
+            "routing_count": 38195
+          },
+          {
+            "expert_idx": 154,
+            "routing_count": 37956
+          },
+          {
+            "expert_idx": 182,
+            "routing_count": 36895
+          },
+          {
+            "expert_idx": 183,
+            "routing_count": 36318
+          },
+          {
+            "expert_idx": 31,
+            "routing_count": 35430
+          },
+          {
+            "expert_idx": 92,
+            "routing_count": 35111
+          },
+          {
+            "expert_idx": 14,
+            "routing_count": 34682
+          },
+          {
+            "expert_idx": 23,
+            "routing_count": 33659
+          },
+          {
+            "expert_idx": 125,
+            "routing_count": 31744
+          },
+          {
+            "expert_idx": 145,
+            "routing_count": 31133
+          },
+          {
+            "expert_idx": 16,
+            "routing_count": 29924
+          },
+          {
+            "expert_idx": 72,
+            "routing_count": 29862
+          },
+          {
+            "expert_idx": 13,
+            "routing_count": 28342
+          },
+          {
+            "expert_idx": 186,
+            "routing_count": 28254
+          }
+        ]
+      }
+    },
+    "metric_cache": {
+      "metric_name": "real_hessian_and_hot_w2_output_perturbation",
+      "runtime_seconds": 228.773,
+      "calibration_chunks": 128,
+      "hot_experts_per_layer": {
+        "0": 20,
+        "1": 20,
+        "2": 20,
+        "3": 20,
+        "4": 20,
+        "5": 20,
+        "6": 20,
+        "7": 20,
+        "8": 20,
+        "9": 20,
+        "10": 20,
+        "11": 20,
+        "12": 20,
+        "13": 20,
+        "14": 20,
+        "15": 20,
+        "16": 20,
+        "17": 20,
+        "18": 20,
+        "19": 20,
+        "20": 20,
+        "21": 20,
+        "22": 20,
+        "23": 20,
+        "24": 20,
+        "25": 20,
+        "26": 20,
+        "27": 20,
+        "28": 20,
+        "29": 20,
+        "30": 20,
+        "31": 20,
+        "32": 20,
+        "33": 20,
+        "34": 20,
+        "35": 20,
+        "36": 20,
+        "37": 20,
+        "38": 20,
+        "39": 20
+      }
+    },
+    "metric_analysis": {
+      "activation_kurtosis": {
+        "metric": "activation_kurtosis",
+        "gini_summary": {
+          "active_experts": 10237,
+          "mean_gini": 0.079031,
+          "median_gini": 0.078358,
+          "min_gini": 0.0,
+          "max_gini": 0.286048,
+          "layer_mean_gini": {
+            "0": 0.098139,
+            "1": 0.068058,
+            "2": 0.070715,
+            "3": 0.074485,
+            "4": 0.078292,
+            "5": 0.078726,
+            "6": 0.075035,
+            "7": 0.078041,
+            "8": 0.08072,
+            "9": 0.078918,
+            "10": 0.070797,
+            "11": 0.07406,
+            "12": 0.079135,
+            "13": 0.085215,
+            "14": 0.082176,
+            "15": 0.087939,
+            "16": 0.084535,
+            "17": 0.078856,
+            "18": 0.080667,
+            "19": 0.084362,
+            "20": 0.086392,
+            "21": 0.081537,
+            "22": 0.067176,
+            "23": 0.071361,
+            "24": 0.077625,
+            "25": 0.081177,
+            "26": 0.075845,
+            "27": 0.080987,
+            "28": 0.079193,
+            "29": 0.073557,
+            "30": 0.078487,
+            "31": 0.085836,
+            "32": 0.080473,
+            "33": 0.078662,
+            "34": 0.076402,
+            "35": 0.083663,
+            "36": 0.084181,
+            "37": 0.083703,
+            "38": 0.080125,
+            "39": 0.065909
+          }
+        },
+        "compared_hot_experts": 800,
+        "mean_spearman": 0.680988,
+        "layer_mean_spearman": {
+          "0": 0.343681,
+          "1": 0.404948,
+          "2": 0.48043,
+          "3": 0.44704,
+          "4": 0.580556,
+          "5": 0.571092,
+          "6": 0.658625,
+          "7": 0.662923,
+          "8": 0.64701,
+          "9": 0.731041,
+          "10": 0.739114,
+          "11": 0.744814,
+          "12": 0.775554,
+          "13": 0.784174,
+          "14": 0.806752,
+          "15": 0.854963,
+          "16": 0.83445,
+          "17": 0.812826,
+          "18": 0.788144,
+          "19": 0.815911,
+          "20": 0.723324,
+          "21": 0.774707,
+          "22": 0.765739,
+          "23": 0.741094,
+          "24": 0.79038,
+          "25": 0.745816,
+          "26": 0.726775,
+          "27": 0.782841,
+          "28": 0.73311,
+          "29": 0.677184,
+          "30": 0.741081,
+          "31": 0.71671,
+          "32": 0.680238,
+          "33": 0.631567,
+          "34": 0.629158,
+          "35": 0.650193,
+          "36": 0.63113,
+          "37": 0.644843,
+          "38": 0.603803,
+          "39": 0.365764
+        },
+        "spearman_per_hot_expert": {
+          "L00_E002": 0.508019,
+          "L00_E152": 0.643224,
+          "L00_E031": 0.561469,
+          "L00_E177": 0.374282,
+          "L00_E181": 0.141197,
+          "L00_E055": 0.60362,
+          "L00_E185": 0.287923,
+          "L00_E058": 0.144048,
+          "L00_E191": 0.529693,
+          "L00_E064": 0.126434,
+          "L00_E074": 0.448898,
+          "L00_E089": 0.225593,
+          "L00_E226": 0.266513,
+          "L00_E101": 0.077729,
+          "L00_E108": 0.060956,
+          "L00_E109": 0.443079,
+          "L00_E242": 0.475628,
+          "L00_E117": 0.458521,
+          "L00_E120": 0.46423,
+          "L00_E249": 0.032557,
+          "L01_E138": 0.347125,
+          "L01_E011": 0.302093,
+          "L01_E020": 0.103126,
+          "L01_E153": 0.521894,
+          "L01_E167": 0.343762,
+          "L01_E042": 0.602252,
+          "L01_E191": 0.222198,
+          "L01_E069": 0.355637,
+          "L01_E198": 0.513374,
+          "L01_E205": 0.350424,
+          "L01_E084": 0.315699,
+          "L01_E213": 0.408313,
+          "L01_E086": 0.195175,
+          "L01_E226": 0.515679,
+          "L01_E232": 0.52824,
+          "L01_E235": 0.471288,
+          "L01_E236": 0.494142,
+          "L01_E238": 0.664351,
+          "L01_E239": 0.427108,
+          "L01_E125": 0.417078,
+          "L02_E003": 0.596188,
+          "L02_E006": 0.250105,
+          "L02_E008": 0.326751,
+          "L02_E013": 0.543986,
+          "L02_E017": 0.612036,
+          "L02_E150": 0.675434,
+          "L02_E164": 0.459607,
+          "L02_E040": 0.47009,
+          "L02_E041": 0.150758,
+          "L02_E042": 0.70984,
+          "L02_E180": 0.620024,
+          "L02_E184": 0.495041,
+          "L02_E187": 0.319394,
+          "L02_E088": 0.180802,
+          "L02_E219": 0.379613,
+          "L02_E221": 0.563867,
+          "L02_E223": 0.416367,
+          "L02_E230": 0.662817,
+          "L02_E104": 0.569747,
+          "L02_E110": 0.606124,
+          "L03_E000": 0.299424,
+          "L03_E129": 0.028053,
+          "L03_E008": 0.298332,
+          "L03_E016": 0.711204,
+          "L03_E019": 0.456168,
+          "L03_E155": 0.741754,
+          "L03_E156": 0.702316,
+          "L03_E163": 0.25102,
+          "L03_E039": 0.433061,
+          "L03_E058": 0.275689,
+          "L03_E061": 0.664074,
+          "L03_E063": 0.460779,
+          "L03_E197": 0.515328,
+          "L03_E206": 0.514546,
+          "L03_E211": 0.161698,
+          "L03_E094": 0.642078,
+          "L03_E101": 0.543197,
+          "L03_E108": 0.452301,
+          "L03_E120": 0.592249,
+          "L03_E250": 0.197533,
+          "L04_E129": 0.124187,
+          "L04_E001": 0.689909,
+          "L04_E139": 0.625491,
+          "L04_E151": 0.568389,
+          "L04_E025": 0.701451,
+          "L04_E029": 0.573205,
+          "L04_E033": 0.3433,
+          "L04_E166": 0.642109,
+          "L04_E169": 0.738173,
+          "L04_E170": 0.276867,
+          "L04_E051": 0.762613,
+          "L04_E071": 0.635445,
+          "L04_E204": 0.67622,
+          "L04_E206": 0.617574,
+          "L04_E212": 0.800883,
+          "L04_E217": 0.471842,
+          "L04_E093": 0.782067,
+          "L04_E113": 0.634567,
+          "L04_E243": 0.460548,
+          "L04_E117": 0.486289,
+          "L05_E001": 0.727627,
+          "L05_E133": 0.631069,
+          "L05_E014": 0.515787,
+          "L05_E024": 0.506335,
+          "L05_E046": 0.626542,
+          "L05_E174": 0.42066,
+          "L05_E048": 0.668555,
+          "L05_E052": 0.70171,
+          "L05_E062": 0.537501,
+          "L05_E064": 0.542256,
+          "L05_E065": 0.196157,
+          "L05_E069": 0.515506,
+          "L05_E203": 0.560506,
+          "L05_E075": 0.614015,
+          "L05_E077": 0.815671,
+          "L05_E226": 0.637231,
+          "L05_E232": 0.612458,
+          "L05_E240": 0.657293,
+          "L05_E249": 0.4549,
+          "L05_E253": 0.480067,
+          "L06_E002": 0.528601,
+          "L06_E003": 0.546957,
+          "L06_E010": 0.730579,
+          "L06_E025": 0.714407,
+          "L06_E162": 0.558743,
+          "L06_E174": 0.719843,
+          "L06_E178": 0.829452,
+          "L06_E058": 0.576696,
+          "L06_E187": 0.62816,
+          "L06_E195": 0.255269,
+          "L06_E085": 0.603404,
+          "L06_E223": 0.810744,
+          "L06_E100": 0.762033,
+          "L06_E103": 0.610952,
+          "L06_E232": 0.774799,
+          "L06_E104": 0.719236,
+          "L06_E108": 0.708511,
+          "L06_E114": 0.630381,
+          "L06_E250": 0.627095,
+          "L06_E126": 0.836633,
+          "L07_E130": 0.746363,
+          "L07_E032": 0.27324,
+          "L07_E163": 0.645674,
+          "L07_E166": 0.493818,
+          "L07_E038": 0.8496,
+          "L07_E043": 0.746767,
+          "L07_E182": 0.709753,
+          "L07_E190": 0.346424,
+          "L07_E065": 0.643386,
+          "L07_E074": 0.799649,
+          "L07_E202": 0.732671,
+          "L07_E210": 0.861358,
+          "L07_E215": 0.73521,
+          "L07_E219": 0.795354,
+          "L07_E094": 0.728119,
+          "L07_E224": 0.762718,
+          "L07_E243": 0.779494,
+          "L07_E119": 0.537491,
+          "L07_E121": 0.637685,
+          "L07_E254": 0.433688,
+          "L08_E000": 0.751232,
+          "L08_E129": 0.65233,
+          "L08_E128": 0.654058,
+          "L08_E009": 0.737039,
+          "L08_E150": 0.50213,
+          "L08_E156": 0.675463,
+          "L08_E028": 0.674065,
+          "L08_E158": 0.745973,
+          "L08_E190": 0.776807,
+          "L08_E068": 0.650138,
+          "L08_E199": 0.850182,
+          "L08_E202": 0.506948,
+          "L08_E211": 0.748073,
+          "L08_E083": 0.423127,
+          "L08_E220": 0.227112,
+          "L08_E228": 0.728673,
+          "L08_E103": 0.802386,
+          "L08_E232": 0.514549,
+          "L08_E236": 0.74773,
+          "L08_E123": 0.572175,
+          "L09_E000": 0.782927,
+          "L09_E139": 0.710234,
+          "L09_E013": 0.469532,
+          "L09_E034": 0.783837,
+          "L09_E162": 0.741804,
+          "L09_E037": 0.763198,
+          "L09_E042": 0.792336,
+          "L09_E044": 0.621259,
+          "L09_E052": 0.773383,
+          "L09_E058": 0.718968,
+          "L09_E192": 0.818157,
+          "L09_E065": 0.727258,
+          "L09_E066": 0.700742,
+          "L09_E083": 0.698376,
+          "L09_E095": 0.578384,
+          "L09_E102": 0.766266,
+          "L09_E105": 0.887099,
+          "L09_E111": 0.763745,
+          "L09_E244": 0.765171,
+          "L09_E253": 0.758146,
+          "L10_E020": 0.798238,
+          "L10_E028": 0.720609,
+          "L10_E158": 0.882253,
+          "L10_E031": 0.787922,
+          "L10_E159": 0.666481,
+          "L10_E163": 0.588273,
+          "L10_E170": 0.646788,
+          "L10_E042": 0.780443,
+          "L10_E181": 0.840745,
+          "L10_E187": 0.75723,
+          "L10_E068": 0.645045,
+          "L10_E073": 0.748979,
+          "L10_E204": 0.747199,
+          "L10_E085": 0.924808,
+          "L10_E092": 0.808343,
+          "L10_E223": 0.741011,
+          "L10_E225": 0.86864,
+          "L10_E125": 0.26557,
+          "L10_E246": 0.773896,
+          "L10_E253": 0.789816,
+          "L11_E131": 0.700451,
+          "L11_E142": 0.676839,
+          "L11_E018": 0.713733,
+          "L11_E019": 0.280018,
+          "L11_E154": 0.805818,
+          "L11_E037": 0.955368,
+          "L11_E174": 0.626636,
+          "L11_E056": 0.661769,
+          "L11_E064": 0.659153,
+          "L11_E071": 0.850383,
+          "L11_E201": 0.854638,
+          "L11_E094": 0.862134,
+          "L11_E095": 0.901063,
+          "L11_E109": 0.636637,
+          "L11_E110": 0.797779,
+          "L11_E240": 0.718571,
+          "L11_E114": 0.592263,
+          "L11_E115": 0.921108,
+          "L11_E116": 0.771611,
+          "L11_E250": 0.910316,
+          "L12_E001": 0.727203,
+          "L12_E003": 0.824608,
+          "L12_E132": 0.906365,
+          "L12_E007": 0.91726,
+          "L12_E018": 0.589523,
+          "L12_E020": 0.600291,
+          "L12_E036": 0.754928,
+          "L12_E172": 0.745329,
+          "L12_E057": 0.847141,
+          "L12_E066": 0.759004,
+          "L12_E067": 0.76975,
+          "L12_E200": 0.792462,
+          "L12_E205": 0.939109,
+          "L12_E084": 0.893531,
+          "L12_E097": 0.71124,
+          "L12_E230": 0.857989,
+          "L12_E107": 0.731324,
+          "L12_E112": 0.610727,
+          "L12_E241": 0.786017,
+          "L12_E125": 0.747277,
+          "L13_E027": 0.725419,
+          "L13_E156": 0.944112,
+          "L13_E157": 0.745588,
+          "L13_E038": 0.737494,
+          "L13_E168": 0.809784,
+          "L13_E041": 0.914521,
+          "L13_E043": 0.881253,
+          "L13_E175": 0.831592,
+          "L13_E200": 0.777493,
+          "L13_E207": 0.778509,
+          "L13_E224": 0.375157,
+          "L13_E225": 0.647607,
+          "L13_E226": 0.776006,
+          "L13_E100": 0.833026,
+          "L13_E237": 0.830055,
+          "L13_E110": 0.779644,
+          "L13_E244": 0.734599,
+          "L13_E122": 0.826691,
+          "L13_E124": 0.875212,
+          "L13_E126": 0.859715,
+          "L14_E141": 0.804814,
+          "L14_E016": 0.859559,
+          "L14_E152": 0.828954,
+          "L14_E027": 0.837446,
+          "L14_E162": 0.725977,
+          "L14_E168": 0.877646,
+          "L14_E170": 0.81445,
+          "L14_E172": 0.781866,
+          "L14_E175": 0.878753,
+          "L14_E188": 0.877592,
+          "L14_E060": 0.842107,
+          "L14_E069": 0.825676,
+          "L14_E070": 0.705117,
+          "L14_E199": 0.868184,
+          "L14_E080": 0.828773,
+          "L14_E219": 0.689216,
+          "L14_E105": 0.504289,
+          "L14_E235": 0.908769,
+          "L14_E247": 0.835476,
+          "L14_E250": 0.840367,
+          "L15_E135": 0.902348,
+          "L15_E017": 0.876692,
+          "L15_E026": 0.917436,
+          "L15_E032": 0.923104,
+          "L15_E038": 0.803148,
+          "L15_E174": 0.555466,
+          "L15_E175": 0.724992,
+          "L15_E049": 0.915086,
+          "L15_E186": 0.840817,
+          "L15_E063": 0.896188,
+          "L15_E067": 0.868571,
+          "L15_E209": 0.830173,
+          "L15_E085": 0.770604,
+          "L15_E214": 0.776366,
+          "L15_E220": 0.882224,
+          "L15_E222": 0.877459,
+          "L15_E095": 0.949172,
+          "L15_E101": 0.922317,
+          "L15_E239": 0.922783,
+          "L15_E245": 0.944309,
+          "L16_E006": 0.967854,
+          "L16_E008": 0.889503,
+          "L16_E150": 0.786544,
+          "L16_E030": 0.91007,
+          "L16_E161": 0.924045,
+          "L16_E167": 0.940513,
+          "L16_E180": 0.631566,
+          "L16_E184": 0.870527,
+          "L16_E061": 0.29608,
+          "L16_E070": 0.645146,
+          "L16_E200": 0.887848,
+          "L16_E073": 0.92696,
+          "L16_E087": 0.955568,
+          "L16_E224": 0.959599,
+          "L16_E233": 0.813277,
+          "L16_E108": 0.763559,
+          "L16_E241": 0.903303,
+          "L16_E114": 0.895219,
+          "L16_E249": 0.9374,
+          "L16_E123": 0.784427,
+          "L17_E130": 0.866843,
+          "L17_E131": 0.692665,
+          "L17_E147": 0.896719,
+          "L17_E155": 0.611506,
+          "L17_E031": 0.810018,
+          "L17_E032": 0.812533,
+          "L17_E170": 0.860564,
+          "L17_E180": 0.903287,
+          "L17_E191": 0.928482,
+          "L17_E067": 0.886514,
+          "L17_E197": 0.703205,
+          "L17_E073": 0.743515,
+          "L17_E202": 0.873584,
+          "L17_E213": 0.852531,
+          "L17_E090": 0.886577,
+          "L17_E220": 0.887864,
+          "L17_E232": 0.819713,
+          "L17_E237": 0.859742,
+          "L17_E247": 0.824866,
+          "L17_E255": 0.535797,
+          "L18_E145": 0.758643,
+          "L18_E017": 0.899351,
+          "L18_E021": 0.879428,
+          "L18_E025": 0.920199,
+          "L18_E027": 0.853015,
+          "L18_E028": 0.871007,
+          "L18_E163": 0.443606,
+          "L18_E036": 0.81227,
+          "L18_E173": 0.850746,
+          "L18_E048": 0.739884,
+          "L18_E056": 0.893409,
+          "L18_E057": 0.738628,
+          "L18_E196": 0.734978,
+          "L18_E087": 0.649955,
+          "L18_E222": 0.886596,
+          "L18_E098": 0.752275,
+          "L18_E229": 0.762045,
+          "L18_E231": 0.877124,
+          "L18_E235": 0.859541,
+          "L18_E116": 0.580178,
+          "L19_E132": 0.753194,
+          "L19_E008": 0.865461,
+          "L19_E013": 0.859802,
+          "L19_E016": 0.827973,
+          "L19_E031": 0.864701,
+          "L19_E160": 0.750261,
+          "L19_E162": 0.728549,
+          "L19_E038": 0.699955,
+          "L19_E042": 0.894063,
+          "L19_E175": 0.906284,
+          "L19_E047": 0.764937,
+          "L19_E177": 0.774099,
+          "L19_E179": 0.855268,
+          "L19_E197": 0.861959,
+          "L19_E080": 0.826827,
+          "L19_E216": 0.853702,
+          "L19_E094": 0.814319,
+          "L19_E106": 0.851545,
+          "L19_E118": 0.641251,
+          "L19_E253": 0.92407,
+          "L20_E000": 0.789909,
+          "L20_E129": 0.650452,
+          "L20_E128": 0.755875,
+          "L20_E009": 0.789055,
+          "L20_E150": 0.427721,
+          "L20_E026": 0.628093,
+          "L20_E156": 0.719415,
+          "L20_E028": 0.753928,
+          "L20_E158": 0.809189,
+          "L20_E190": 0.840805,
+          "L20_E064": 0.799586,
+          "L20_E202": 0.744304,
+          "L20_E080": 0.767913,
+          "L20_E211": 0.769607,
+          "L20_E083": 0.473712,
+          "L20_E215": 0.843446,
+          "L20_E228": 0.834813,
+          "L20_E106": 0.634931,
+          "L20_E236": 0.84353,
+          "L20_E115": 0.590201,
+          "L21_E000": 0.871762,
+          "L21_E006": 0.546546,
+          "L21_E139": 0.807094,
+          "L21_E013": 0.496274,
+          "L21_E034": 0.813853,
+          "L21_E162": 0.871588,
+          "L21_E037": 0.837185,
+          "L21_E042": 0.81235,
+          "L21_E044": 0.535204,
+          "L21_E052": 0.855947,
+          "L21_E192": 0.848477,
+          "L21_E065": 0.839272,
+          "L21_E066": 0.746472,
+          "L21_E083": 0.722556,
+          "L21_E095": 0.700671,
+          "L21_E102": 0.810051,
+          "L21_E105": 0.922193,
+          "L21_E111": 0.830319,
+          "L21_E244": 0.78454,
+          "L21_E253": 0.841794,
+          "L22_E137": 0.684863,
+          "L22_E020": 0.712851,
+          "L22_E154": 0.797658,
+          "L22_E028": 0.6433,
+          "L22_E158": 0.92272,
+          "L22_E159": 0.822951,
+          "L22_E170": 0.599374,
+          "L22_E042": 0.732187,
+          "L22_E181": 0.856516,
+          "L22_E187": 0.790541,
+          "L22_E070": 0.596952,
+          "L22_E073": 0.725156,
+          "L22_E204": 0.774795,
+          "L22_E079": 0.648034,
+          "L22_E085": 0.927718,
+          "L22_E092": 0.850187,
+          "L22_E223": 0.725516,
+          "L22_E225": 0.877915,
+          "L22_E239": 0.802739,
+          "L22_E246": 0.822814,
+          "L23_E131": 0.790068,
+          "L23_E135": 0.696735,
+          "L23_E142": 0.745455,
+          "L23_E018": 0.64075,
+          "L23_E019": 0.376093,
+          "L23_E154": 0.722152,
+          "L23_E037": 0.955707,
+          "L23_E056": 0.810515,
+          "L23_E188": 0.454671,
+          "L23_E062": 0.774587,
+          "L23_E071": 0.807824,
+          "L23_E201": 0.631288,
+          "L23_E086": 0.576001,
+          "L23_E094": 0.829581,
+          "L23_E095": 0.941465,
+          "L23_E109": 0.639402,
+          "L23_E110": 0.741059,
+          "L23_E240": 0.805105,
+          "L23_E115": 0.963555,
+          "L23_E250": 0.91986,
+          "L24_E001": 0.629967,
+          "L24_E003": 0.849599,
+          "L24_E132": 0.913875,
+          "L24_E007": 0.964033,
+          "L24_E140": 0.853368,
+          "L24_E018": 0.547706,
+          "L24_E020": 0.754703,
+          "L24_E036": 0.700574,
+          "L24_E172": 0.791805,
+          "L24_E055": 0.780762,
+          "L24_E071": 0.926146,
+          "L24_E200": 0.724699,
+          "L24_E205": 0.892974,
+          "L24_E097": 0.779521,
+          "L24_E230": 0.892796,
+          "L24_E234": 0.893495,
+          "L24_E107": 0.651137,
+          "L24_E112": 0.701396,
+          "L24_E241": 0.757076,
+          "L24_E125": 0.801977,
+          "L25_E002": 0.6728,
+          "L25_E027": 0.761081,
+          "L25_E157": 0.738386,
+          "L25_E168": 0.931674,
+          "L25_E041": 0.90582,
+          "L25_E047": 0.594936,
+          "L25_E175": 0.768323,
+          "L25_E197": 0.748627,
+          "L25_E207": 0.793466,
+          "L25_E091": 0.903283,
+          "L25_E219": 0.840247,
+          "L25_E224": 0.367562,
+          "L25_E226": 0.563515,
+          "L25_E101": 0.667897,
+          "L25_E237": 0.792916,
+          "L25_E110": 0.702224,
+          "L25_E244": 0.813684,
+          "L25_E122": 0.821361,
+          "L25_E124": 0.869186,
+          "L25_E126": 0.659334,
+          "L26_E006": 0.490532,
+          "L26_E141": 0.841072,
+          "L26_E016": 0.78622,
+          "L26_E144": 0.483428,
+          "L26_E152": 0.850971,
+          "L26_E027": 0.808141,
+          "L26_E160": 0.641489,
+          "L26_E168": 0.768116,
+          "L26_E171": 0.791982,
+          "L26_E172": 0.835388,
+          "L26_E175": 0.75203,
+          "L26_E188": 0.844517,
+          "L26_E060": 0.7358,
+          "L26_E066": 0.658109,
+          "L26_E069": 0.827928,
+          "L26_E070": 0.819274,
+          "L26_E226": 0.495174,
+          "L26_E105": 0.513758,
+          "L26_E247": 0.829209,
+          "L26_E250": 0.762363,
+          "L27_E135": 0.882623,
+          "L27_E017": 0.864323,
+          "L27_E018": 0.786003,
+          "L27_E026": 0.881994,
+          "L27_E032": 0.879425,
+          "L27_E038": 0.83995,
+          "L27_E174": 0.597898,
+          "L27_E051": 0.565542,
+          "L27_E186": 0.804774,
+          "L27_E188": 0.562237,
+          "L27_E063": 0.834623,
+          "L27_E209": 0.831988,
+          "L27_E214": 0.805711,
+          "L27_E218": 0.526825,
+          "L27_E220": 0.721741,
+          "L27_E222": 0.822025,
+          "L27_E095": 0.761896,
+          "L27_E106": 0.86977,
+          "L27_E239": 0.900239,
+          "L27_E245": 0.917242,
+          "L28_E130": 0.607675,
+          "L28_E006": 0.897523,
+          "L28_E008": 0.7397,
+          "L28_E012": 0.867081,
+          "L28_E018": 0.815879,
+          "L28_E030": 0.788978,
+          "L28_E184": 0.754848,
+          "L28_E061": 0.24246,
+          "L28_E070": 0.734602,
+          "L28_E200": 0.612322,
+          "L28_E073": 0.816565,
+          "L28_E087": 0.864931,
+          "L28_E218": 0.884934,
+          "L28_E220": 0.770174,
+          "L28_E224": 0.846377,
+          "L28_E105": 0.530097,
+          "L28_E241": 0.833697,
+          "L28_E114": 0.740951,
+          "L28_E248": 0.565602,
+          "L28_E123": 0.747814,
+          "L29_E010": 0.454662,
+          "L29_E147": 0.729402,
+          "L29_E155": 0.54475,
+          "L29_E031": 0.838682,
+          "L29_E032": 0.749165,
+          "L29_E037": 0.441495,
+          "L29_E170": 0.65803,
+          "L29_E173": 0.788528,
+          "L29_E180": 0.846804,
+          "L29_E198": 0.3664,
+          "L29_E073": 0.730595,
+          "L29_E202": 0.768231,
+          "L29_E090": 0.833788,
+          "L29_E220": 0.671307,
+          "L29_E099": 0.695948,
+          "L29_E232": 0.642649,
+          "L29_E235": 0.522102,
+          "L29_E237": 0.81295,
+          "L29_E244": 0.684794,
+          "L29_E247": 0.763388,
+          "L30_E145": 0.771571,
+          "L30_E017": 0.840778,
+          "L30_E021": 0.698799,
+          "L30_E025": 0.793412,
+          "L30_E027": 0.694759,
+          "L30_E036": 0.801197,
+          "L30_E173": 0.866876,
+          "L30_E048": 0.781506,
+          "L30_E196": 0.702004,
+          "L30_E209": 0.827541,
+          "L30_E084": 0.749759,
+          "L30_E087": 0.754674,
+          "L30_E222": 0.811692,
+          "L30_E098": 0.828318,
+          "L30_E099": 0.414722,
+          "L30_E229": 0.609013,
+          "L30_E231": 0.829506,
+          "L30_E235": 0.829171,
+          "L30_E116": 0.429248,
+          "L30_E122": 0.787073,
+          "L31_E132": 0.744787,
+          "L31_E013": 0.751596,
+          "L31_E016": 0.808841,
+          "L31_E154": 0.44243,
+          "L31_E031": 0.777654,
+          "L31_E160": 0.560914,
+          "L31_E037": 0.773927,
+          "L31_E038": 0.708519,
+          "L31_E047": 0.750584,
+          "L31_E177": 0.667453,
+          "L31_E179": 0.803605,
+          "L31_E190": 0.754935,
+          "L31_E197": 0.653188,
+          "L31_E080": 0.806695,
+          "L31_E216": 0.760758,
+          "L31_E094": 0.800321,
+          "L31_E224": 0.486973,
+          "L31_E118": 0.763142,
+          "L31_E247": 0.787737,
+          "L31_E253": 0.730141,
+          "L32_E135": 0.720295,
+          "L32_E013": 0.749108,
+          "L32_E144": 0.766956,
+          "L32_E017": 0.646604,
+          "L32_E025": 0.30403,
+          "L32_E026": 0.786317,
+          "L32_E028": 0.787844,
+          "L32_E171": 0.776875,
+          "L32_E176": 0.765716,
+          "L32_E050": 0.750762,
+          "L32_E055": 0.739138,
+          "L32_E066": 0.83042,
+          "L32_E078": 0.516172,
+          "L32_E212": 0.734547,
+          "L32_E086": 0.745823,
+          "L32_E092": 0.798342,
+          "L32_E224": 0.613006,
+          "L32_E103": 0.732025,
+          "L32_E117": 0.47018,
+          "L32_E252": 0.370611,
+          "L33_E010": 0.715196,
+          "L33_E142": 0.763332,
+          "L33_E023": 0.580668,
+          "L33_E025": 0.717771,
+          "L33_E028": 0.690337,
+          "L33_E029": 0.626981,
+          "L33_E047": 0.527223,
+          "L33_E068": 0.706816,
+          "L33_E197": 0.696616,
+          "L33_E212": 0.75547,
+          "L33_E084": 0.669042,
+          "L33_E214": 0.517965,
+          "L33_E090": 0.351423,
+          "L33_E094": 0.475159,
+          "L33_E098": 0.7422,
+          "L33_E104": 0.508818,
+          "L33_E237": 0.413829,
+          "L33_E117": 0.580299,
+          "L33_E250": 0.803805,
+          "L33_E124": 0.788398,
+          "L34_E153": 0.78876,
+          "L34_E163": 0.54291,
+          "L34_E170": 0.802201,
+          "L34_E044": 0.565606,
+          "L34_E173": 0.625624,
+          "L34_E047": 0.811154,
+          "L34_E048": 0.685748,
+          "L34_E058": 0.373686,
+          "L34_E187": 0.399999,
+          "L34_E061": 0.567448,
+          "L34_E202": 0.463299,
+          "L34_E215": 0.74228,
+          "L34_E091": 0.42971,
+          "L34_E094": 0.604991,
+          "L34_E225": 0.610855,
+          "L34_E102": 0.748604,
+          "L34_E103": 0.59654,
+          "L34_E238": 0.707628,
+          "L34_E239": 0.778381,
+          "L34_E114": 0.737733,
+          "L35_E003": 0.7656,
+          "L35_E131": 0.76057,
+          "L35_E009": 0.494043,
+          "L35_E145": 0.564263,
+          "L35_E148": 0.720693,
+          "L35_E030": 0.586594,
+          "L35_E159": 0.823461,
+          "L35_E034": 0.540365,
+          "L35_E165": 0.658286,
+          "L35_E184": 0.68425,
+          "L35_E190": 0.72492,
+          "L35_E071": 0.759232,
+          "L35_E072": 0.31342,
+          "L35_E201": 0.748245,
+          "L35_E206": 0.809826,
+          "L35_E085": 0.635529,
+          "L35_E223": 0.750155,
+          "L35_E252": 0.127785,
+          "L35_E126": 0.727638,
+          "L35_E255": 0.808987,
+          "L36_E000": 0.483118,
+          "L36_E001": 0.238657,
+          "L36_E002": 0.452378,
+          "L36_E015": 0.72311,
+          "L36_E145": 0.524818,
+          "L36_E018": 0.761824,
+          "L36_E025": 0.704155,
+          "L36_E031": 0.710018,
+          "L36_E160": 0.650647,
+          "L36_E039": 0.559415,
+          "L36_E058": 0.727135,
+          "L36_E063": 0.625143,
+          "L36_E192": 0.394895,
+          "L36_E195": 0.57028,
+          "L36_E202": 0.772471,
+          "L36_E204": 0.698023,
+          "L36_E084": 0.781056,
+          "L36_E227": 0.731043,
+          "L36_E244": 0.759767,
+          "L36_E116": 0.754648,
+          "L37_E003": 0.33054,
+          "L37_E139": 0.722881,
+          "L37_E014": 0.787297,
+          "L37_E027": 0.456027,
+          "L37_E159": 0.685381,
+          "L37_E161": 0.755507,
+          "L37_E037": 0.64031,
+          "L37_E174": 0.696733,
+          "L37_E055": 0.520658,
+          "L37_E059": 0.79735,
+          "L37_E060": 0.685082,
+          "L37_E084": 0.705684,
+          "L37_E087": 0.770438,
+          "L37_E220": 0.395307,
+          "L37_E221": 0.74706,
+          "L37_E097": 0.744186,
+          "L37_E101": 0.360889,
+          "L37_E102": 0.787562,
+          "L37_E233": 0.556904,
+          "L37_E112": 0.751067,
+          "L38_E004": 0.663014,
+          "L38_E009": 0.624931,
+          "L38_E157": 0.719401,
+          "L38_E030": 0.583161,
+          "L38_E033": 0.706173,
+          "L38_E168": 0.386731,
+          "L38_E044": 0.705151,
+          "L38_E173": 0.42988,
+          "L38_E075": 0.562813,
+          "L38_E080": 0.778915,
+          "L38_E209": 0.183018,
+          "L38_E210": 0.685622,
+          "L38_E215": 0.658132,
+          "L38_E095": 0.565934,
+          "L38_E097": 0.64964,
+          "L38_E228": 0.566287,
+          "L38_E232": 0.462036,
+          "L38_E234": 0.683835,
+          "L38_E242": 0.756819,
+          "L38_E244": 0.704573,
+          "L39_E013": 0.407658,
+          "L39_E014": 0.337552,
+          "L39_E016": 0.479869,
+          "L39_E145": 0.497652,
+          "L39_E023": 0.457027,
+          "L39_E154": 0.298814,
+          "L39_E031": 0.113675,
+          "L39_E035": 0.097592,
+          "L39_E052": 0.378375,
+          "L39_E181": 0.365303,
+          "L39_E182": 0.358002,
+          "L39_E183": 0.540359,
+          "L39_E186": 0.372475,
+          "L39_E061": 0.340781,
+          "L39_E062": 0.259883,
+          "L39_E072": 0.498582,
+          "L39_E213": 0.358376,
+          "L39_E092": 0.316259,
+          "L39_E239": 0.48567,
+          "L39_E125": 0.351382
+        }
+      },
+      "real_hessian": {
+        "metric": "real_hessian",
+        "gini_summary": {
+          "active_experts": 10237,
+          "mean_gini": 0.134051,
+          "median_gini": 0.130945,
+          "min_gini": 0.068779,
+          "max_gini": 0.535424,
+          "layer_mean_gini": {
+            "0": 0.165377,
+            "1": 0.118212,
+            "2": 0.106692,
+            "3": 0.097691,
+            "4": 0.100273,
+            "5": 0.102594,
+            "6": 0.107433,
+            "7": 0.121115,
+            "8": 0.125332,
+            "9": 0.126131,
+            "10": 0.112473,
+            "11": 0.118662,
+            "12": 0.134413,
+            "13": 0.146568,
+            "14": 0.14352,
+            "15": 0.151809,
+            "16": 0.151224,
+            "17": 0.140727,
+            "18": 0.143344,
+            "19": 0.14432,
+            "20": 0.146747,
+            "21": 0.140735,
+            "22": 0.115444,
+            "23": 0.120807,
+            "24": 0.131484,
+            "25": 0.139688,
+            "26": 0.128608,
+            "27": 0.139862,
+            "28": 0.136537,
+            "29": 0.129689,
+            "30": 0.138301,
+            "31": 0.148794,
+            "32": 0.146699,
+            "33": 0.143705,
+            "34": 0.141294,
+            "35": 0.152778,
+            "36": 0.153809,
+            "37": 0.156062,
+            "38": 0.148516,
+            "39": 0.144659
+          }
+        },
+        "compared_hot_experts": 800,
+        "mean_spearman": 0.878979,
+        "layer_mean_spearman": {
+          "0": 0.818243,
+          "1": 0.748487,
+          "2": 0.746064,
+          "3": 0.747788,
+          "4": 0.850939,
+          "5": 0.838194,
+          "6": 0.896642,
+          "7": 0.874288,
+          "8": 0.852649,
+          "9": 0.909162,
+          "10": 0.918665,
+          "11": 0.933552,
+          "12": 0.929597,
+          "13": 0.930345,
+          "14": 0.935891,
+          "15": 0.948827,
+          "16": 0.942419,
+          "17": 0.941028,
+          "18": 0.930304,
+          "19": 0.939139,
+          "20": 0.890163,
+          "21": 0.913677,
+          "22": 0.914925,
+          "23": 0.895808,
+          "24": 0.941314,
+          "25": 0.911984,
+          "26": 0.89524,
+          "27": 0.924266,
+          "28": 0.893103,
+          "29": 0.875787,
+          "30": 0.908373,
+          "31": 0.880763,
+          "32": 0.875393,
+          "33": 0.876079,
+          "34": 0.841326,
+          "35": 0.869596,
+          "36": 0.8582,
+          "37": 0.856726,
+          "38": 0.823048,
+          "39": 0.681156
+        },
+        "spearman_per_hot_expert": {
+          "L00_E002": 0.902565,
+          "L00_E152": 0.945831,
+          "L00_E031": 0.907977,
+          "L00_E177": 0.893652,
+          "L00_E181": 0.758794,
+          "L00_E055": 0.937126,
+          "L00_E185": 0.807657,
+          "L00_E058": 0.774434,
+          "L00_E191": 0.903184,
+          "L00_E064": 0.754349,
+          "L00_E074": 0.767744,
+          "L00_E089": 0.79828,
+          "L00_E226": 0.787884,
+          "L00_E101": 0.567068,
+          "L00_E108": 0.774754,
+          "L00_E109": 0.869988,
+          "L00_E242": 0.851595,
+          "L00_E117": 0.882224,
+          "L00_E120": 0.881113,
+          "L00_E249": 0.598633,
+          "L01_E138": 0.60335,
+          "L01_E011": 0.703819,
+          "L01_E020": 0.619559,
+          "L01_E153": 0.877484,
+          "L01_E167": 0.838946,
+          "L01_E042": 0.900878,
+          "L01_E191": 0.511103,
+          "L01_E069": 0.883284,
+          "L01_E198": 0.765604,
+          "L01_E205": 0.604444,
+          "L01_E084": 0.509522,
+          "L01_E213": 0.713489,
+          "L01_E086": 0.537614,
+          "L01_E226": 0.877658,
+          "L01_E232": 0.856994,
+          "L01_E235": 0.835798,
+          "L01_E236": 0.908052,
+          "L01_E238": 0.864396,
+          "L01_E239": 0.808477,
+          "L01_E125": 0.749263,
+          "L02_E003": 0.878775,
+          "L02_E006": 0.746089,
+          "L02_E008": 0.472571,
+          "L02_E013": 0.767636,
+          "L02_E017": 0.647106,
+          "L02_E150": 0.925557,
+          "L02_E164": 0.663865,
+          "L02_E040": 0.831222,
+          "L02_E041": 0.460864,
+          "L02_E042": 0.897798,
+          "L02_E180": 0.834122,
+          "L02_E184": 0.725708,
+          "L02_E187": 0.853491,
+          "L02_E088": 0.602367,
+          "L02_E219": 0.697626,
+          "L02_E221": 0.736868,
+          "L02_E223": 0.825032,
+          "L02_E230": 0.907073,
+          "L02_E104": 0.554862,
+          "L02_E110": 0.892642,
+          "L03_E000": 0.708624,
+          "L03_E129": 0.494249,
+          "L03_E008": 0.606859,
+          "L03_E016": 0.922034,
+          "L03_E019": 0.795966,
+          "L03_E155": 0.931568,
+          "L03_E156": 0.672228,
+          "L03_E163": 0.919498,
+          "L03_E039": 0.723802,
+          "L03_E058": 0.563512,
+          "L03_E061": 0.943508,
+          "L03_E063": 0.514783,
+          "L03_E197": 0.918069,
+          "L03_E206": 0.69879,
+          "L03_E211": 0.742588,
+          "L03_E094": 0.91289,
+          "L03_E101": 0.644574,
+          "L03_E108": 0.900531,
+          "L03_E120": 0.893761,
+          "L03_E250": 0.447927,
+          "L04_E129": 0.663405,
+          "L04_E001": 0.860029,
+          "L04_E139": 0.673344,
+          "L04_E151": 0.877114,
+          "L04_E025": 0.932333,
+          "L04_E029": 0.912998,
+          "L04_E033": 0.675274,
+          "L04_E166": 0.913862,
+          "L04_E169": 0.938794,
+          "L04_E170": 0.595248,
+          "L04_E051": 0.93378,
+          "L04_E071": 0.904444,
+          "L04_E204": 0.91817,
+          "L04_E206": 0.947251,
+          "L04_E212": 0.934877,
+          "L04_E217": 0.868253,
+          "L04_E093": 0.960433,
+          "L04_E113": 0.859708,
+          "L04_E243": 0.917234,
+          "L04_E117": 0.732236,
+          "L05_E001": 0.88896,
+          "L05_E133": 0.844725,
+          "L05_E014": 0.883336,
+          "L05_E024": 0.871135,
+          "L05_E046": 0.817313,
+          "L05_E174": 0.795435,
+          "L05_E048": 0.478959,
+          "L05_E052": 0.909754,
+          "L05_E062": 0.892284,
+          "L05_E064": 0.935598,
+          "L05_E065": 0.584743,
+          "L05_E069": 0.782966,
+          "L05_E203": 0.88441,
+          "L05_E075": 0.912719,
+          "L05_E077": 0.971149,
+          "L05_E226": 0.828894,
+          "L05_E232": 0.889564,
+          "L05_E240": 0.870249,
+          "L05_E249": 0.836517,
+          "L05_E253": 0.885165,
+          "L06_E002": 0.923464,
+          "L06_E003": 0.889888,
+          "L06_E010": 0.713425,
+          "L06_E025": 0.923745,
+          "L06_E162": 0.891144,
+          "L06_E174": 0.927488,
+          "L06_E178": 0.95022,
+          "L06_E058": 0.923161,
+          "L06_E187": 0.852557,
+          "L06_E195": 0.942437,
+          "L06_E085": 0.904259,
+          "L06_E223": 0.964729,
+          "L06_E100": 0.929314,
+          "L06_E103": 0.812507,
+          "L06_E232": 0.94113,
+          "L06_E104": 0.722395,
+          "L06_E108": 0.901622,
+          "L06_E114": 0.9315,
+          "L06_E250": 0.92353,
+          "L06_E126": 0.964316,
+          "L07_E130": 0.89816,
+          "L07_E032": 0.604009,
+          "L07_E163": 0.907235,
+          "L07_E166": 0.956281,
+          "L07_E038": 0.956053,
+          "L07_E043": 0.919226,
+          "L07_E182": 0.761013,
+          "L07_E190": 0.734185,
+          "L07_E065": 0.810552,
+          "L07_E074": 0.931041,
+          "L07_E202": 0.927518,
+          "L07_E210": 0.973012,
+          "L07_E215": 0.949693,
+          "L07_E219": 0.959376,
+          "L07_E094": 0.920167,
+          "L07_E224": 0.899511,
+          "L07_E243": 0.944261,
+          "L07_E119": 0.864321,
+          "L07_E121": 0.891147,
+          "L07_E254": 0.67901,
+          "L08_E000": 0.850518,
+          "L08_E129": 0.858551,
+          "L08_E128": 0.819046,
+          "L08_E009": 0.922981,
+          "L08_E150": 0.806609,
+          "L08_E156": 0.940679,
+          "L08_E028": 0.874569,
+          "L08_E158": 0.929451,
+          "L08_E190": 0.902159,
+          "L08_E068": 0.84963,
+          "L08_E199": 0.975542,
+          "L08_E202": 0.88498,
+          "L08_E211": 0.933752,
+          "L08_E083": 0.756618,
+          "L08_E220": 0.540805,
+          "L08_E228": 0.929578,
+          "L08_E103": 0.967253,
+          "L08_E232": 0.68266,
+          "L08_E236": 0.914691,
+          "L08_E123": 0.712918,
+          "L09_E000": 0.968729,
+          "L09_E139": 0.914313,
+          "L09_E013": 0.778998,
+          "L09_E034": 0.92749,
+          "L09_E162": 0.908805,
+          "L09_E037": 0.928016,
+          "L09_E042": 0.94625,
+          "L09_E044": 0.737172,
+          "L09_E052": 0.944576,
+          "L09_E058": 0.946638,
+          "L09_E192": 0.955881,
+          "L09_E065": 0.93512,
+          "L09_E066": 0.918514,
+          "L09_E083": 0.90037,
+          "L09_E095": 0.772289,
+          "L09_E102": 0.946775,
+          "L09_E105": 0.977087,
+          "L09_E111": 0.920144,
+          "L09_E244": 0.935738,
+          "L09_E253": 0.920337,
+          "L10_E020": 0.958042,
+          "L10_E028": 0.906248,
+          "L10_E158": 0.980625,
+          "L10_E031": 0.961808,
+          "L10_E159": 0.917011,
+          "L10_E163": 0.917249,
+          "L10_E170": 0.892337,
+          "L10_E042": 0.919774,
+          "L10_E181": 0.974012,
+          "L10_E187": 0.938648,
+          "L10_E068": 0.873218,
+          "L10_E073": 0.914335,
+          "L10_E204": 0.909939,
+          "L10_E085": 0.981578,
+          "L10_E092": 0.961389,
+          "L10_E223": 0.908377,
+          "L10_E225": 0.963545,
+          "L10_E125": 0.633965,
+          "L10_E246": 0.931902,
+          "L10_E253": 0.929299,
+          "L11_E131": 0.92814,
+          "L11_E142": 0.930827,
+          "L11_E018": 0.933282,
+          "L11_E019": 0.762449,
+          "L11_E154": 0.966527,
+          "L11_E037": 0.984844,
+          "L11_E174": 0.906323,
+          "L11_E056": 0.971902,
+          "L11_E064": 0.902507,
+          "L11_E071": 0.950477,
+          "L11_E201": 0.956206,
+          "L11_E094": 0.963045,
+          "L11_E095": 0.97067,
+          "L11_E109": 0.923274,
+          "L11_E110": 0.932359,
+          "L11_E240": 0.898817,
+          "L11_E114": 0.884078,
+          "L11_E115": 0.988045,
+          "L11_E116": 0.937213,
+          "L11_E250": 0.980052,
+          "L12_E001": 0.881394,
+          "L12_E003": 0.938516,
+          "L12_E132": 0.985288,
+          "L12_E007": 0.990332,
+          "L12_E018": 0.908856,
+          "L12_E020": 0.78929,
+          "L12_E036": 0.949993,
+          "L12_E172": 0.929667,
+          "L12_E057": 0.973105,
+          "L12_E066": 0.930267,
+          "L12_E067": 0.950842,
+          "L12_E200": 0.917776,
+          "L12_E205": 0.987342,
+          "L12_E084": 0.96707,
+          "L12_E097": 0.884643,
+          "L12_E230": 0.965451,
+          "L12_E107": 0.934759,
+          "L12_E112": 0.878602,
+          "L12_E241": 0.938746,
+          "L12_E125": 0.890008,
+          "L13_E027": 0.933089,
+          "L13_E156": 0.990256,
+          "L13_E157": 0.89435,
+          "L13_E038": 0.915074,
+          "L13_E168": 0.912299,
+          "L13_E041": 0.989943,
+          "L13_E043": 0.945622,
+          "L13_E175": 0.945103,
+          "L13_E200": 0.931387,
+          "L13_E207": 0.934828,
+          "L13_E224": 0.72751,
+          "L13_E225": 0.851879,
+          "L13_E226": 0.950203,
+          "L13_E100": 0.968836,
+          "L13_E237": 0.95356,
+          "L13_E110": 0.921164,
+          "L13_E244": 0.950429,
+          "L13_E122": 0.965983,
+          "L13_E124": 0.972486,
+          "L13_E126": 0.952898,
+          "L14_E141": 0.923941,
+          "L14_E016": 0.955881,
+          "L14_E152": 0.955535,
+          "L14_E027": 0.936723,
+          "L14_E162": 0.927814,
+          "L14_E168": 0.971082,
+          "L14_E170": 0.93835,
+          "L14_E172": 0.938182,
+          "L14_E175": 0.954715,
+          "L14_E188": 0.964247,
+          "L14_E060": 0.950235,
+          "L14_E069": 0.947383,
+          "L14_E070": 0.883549,
+          "L14_E199": 0.962768,
+          "L14_E080": 0.90862,
+          "L14_E219": 0.901562,
+          "L14_E105": 0.818335,
+          "L14_E235": 0.973231,
+          "L14_E247": 0.963626,
+          "L14_E250": 0.942044,
+          "L15_E135": 0.980955,
+          "L15_E017": 0.965637,
+          "L15_E026": 0.974001,
+          "L15_E032": 0.985808,
+          "L15_E038": 0.953726,
+          "L15_E174": 0.87451,
+          "L15_E175": 0.83782,
+          "L15_E049": 0.978518,
+          "L15_E186": 0.930457,
+          "L15_E063": 0.971242,
+          "L15_E067": 0.954552,
+          "L15_E209": 0.942228,
+          "L15_E085": 0.830247,
+          "L15_E214": 0.952703,
+          "L15_E220": 0.944134,
+          "L15_E222": 0.966422,
+          "L15_E095": 0.980556,
+          "L15_E101": 0.984192,
+          "L15_E239": 0.979507,
+          "L15_E245": 0.989327,
+          "L16_E006": 0.993888,
+          "L16_E008": 0.970679,
+          "L16_E150": 0.862764,
+          "L16_E030": 0.981786,
+          "L16_E161": 0.981942,
+          "L16_E167": 0.988822,
+          "L16_E180": 0.90832,
+          "L16_E184": 0.961902,
+          "L16_E061": 0.675425,
+          "L16_E070": 0.842707,
+          "L16_E200": 0.965798,
+          "L16_E073": 0.975753,
+          "L16_E087": 0.98714,
+          "L16_E224": 0.989394,
+          "L16_E233": 0.932993,
+          "L16_E108": 0.965296,
+          "L16_E241": 0.966371,
+          "L16_E114": 0.965271,
+          "L16_E249": 0.987543,
+          "L16_E123": 0.944585,
+          "L17_E130": 0.979194,
+          "L17_E131": 0.943684,
+          "L17_E147": 0.959151,
+          "L17_E155": 0.915475,
+          "L17_E031": 0.933452,
+          "L17_E032": 0.959048,
+          "L17_E170": 0.961248,
+          "L17_E180": 0.968979,
+          "L17_E191": 0.978687,
+          "L17_E067": 0.97233,
+          "L17_E197": 0.88501,
+          "L17_E073": 0.899018,
+          "L17_E202": 0.97147,
+          "L17_E213": 0.947982,
+          "L17_E090": 0.975718,
+          "L17_E220": 0.975162,
+          "L17_E232": 0.91126,
+          "L17_E237": 0.965707,
+          "L17_E247": 0.931741,
+          "L17_E255": 0.786234,
+          "L18_E145": 0.91141,
+          "L18_E017": 0.973986,
+          "L18_E021": 0.979371,
+          "L18_E025": 0.978752,
+          "L18_E027": 0.952893,
+          "L18_E028": 0.962682,
+          "L18_E163": 0.715828,
+          "L18_E036": 0.923791,
+          "L18_E173": 0.972504,
+          "L18_E048": 0.908424,
+          "L18_E056": 0.981407,
+          "L18_E057": 0.838942,
+          "L18_E196": 0.920073,
+          "L18_E087": 0.931728,
+          "L18_E222": 0.970126,
+          "L18_E098": 0.9384,
+          "L18_E229": 0.934962,
+          "L18_E231": 0.940283,
+          "L18_E235": 0.956862,
+          "L18_E116": 0.913655,
+          "L19_E132": 0.937941,
+          "L19_E008": 0.960644,
+          "L19_E013": 0.964581,
+          "L19_E016": 0.963074,
+          "L19_E031": 0.966325,
+          "L19_E160": 0.895255,
+          "L19_E162": 0.828702,
+          "L19_E038": 0.893863,
+          "L19_E042": 0.968956,
+          "L19_E175": 0.982649,
+          "L19_E047": 0.941167,
+          "L19_E177": 0.913111,
+          "L19_E179": 0.951831,
+          "L19_E197": 0.966051,
+          "L19_E080": 0.934787,
+          "L19_E216": 0.954069,
+          "L19_E094": 0.906793,
+          "L19_E106": 0.963261,
+          "L19_E118": 0.911088,
+          "L19_E253": 0.97864,
+          "L20_E000": 0.917648,
+          "L20_E129": 0.926157,
+          "L20_E128": 0.866927,
+          "L20_E009": 0.944071,
+          "L20_E150": 0.767723,
+          "L20_E026": 0.865808,
+          "L20_E156": 0.929269,
+          "L20_E028": 0.916267,
+          "L20_E158": 0.956161,
+          "L20_E190": 0.920957,
+          "L20_E064": 0.902238,
+          "L20_E202": 0.924454,
+          "L20_E080": 0.916343,
+          "L20_E211": 0.940331,
+          "L20_E083": 0.649498,
+          "L20_E215": 0.934811,
+          "L20_E228": 0.950961,
+          "L20_E106": 0.844831,
+          "L20_E236": 0.936284,
+          "L20_E115": 0.792528,
+          "L21_E000": 0.955657,
+          "L21_E006": 0.729893,
+          "L21_E139": 0.95016,
+          "L21_E013": 0.74734,
+          "L21_E034": 0.939741,
+          "L21_E162": 0.953089,
+          "L21_E037": 0.952762,
+          "L21_E042": 0.963845,
+          "L21_E044": 0.751941,
+          "L21_E052": 0.966805,
+          "L21_E192": 0.966871,
+          "L21_E065": 0.964456,
+          "L21_E066": 0.946895,
+          "L21_E083": 0.939129,
+          "L21_E095": 0.786228,
+          "L21_E102": 0.943227,
+          "L21_E105": 0.981044,
+          "L21_E111": 0.93992,
+          "L21_E244": 0.949275,
+          "L21_E253": 0.945259,
+          "L22_E137": 0.874547,
+          "L22_E020": 0.884055,
+          "L22_E154": 0.919403,
+          "L22_E028": 0.942355,
+          "L22_E158": 0.97869,
+          "L22_E159": 0.936792,
+          "L22_E170": 0.906086,
+          "L22_E042": 0.899104,
+          "L22_E181": 0.976437,
+          "L22_E187": 0.935773,
+          "L22_E070": 0.704857,
+          "L22_E073": 0.91455,
+          "L22_E204": 0.926861,
+          "L22_E079": 0.783033,
+          "L22_E085": 0.982819,
+          "L22_E092": 0.961871,
+          "L22_E223": 0.933343,
+          "L22_E225": 0.9624,
+          "L22_E239": 0.922709,
+          "L22_E246": 0.952807,
+          "L23_E131": 0.964546,
+          "L23_E135": 0.91122,
+          "L23_E142": 0.897071,
+          "L23_E018": 0.883327,
+          "L23_E019": 0.648016,
+          "L23_E154": 0.935197,
+          "L23_E037": 0.98383,
+          "L23_E056": 0.970108,
+          "L23_E188": 0.64101,
+          "L23_E062": 0.837523,
+          "L23_E071": 0.971489,
+          "L23_E201": 0.851137,
+          "L23_E086": 0.72348,
+          "L23_E094": 0.955255,
+          "L23_E095": 0.982534,
+          "L23_E109": 0.884039,
+          "L23_E110": 0.964078,
+          "L23_E240": 0.950309,
+          "L23_E115": 0.990518,
+          "L23_E250": 0.971477,
+          "L24_E001": 0.939394,
+          "L24_E003": 0.927073,
+          "L24_E132": 0.980256,
+          "L24_E007": 0.99172,
+          "L24_E140": 0.958772,
+          "L24_E018": 0.940339,
+          "L24_E020": 0.891865,
+          "L24_E036": 0.939374,
+          "L24_E172": 0.952905,
+          "L24_E055": 0.941201,
+          "L24_E071": 0.983345,
+          "L24_E200": 0.943656,
+          "L24_E205": 0.975051,
+          "L24_E097": 0.897587,
+          "L24_E230": 0.970551,
+          "L24_E234": 0.976632,
+          "L24_E107": 0.953653,
+          "L24_E112": 0.878714,
+          "L24_E241": 0.907151,
+          "L24_E125": 0.877038,
+          "L25_E002": 0.823104,
+          "L25_E027": 0.913309,
+          "L25_E157": 0.880393,
+          "L25_E168": 0.964484,
+          "L25_E041": 0.970268,
+          "L25_E047": 0.792573,
+          "L25_E175": 0.941652,
+          "L25_E197": 0.864822,
+          "L25_E207": 0.951147,
+          "L25_E091": 0.958304,
+          "L25_E219": 0.955895,
+          "L25_E224": 0.759146,
+          "L25_E226": 0.949288,
+          "L25_E101": 0.874585,
+          "L25_E237": 0.920497,
+          "L25_E110": 0.915027,
+          "L25_E244": 0.973682,
+          "L25_E122": 0.966465,
+          "L25_E124": 0.974883,
+          "L25_E126": 0.890159,
+          "L26_E006": 0.827256,
+          "L26_E141": 0.96247,
+          "L26_E016": 0.934525,
+          "L26_E144": 0.794284,
+          "L26_E152": 0.96991,
+          "L26_E027": 0.914435,
+          "L26_E160": 0.817495,
+          "L26_E168": 0.960628,
+          "L26_E171": 0.912465,
+          "L26_E172": 0.940564,
+          "L26_E175": 0.937993,
+          "L26_E188": 0.955274,
+          "L26_E060": 0.888098,
+          "L26_E066": 0.932886,
+          "L26_E069": 0.950861,
+          "L26_E070": 0.94222,
+          "L26_E226": 0.619744,
+          "L26_E105": 0.735921,
+          "L26_E247": 0.962457,
+          "L26_E250": 0.945317,
+          "L27_E135": 0.956141,
+          "L27_E017": 0.963436,
+          "L27_E018": 0.90566,
+          "L27_E026": 0.959355,
+          "L27_E032": 0.977311,
+          "L27_E038": 0.9535,
+          "L27_E174": 0.864651,
+          "L27_E051": 0.809036,
+          "L27_E186": 0.920098,
+          "L27_E188": 0.9325,
+          "L27_E063": 0.936521,
+          "L27_E209": 0.947449,
+          "L27_E214": 0.939599,
+          "L27_E218": 0.735172,
+          "L27_E220": 0.866073,
+          "L27_E222": 0.958452,
+          "L27_E095": 0.937999,
+          "L27_E106": 0.96972,
+          "L27_E239": 0.971294,
+          "L27_E245": 0.981351,
+          "L28_E130": 0.724102,
+          "L28_E006": 0.97782,
+          "L28_E008": 0.936222,
+          "L28_E012": 0.940749,
+          "L28_E018": 0.890333,
+          "L28_E030": 0.952615,
+          "L28_E184": 0.951069,
+          "L28_E061": 0.63056,
+          "L28_E070": 0.895427,
+          "L28_E200": 0.936488,
+          "L28_E073": 0.940472,
+          "L28_E087": 0.955798,
+          "L28_E218": 0.953535,
+          "L28_E220": 0.81742,
+          "L28_E224": 0.945006,
+          "L28_E105": 0.771563,
+          "L28_E241": 0.964419,
+          "L28_E114": 0.902291,
+          "L28_E248": 0.870411,
+          "L28_E123": 0.90575,
+          "L29_E010": 0.824312,
+          "L29_E147": 0.908256,
+          "L29_E155": 0.827123,
+          "L29_E031": 0.937466,
+          "L29_E032": 0.933922,
+          "L29_E037": 0.694975,
+          "L29_E170": 0.877586,
+          "L29_E173": 0.936154,
+          "L29_E180": 0.939984,
+          "L29_E198": 0.62814,
+          "L29_E073": 0.838187,
+          "L29_E202": 0.935724,
+          "L29_E090": 0.946689,
+          "L29_E220": 0.934375,
+          "L29_E099": 0.879596,
+          "L29_E232": 0.925904,
+          "L29_E235": 0.847284,
+          "L29_E237": 0.945473,
+          "L29_E244": 0.903918,
+          "L29_E247": 0.850679,
+          "L30_E145": 0.922667,
+          "L30_E017": 0.943668,
+          "L30_E021": 0.875448,
+          "L30_E025": 0.946681,
+          "L30_E027": 0.900195,
+          "L30_E036": 0.924126,
+          "L30_E173": 0.946691,
+          "L30_E048": 0.931929,
+          "L30_E196": 0.892282,
+          "L30_E209": 0.927467,
+          "L30_E084": 0.902859,
+          "L30_E087": 0.928464,
+          "L30_E222": 0.938198,
+          "L30_E098": 0.92752,
+          "L30_E099": 0.790665,
+          "L30_E229": 0.870652,
+          "L30_E231": 0.943802,
+          "L30_E235": 0.944553,
+          "L30_E116": 0.792768,
+          "L30_E122": 0.916825,
+          "L31_E132": 0.923218,
+          "L31_E013": 0.935826,
+          "L31_E016": 0.909927,
+          "L31_E154": 0.561501,
+          "L31_E031": 0.945308,
+          "L31_E160": 0.762937,
+          "L31_E037": 0.927169,
+          "L31_E038": 0.909306,
+          "L31_E047": 0.905925,
+          "L31_E177": 0.900533,
+          "L31_E179": 0.926434,
+          "L31_E190": 0.918375,
+          "L31_E197": 0.870775,
+          "L31_E080": 0.915146,
+          "L31_E216": 0.922801,
+          "L31_E094": 0.896675,
+          "L31_E224": 0.727788,
+          "L31_E118": 0.918555,
+          "L31_E247": 0.940605,
+          "L31_E253": 0.896458,
+          "L32_E135": 0.925723,
+          "L32_E013": 0.912221,
+          "L32_E144": 0.965285,
+          "L32_E017": 0.904667,
+          "L32_E025": 0.651931,
+          "L32_E026": 0.938003,
+          "L32_E028": 0.95604,
+          "L32_E171": 0.927026,
+          "L32_E176": 0.939073,
+          "L32_E050": 0.919545,
+          "L32_E055": 0.927425,
+          "L32_E066": 0.964287,
+          "L32_E078": 0.83872,
+          "L32_E212": 0.906429,
+          "L32_E086": 0.93244,
+          "L32_E092": 0.95612,
+          "L32_E224": 0.821047,
+          "L32_E103": 0.885175,
+          "L32_E117": 0.623761,
+          "L32_E252": 0.612936,
+          "L33_E010": 0.918616,
+          "L33_E142": 0.933075,
+          "L33_E023": 0.895962,
+          "L33_E025": 0.910655,
+          "L33_E028": 0.892066,
+          "L33_E029": 0.90498,
+          "L33_E047": 0.911043,
+          "L33_E068": 0.965447,
+          "L33_E197": 0.922205,
+          "L33_E212": 0.933058,
+          "L33_E084": 0.879169,
+          "L33_E214": 0.865488,
+          "L33_E090": 0.585395,
+          "L33_E094": 0.869852,
+          "L33_E098": 0.832216,
+          "L33_E104": 0.733724,
+          "L33_E237": 0.817844,
+          "L33_E117": 0.869719,
+          "L33_E250": 0.945286,
+          "L33_E124": 0.935786,
+          "L34_E153": 0.943021,
+          "L34_E163": 0.859231,
+          "L34_E170": 0.919061,
+          "L34_E044": 0.772292,
+          "L34_E173": 0.875155,
+          "L34_E047": 0.927379,
+          "L34_E048": 0.892143,
+          "L34_E058": 0.769788,
+          "L34_E187": 0.738881,
+          "L34_E061": 0.83905,
+          "L34_E202": 0.597168,
+          "L34_E215": 0.889726,
+          "L34_E091": 0.67657,
+          "L34_E094": 0.831769,
+          "L34_E225": 0.816014,
+          "L34_E102": 0.910442,
+          "L34_E103": 0.899759,
+          "L34_E238": 0.871568,
+          "L34_E239": 0.903943,
+          "L34_E114": 0.893565,
+          "L35_E003": 0.932284,
+          "L35_E131": 0.929236,
+          "L35_E009": 0.824151,
+          "L35_E145": 0.801312,
+          "L35_E148": 0.838844,
+          "L35_E030": 0.914627,
+          "L35_E159": 0.944495,
+          "L35_E034": 0.880226,
+          "L35_E165": 0.899368,
+          "L35_E184": 0.913384,
+          "L35_E190": 0.87052,
+          "L35_E071": 0.900559,
+          "L35_E072": 0.632763,
+          "L35_E201": 0.915591,
+          "L35_E206": 0.929807,
+          "L35_E085": 0.857533,
+          "L35_E223": 0.918947,
+          "L35_E252": 0.63536,
+          "L35_E126": 0.921359,
+          "L35_E255": 0.931561,
+          "L36_E000": 0.869014,
+          "L36_E001": 0.68602,
+          "L36_E002": 0.71413,
+          "L36_E015": 0.920625,
+          "L36_E145": 0.877216,
+          "L36_E018": 0.891472,
+          "L36_E025": 0.914968,
+          "L36_E031": 0.908684,
+          "L36_E160": 0.91451,
+          "L36_E039": 0.744118,
+          "L36_E058": 0.897742,
+          "L36_E063": 0.917957,
+          "L36_E192": 0.558694,
+          "L36_E195": 0.849448,
+          "L36_E202": 0.924848,
+          "L36_E204": 0.931424,
+          "L36_E084": 0.942395,
+          "L36_E227": 0.889724,
+          "L36_E244": 0.909865,
+          "L36_E116": 0.901142,
+          "L37_E003": 0.663934,
+          "L37_E139": 0.908138,
+          "L37_E014": 0.916989,
+          "L37_E027": 0.727331,
+          "L37_E159": 0.878846,
+          "L37_E161": 0.90608,
+          "L37_E037": 0.939725,
+          "L37_E174": 0.899217,
+          "L37_E055": 0.793313,
+          "L37_E059": 0.927126,
+          "L37_E060": 0.895481,
+          "L37_E084": 0.926915,
+          "L37_E087": 0.931401,
+          "L37_E220": 0.826884,
+          "L37_E221": 0.922876,
+          "L37_E097": 0.903486,
+          "L37_E101": 0.631537,
+          "L37_E102": 0.904278,
+          "L37_E233": 0.720218,
+          "L37_E112": 0.910738,
+          "L38_E004": 0.885044,
+          "L38_E009": 0.818347,
+          "L38_E157": 0.885057,
+          "L38_E030": 0.846836,
+          "L38_E033": 0.866058,
+          "L38_E168": 0.656039,
+          "L38_E044": 0.873526,
+          "L38_E173": 0.774005,
+          "L38_E075": 0.782666,
+          "L38_E080": 0.875038,
+          "L38_E209": 0.651446,
+          "L38_E210": 0.889958,
+          "L38_E215": 0.826699,
+          "L38_E095": 0.826659,
+          "L38_E097": 0.856549,
+          "L38_E228": 0.874448,
+          "L38_E232": 0.700528,
+          "L38_E234": 0.804922,
+          "L38_E242": 0.901643,
+          "L38_E244": 0.865499,
+          "L39_E013": 0.694604,
+          "L39_E014": 0.701496,
+          "L39_E016": 0.757548,
+          "L39_E145": 0.723054,
+          "L39_E023": 0.777508,
+          "L39_E154": 0.452768,
+          "L39_E031": 0.678387,
+          "L39_E035": 0.630501,
+          "L39_E052": 0.69711,
+          "L39_E181": 0.715112,
+          "L39_E182": 0.690379,
+          "L39_E183": 0.813247,
+          "L39_E186": 0.604679,
+          "L39_E061": 0.66417,
+          "L39_E062": 0.545138,
+          "L39_E072": 0.768913,
+          "L39_E213": 0.706226,
+          "L39_E092": 0.582644,
+          "L39_E239": 0.694603,
+          "L39_E125": 0.725023
+        }
+      },
+      "output_perturbation_hot_experts_with_real_hessian_fallback": {
+        "metric": "output_perturbation_hot_experts_with_real_hessian_fallback",
+        "gini_summary": {
+          "active_experts": 10237,
+          "mean_gini": 0.129493,
+          "median_gini": 0.124774,
+          "min_gini": 0.038121,
+          "max_gini": 0.535424,
+          "layer_mean_gini": {
+            "0": 0.160659,
+            "1": 0.115705,
+            "2": 0.104076,
+            "3": 0.095321,
+            "4": 0.097015,
+            "5": 0.099189,
+            "6": 0.103713,
+            "7": 0.11683,
+            "8": 0.121853,
+            "9": 0.121011,
+            "10": 0.107955,
+            "11": 0.113635,
+            "12": 0.129304,
+            "13": 0.141079,
+            "14": 0.137983,
+            "15": 0.145509,
+            "16": 0.145216,
+            "17": 0.135545,
+            "18": 0.137923,
+            "19": 0.138958,
+            "20": 0.142222,
+            "21": 0.135552,
+            "22": 0.110745,
+            "23": 0.115968,
+            "24": 0.126208,
+            "25": 0.13462,
+            "26": 0.124103,
+            "27": 0.134612,
+            "28": 0.132146,
+            "29": 0.125429,
+            "30": 0.133563,
+            "31": 0.144175,
+            "32": 0.142025,
+            "33": 0.139328,
+            "34": 0.136822,
+            "35": 0.147807,
+            "36": 0.148769,
+            "37": 0.151541,
+            "38": 0.14423,
+            "39": 0.141467
+          }
+        },
+        "compared_hot_experts": 800,
+        "mean_spearman": 1.0,
+        "layer_mean_spearman": {
+          "0": 1.0,
+          "1": 1.0,
+          "2": 1.0,
+          "3": 1.0,
+          "4": 1.0,
+          "5": 1.0,
+          "6": 1.0,
+          "7": 1.0,
+          "8": 1.0,
+          "9": 1.0,
+          "10": 1.0,
+          "11": 1.0,
+          "12": 1.0,
+          "13": 1.0,
+          "14": 1.0,
+          "15": 1.0,
+          "16": 1.0,
+          "17": 1.0,
+          "18": 1.0,
+          "19": 1.0,
+          "20": 1.0,
+          "21": 1.0,
+          "22": 1.0,
+          "23": 1.0,
+          "24": 1.0,
+          "25": 1.0,
+          "26": 1.0,
+          "27": 1.0,
+          "28": 1.0,
+          "29": 1.0,
+          "30": 1.0,
+          "31": 1.0,
+          "32": 1.0,
+          "33": 1.0,
+          "34": 1.0,
+          "35": 1.0,
+          "36": 1.0,
+          "37": 1.0,
+          "38": 1.0,
+          "39": 1.0
+        },
+        "spearman_per_hot_expert": {
+          "L00_E002": 1.0,
+          "L00_E152": 1.0,
+          "L00_E031": 1.0,
+          "L00_E177": 1.0,
+          "L00_E181": 1.0,
+          "L00_E055": 1.0,
+          "L00_E185": 1.0,
+          "L00_E058": 1.0,
+          "L00_E191": 1.0,
+          "L00_E064": 1.0,
+          "L00_E074": 1.0,
+          "L00_E089": 1.0,
+          "L00_E226": 1.0,
+          "L00_E101": 1.0,
+          "L00_E108": 1.0,
+          "L00_E109": 1.0,
+          "L00_E242": 1.0,
+          "L00_E117": 1.0,
+          "L00_E120": 1.0,
+          "L00_E249": 1.0,
+          "L01_E138": 1.0,
+          "L01_E011": 1.0,
+          "L01_E020": 1.0,
+          "L01_E153": 1.0,
+          "L01_E167": 1.0,
+          "L01_E042": 1.0,
+          "L01_E191": 1.0,
+          "L01_E069": 1.0,
+          "L01_E198": 1.0,
+          "L01_E205": 1.0,
+          "L01_E084": 1.0,
+          "L01_E213": 1.0,
+          "L01_E086": 1.0,
+          "L01_E226": 1.0,
+          "L01_E232": 1.0,
+          "L01_E235": 1.0,
+          "L01_E236": 1.0,
+          "L01_E238": 1.0,
+          "L01_E239": 1.0,
+          "L01_E125": 1.0,
+          "L02_E003": 1.0,
+          "L02_E006": 1.0,
+          "L02_E008": 1.0,
+          "L02_E013": 1.0,
+          "L02_E017": 1.0,
+          "L02_E150": 1.0,
+          "L02_E164": 1.0,
+          "L02_E040": 1.0,
+          "L02_E041": 1.0,
+          "L02_E042": 1.0,
+          "L02_E180": 1.0,
+          "L02_E184": 1.0,
+          "L02_E187": 1.0,
+          "L02_E088": 1.0,
+          "L02_E219": 1.0,
+          "L02_E221": 1.0,
+          "L02_E223": 1.0,
+          "L02_E230": 1.0,
+          "L02_E104": 1.0,
+          "L02_E110": 1.0,
+          "L03_E000": 1.0,
+          "L03_E129": 1.0,
+          "L03_E008": 1.0,
+          "L03_E016": 1.0,
+          "L03_E019": 1.0,
+          "L03_E155": 1.0,
+          "L03_E156": 1.0,
+          "L03_E163": 1.0,
+          "L03_E039": 1.0,
+          "L03_E058": 1.0,
+          "L03_E061": 1.0,
+          "L03_E063": 1.0,
+          "L03_E197": 1.0,
+          "L03_E206": 1.0,
+          "L03_E211": 1.0,
+          "L03_E094": 1.0,
+          "L03_E101": 1.0,
+          "L03_E108": 1.0,
+          "L03_E120": 1.0,
+          "L03_E250": 1.0,
+          "L04_E129": 1.0,
+          "L04_E001": 1.0,
+          "L04_E139": 1.0,
+          "L04_E151": 1.0,
+          "L04_E025": 1.0,
+          "L04_E029": 1.0,
+          "L04_E033": 1.0,
+          "L04_E166": 1.0,
+          "L04_E169": 1.0,
+          "L04_E170": 1.0,
+          "L04_E051": 1.0,
+          "L04_E071": 1.0,
+          "L04_E204": 1.0,
+          "L04_E206": 1.0,
+          "L04_E212": 1.0,
+          "L04_E217": 1.0,
+          "L04_E093": 1.0,
+          "L04_E113": 1.0,
+          "L04_E243": 1.0,
+          "L04_E117": 1.0,
+          "L05_E001": 1.0,
+          "L05_E133": 1.0,
+          "L05_E014": 1.0,
+          "L05_E024": 1.0,
+          "L05_E046": 1.0,
+          "L05_E174": 1.0,
+          "L05_E048": 1.0,
+          "L05_E052": 1.0,
+          "L05_E062": 1.0,
+          "L05_E064": 1.0,
+          "L05_E065": 1.0,
+          "L05_E069": 1.0,
+          "L05_E203": 1.0,
+          "L05_E075": 1.0,
+          "L05_E077": 1.0,
+          "L05_E226": 1.0,
+          "L05_E232": 1.0,
+          "L05_E240": 1.0,
+          "L05_E249": 1.0,
+          "L05_E253": 1.0,
+          "L06_E002": 1.0,
+          "L06_E003": 1.0,
+          "L06_E010": 1.0,
+          "L06_E025": 1.0,
+          "L06_E162": 1.0,
+          "L06_E174": 1.0,
+          "L06_E178": 1.0,
+          "L06_E058": 1.0,
+          "L06_E187": 1.0,
+          "L06_E195": 1.0,
+          "L06_E085": 1.0,
+          "L06_E223": 1.0,
+          "L06_E100": 1.0,
+          "L06_E103": 1.0,
+          "L06_E232": 1.0,
+          "L06_E104": 1.0,
+          "L06_E108": 1.0,
+          "L06_E114": 1.0,
+          "L06_E250": 1.0,
+          "L06_E126": 1.0,
+          "L07_E130": 1.0,
+          "L07_E032": 1.0,
+          "L07_E163": 1.0,
+          "L07_E166": 1.0,
+          "L07_E038": 1.0,
+          "L07_E043": 1.0,
+          "L07_E182": 1.0,
+          "L07_E190": 1.0,
+          "L07_E065": 1.0,
+          "L07_E074": 1.0,
+          "L07_E202": 1.0,
+          "L07_E210": 1.0,
+          "L07_E215": 1.0,
+          "L07_E219": 1.0,
+          "L07_E094": 1.0,
+          "L07_E224": 1.0,
+          "L07_E243": 1.0,
+          "L07_E119": 1.0,
+          "L07_E121": 1.0,
+          "L07_E254": 1.0,
+          "L08_E000": 1.0,
+          "L08_E129": 1.0,
+          "L08_E128": 1.0,
+          "L08_E009": 1.0,
+          "L08_E150": 1.0,
+          "L08_E156": 1.0,
+          "L08_E028": 1.0,
+          "L08_E158": 1.0,
+          "L08_E190": 1.0,
+          "L08_E068": 1.0,
+          "L08_E199": 1.0,
+          "L08_E202": 1.0,
+          "L08_E211": 1.0,
+          "L08_E083": 1.0,
+          "L08_E220": 1.0,
+          "L08_E228": 1.0,
+          "L08_E103": 1.0,
+          "L08_E232": 1.0,
+          "L08_E236": 1.0,
+          "L08_E123": 1.0,
+          "L09_E000": 1.0,
+          "L09_E139": 1.0,
+          "L09_E013": 1.0,
+          "L09_E034": 1.0,
+          "L09_E162": 1.0,
+          "L09_E037": 1.0,
+          "L09_E042": 1.0,
+          "L09_E044": 1.0,
+          "L09_E052": 1.0,
+          "L09_E058": 1.0,
+          "L09_E192": 1.0,
+          "L09_E065": 1.0,
+          "L09_E066": 1.0,
+          "L09_E083": 1.0,
+          "L09_E095": 1.0,
+          "L09_E102": 1.0,
+          "L09_E105": 1.0,
+          "L09_E111": 1.0,
+          "L09_E244": 1.0,
+          "L09_E253": 1.0,
+          "L10_E020": 1.0,
+          "L10_E028": 1.0,
+          "L10_E158": 1.0,
+          "L10_E031": 1.0,
+          "L10_E159": 1.0,
+          "L10_E163": 1.0,
+          "L10_E170": 1.0,
+          "L10_E042": 1.0,
+          "L10_E181": 1.0,
+          "L10_E187": 1.0,
+          "L10_E068": 1.0,
+          "L10_E073": 1.0,
+          "L10_E204": 1.0,
+          "L10_E085": 1.0,
+          "L10_E092": 1.0,
+          "L10_E223": 1.0,
+          "L10_E225": 1.0,
+          "L10_E125": 1.0,
+          "L10_E246": 1.0,
+          "L10_E253": 1.0,
+          "L11_E131": 1.0,
+          "L11_E142": 1.0,
+          "L11_E018": 1.0,
+          "L11_E019": 1.0,
+          "L11_E154": 1.0,
+          "L11_E037": 1.0,
+          "L11_E174": 1.0,
+          "L11_E056": 1.0,
+          "L11_E064": 1.0,
+          "L11_E071": 1.0,
+          "L11_E201": 1.0,
+          "L11_E094": 1.0,
+          "L11_E095": 1.0,
+          "L11_E109": 1.0,
+          "L11_E110": 1.0,
+          "L11_E240": 1.0,
+          "L11_E114": 1.0,
+          "L11_E115": 1.0,
+          "L11_E116": 1.0,
+          "L11_E250": 1.0,
+          "L12_E001": 1.0,
+          "L12_E003": 1.0,
+          "L12_E132": 1.0,
+          "L12_E007": 1.0,
+          "L12_E018": 1.0,
+          "L12_E020": 1.0,
+          "L12_E036": 1.0,
+          "L12_E172": 1.0,
+          "L12_E057": 1.0,
+          "L12_E066": 1.0,
+          "L12_E067": 1.0,
+          "L12_E200": 1.0,
+          "L12_E205": 1.0,
+          "L12_E084": 1.0,
+          "L12_E097": 1.0,
+          "L12_E230": 1.0,
+          "L12_E107": 1.0,
+          "L12_E112": 1.0,
+          "L12_E241": 1.0,
+          "L12_E125": 1.0,
+          "L13_E027": 1.0,
+          "L13_E156": 1.0,
+          "L13_E157": 1.0,
+          "L13_E038": 1.0,
+          "L13_E168": 1.0,
+          "L13_E041": 1.0,
+          "L13_E043": 1.0,
+          "L13_E175": 1.0,
+          "L13_E200": 1.0,
+          "L13_E207": 1.0,
+          "L13_E224": 1.0,
+          "L13_E225": 1.0,
+          "L13_E226": 1.0,
+          "L13_E100": 1.0,
+          "L13_E237": 1.0,
+          "L13_E110": 1.0,
+          "L13_E244": 1.0,
+          "L13_E122": 1.0,
+          "L13_E124": 1.0,
+          "L13_E126": 1.0,
+          "L14_E141": 1.0,
+          "L14_E016": 1.0,
+          "L14_E152": 1.0,
+          "L14_E027": 1.0,
+          "L14_E162": 1.0,
+          "L14_E168": 1.0,
+          "L14_E170": 1.0,
+          "L14_E172": 1.0,
+          "L14_E175": 1.0,
+          "L14_E188": 1.0,
+          "L14_E060": 1.0,
+          "L14_E069": 1.0,
+          "L14_E070": 1.0,
+          "L14_E199": 1.0,
+          "L14_E080": 1.0,
+          "L14_E219": 1.0,
+          "L14_E105": 1.0,
+          "L14_E235": 1.0,
+          "L14_E247": 1.0,
+          "L14_E250": 1.0,
+          "L15_E135": 1.0,
+          "L15_E017": 1.0,
+          "L15_E026": 1.0,
+          "L15_E032": 1.0,
+          "L15_E038": 1.0,
+          "L15_E174": 1.0,
+          "L15_E175": 1.0,
+          "L15_E049": 1.0,
+          "L15_E186": 1.0,
+          "L15_E063": 1.0,
+          "L15_E067": 1.0,
+          "L15_E209": 1.0,
+          "L15_E085": 1.0,
+          "L15_E214": 1.0,
+          "L15_E220": 1.0,
+          "L15_E222": 1.0,
+          "L15_E095": 1.0,
+          "L15_E101": 1.0,
+          "L15_E239": 1.0,
+          "L15_E245": 1.0,
+          "L16_E006": 1.0,
+          "L16_E008": 1.0,
+          "L16_E150": 1.0,
+          "L16_E030": 1.0,
+          "L16_E161": 1.0,
+          "L16_E167": 1.0,
+          "L16_E180": 1.0,
+          "L16_E184": 1.0,
+          "L16_E061": 1.0,
+          "L16_E070": 1.0,
+          "L16_E200": 1.0,
+          "L16_E073": 1.0,
+          "L16_E087": 1.0,
+          "L16_E224": 1.0,
+          "L16_E233": 1.0,
+          "L16_E108": 1.0,
+          "L16_E241": 1.0,
+          "L16_E114": 1.0,
+          "L16_E249": 1.0,
+          "L16_E123": 1.0,
+          "L17_E130": 1.0,
+          "L17_E131": 1.0,
+          "L17_E147": 1.0,
+          "L17_E155": 1.0,
+          "L17_E031": 1.0,
+          "L17_E032": 1.0,
+          "L17_E170": 1.0,
+          "L17_E180": 1.0,
+          "L17_E191": 1.0,
+          "L17_E067": 1.0,
+          "L17_E197": 1.0,
+          "L17_E073": 1.0,
+          "L17_E202": 1.0,
+          "L17_E213": 1.0,
+          "L17_E090": 1.0,
+          "L17_E220": 1.0,
+          "L17_E232": 1.0,
+          "L17_E237": 1.0,
+          "L17_E247": 1.0,
+          "L17_E255": 1.0,
+          "L18_E145": 1.0,
+          "L18_E017": 1.0,
+          "L18_E021": 1.0,
+          "L18_E025": 1.0,
+          "L18_E027": 1.0,
+          "L18_E028": 1.0,
+          "L18_E163": 1.0,
+          "L18_E036": 1.0,
+          "L18_E173": 1.0,
+          "L18_E048": 1.0,
+          "L18_E056": 1.0,
+          "L18_E057": 1.0,
+          "L18_E196": 1.0,
+          "L18_E087": 1.0,
+          "L18_E222": 1.0,
+          "L18_E098": 1.0,
+          "L18_E229": 1.0,
+          "L18_E231": 1.0,
+          "L18_E235": 1.0,
+          "L18_E116": 1.0,
+          "L19_E132": 1.0,
+          "L19_E008": 1.0,
+          "L19_E013": 1.0,
+          "L19_E016": 1.0,
+          "L19_E031": 1.0,
+          "L19_E160": 1.0,
+          "L19_E162": 1.0,
+          "L19_E038": 1.0,
+          "L19_E042": 1.0,
+          "L19_E175": 1.0,
+          "L19_E047": 1.0,
+          "L19_E177": 1.0,
+          "L19_E179": 1.0,
+          "L19_E197": 1.0,
+          "L19_E080": 1.0,
+          "L19_E216": 1.0,
+          "L19_E094": 1.0,
+          "L19_E106": 1.0,
+          "L19_E118": 1.0,
+          "L19_E253": 1.0,
+          "L20_E000": 1.0,
+          "L20_E129": 1.0,
+          "L20_E128": 1.0,
+          "L20_E009": 1.0,
+          "L20_E150": 1.0,
+          "L20_E026": 1.0,
+          "L20_E156": 1.0,
+          "L20_E028": 1.0,
+          "L20_E158": 1.0,
+          "L20_E190": 1.0,
+          "L20_E064": 1.0,
+          "L20_E202": 1.0,
+          "L20_E080": 1.0,
+          "L20_E211": 1.0,
+          "L20_E083": 1.0,
+          "L20_E215": 1.0,
+          "L20_E228": 1.0,
+          "L20_E106": 1.0,
+          "L20_E236": 1.0,
+          "L20_E115": 1.0,
+          "L21_E000": 1.0,
+          "L21_E006": 1.0,
+          "L21_E139": 1.0,
+          "L21_E013": 1.0,
+          "L21_E034": 1.0,
+          "L21_E162": 1.0,
+          "L21_E037": 1.0,
+          "L21_E042": 1.0,
+          "L21_E044": 1.0,
+          "L21_E052": 1.0,
+          "L21_E192": 1.0,
+          "L21_E065": 1.0,
+          "L21_E066": 1.0,
+          "L21_E083": 1.0,
+          "L21_E095": 1.0,
+          "L21_E102": 1.0,
+          "L21_E105": 1.0,
+          "L21_E111": 1.0,
+          "L21_E244": 1.0,
+          "L21_E253": 1.0,
+          "L22_E137": 1.0,
+          "L22_E020": 1.0,
+          "L22_E154": 1.0,
+          "L22_E028": 1.0,
+          "L22_E158": 1.0,
+          "L22_E159": 1.0,
+          "L22_E170": 1.0,
+          "L22_E042": 1.0,
+          "L22_E181": 1.0,
+          "L22_E187": 1.0,
+          "L22_E070": 1.0,
+          "L22_E073": 1.0,
+          "L22_E204": 1.0,
+          "L22_E079": 1.0,
+          "L22_E085": 1.0,
+          "L22_E092": 1.0,
+          "L22_E223": 1.0,
+          "L22_E225": 1.0,
+          "L22_E239": 1.0,
+          "L22_E246": 1.0,
+          "L23_E131": 1.0,
+          "L23_E135": 1.0,
+          "L23_E142": 1.0,
+          "L23_E018": 1.0,
+          "L23_E019": 1.0,
+          "L23_E154": 1.0,
+          "L23_E037": 1.0,
+          "L23_E056": 1.0,
+          "L23_E188": 1.0,
+          "L23_E062": 1.0,
+          "L23_E071": 1.0,
+          "L23_E201": 1.0,
+          "L23_E086": 1.0,
+          "L23_E094": 1.0,
+          "L23_E095": 1.0,
+          "L23_E109": 1.0,
+          "L23_E110": 1.0,
+          "L23_E240": 1.0,
+          "L23_E115": 1.0,
+          "L23_E250": 1.0,
+          "L24_E001": 1.0,
+          "L24_E003": 1.0,
+          "L24_E132": 1.0,
+          "L24_E007": 1.0,
+          "L24_E140": 1.0,
+          "L24_E018": 1.0,
+          "L24_E020": 1.0,
+          "L24_E036": 1.0,
+          "L24_E172": 1.0,
+          "L24_E055": 1.0,
+          "L24_E071": 1.0,
+          "L24_E200": 1.0,
+          "L24_E205": 1.0,
+          "L24_E097": 1.0,
+          "L24_E230": 1.0,
+          "L24_E234": 1.0,
+          "L24_E107": 1.0,
+          "L24_E112": 1.0,
+          "L24_E241": 1.0,
+          "L24_E125": 1.0,
+          "L25_E002": 1.0,
+          "L25_E027": 1.0,
+          "L25_E157": 1.0,
+          "L25_E168": 1.0,
+          "L25_E041": 1.0,
+          "L25_E047": 1.0,
+          "L25_E175": 1.0,
+          "L25_E197": 1.0,
+          "L25_E207": 1.0,
+          "L25_E091": 1.0,
+          "L25_E219": 1.0,
+          "L25_E224": 1.0,
+          "L25_E226": 1.0,
+          "L25_E101": 1.0,
+          "L25_E237": 1.0,
+          "L25_E110": 1.0,
+          "L25_E244": 1.0,
+          "L25_E122": 1.0,
+          "L25_E124": 1.0,
+          "L25_E126": 1.0,
+          "L26_E006": 1.0,
+          "L26_E141": 1.0,
+          "L26_E016": 1.0,
+          "L26_E144": 1.0,
+          "L26_E152": 1.0,
+          "L26_E027": 1.0,
+          "L26_E160": 1.0,
+          "L26_E168": 1.0,
+          "L26_E171": 1.0,
+          "L26_E172": 1.0,
+          "L26_E175": 1.0,
+          "L26_E188": 1.0,
+          "L26_E060": 1.0,
+          "L26_E066": 1.0,
+          "L26_E069": 1.0,
+          "L26_E070": 1.0,
+          "L26_E226": 1.0,
+          "L26_E105": 1.0,
+          "L26_E247": 1.0,
+          "L26_E250": 1.0,
+          "L27_E135": 1.0,
+          "L27_E017": 1.0,
+          "L27_E018": 1.0,
+          "L27_E026": 1.0,
+          "L27_E032": 1.0,
+          "L27_E038": 1.0,
+          "L27_E174": 1.0,
+          "L27_E051": 1.0,
+          "L27_E186": 1.0,
+          "L27_E188": 1.0,
+          "L27_E063": 1.0,
+          "L27_E209": 1.0,
+          "L27_E214": 1.0,
+          "L27_E218": 1.0,
+          "L27_E220": 1.0,
+          "L27_E222": 1.0,
+          "L27_E095": 1.0,
+          "L27_E106": 1.0,
+          "L27_E239": 1.0,
+          "L27_E245": 1.0,
+          "L28_E130": 1.0,
+          "L28_E006": 1.0,
+          "L28_E008": 1.0,
+          "L28_E012": 1.0,
+          "L28_E018": 1.0,
+          "L28_E030": 1.0,
+          "L28_E184": 1.0,
+          "L28_E061": 1.0,
+          "L28_E070": 1.0,
+          "L28_E200": 1.0,
+          "L28_E073": 1.0,
+          "L28_E087": 1.0,
+          "L28_E218": 1.0,
+          "L28_E220": 1.0,
+          "L28_E224": 1.0,
+          "L28_E105": 1.0,
+          "L28_E241": 1.0,
+          "L28_E114": 1.0,
+          "L28_E248": 1.0,
+          "L28_E123": 1.0,
+          "L29_E010": 1.0,
+          "L29_E147": 1.0,
+          "L29_E155": 1.0,
+          "L29_E031": 1.0,
+          "L29_E032": 1.0,
+          "L29_E037": 1.0,
+          "L29_E170": 1.0,
+          "L29_E173": 1.0,
+          "L29_E180": 1.0,
+          "L29_E198": 1.0,
+          "L29_E073": 1.0,
+          "L29_E202": 1.0,
+          "L29_E090": 1.0,
+          "L29_E220": 1.0,
+          "L29_E099": 1.0,
+          "L29_E232": 1.0,
+          "L29_E235": 1.0,
+          "L29_E237": 1.0,
+          "L29_E244": 1.0,
+          "L29_E247": 1.0,
+          "L30_E145": 1.0,
+          "L30_E017": 1.0,
+          "L30_E021": 1.0,
+          "L30_E025": 1.0,
+          "L30_E027": 1.0,
+          "L30_E036": 1.0,
+          "L30_E173": 1.0,
+          "L30_E048": 1.0,
+          "L30_E196": 1.0,
+          "L30_E209": 1.0,
+          "L30_E084": 1.0,
+          "L30_E087": 1.0,
+          "L30_E222": 1.0,
+          "L30_E098": 1.0,
+          "L30_E099": 1.0,
+          "L30_E229": 1.0,
+          "L30_E231": 1.0,
+          "L30_E235": 1.0,
+          "L30_E116": 1.0,
+          "L30_E122": 1.0,
+          "L31_E132": 1.0,
+          "L31_E013": 1.0,
+          "L31_E016": 1.0,
+          "L31_E154": 1.0,
+          "L31_E031": 1.0,
+          "L31_E160": 1.0,
+          "L31_E037": 1.0,
+          "L31_E038": 1.0,
+          "L31_E047": 1.0,
+          "L31_E177": 1.0,
+          "L31_E179": 1.0,
+          "L31_E190": 1.0,
+          "L31_E197": 1.0,
+          "L31_E080": 1.0,
+          "L31_E216": 1.0,
+          "L31_E094": 1.0,
+          "L31_E224": 1.0,
+          "L31_E118": 1.0,
+          "L31_E247": 1.0,
+          "L31_E253": 1.0,
+          "L32_E135": 1.0,
+          "L32_E013": 1.0,
+          "L32_E144": 1.0,
+          "L32_E017": 1.0,
+          "L32_E025": 1.0,
+          "L32_E026": 1.0,
+          "L32_E028": 1.0,
+          "L32_E171": 1.0,
+          "L32_E176": 1.0,
+          "L32_E050": 1.0,
+          "L32_E055": 1.0,
+          "L32_E066": 1.0,
+          "L32_E078": 1.0,
+          "L32_E212": 1.0,
+          "L32_E086": 1.0,
+          "L32_E092": 1.0,
+          "L32_E224": 1.0,
+          "L32_E103": 1.0,
+          "L32_E117": 1.0,
+          "L32_E252": 1.0,
+          "L33_E010": 1.0,
+          "L33_E142": 1.0,
+          "L33_E023": 1.0,
+          "L33_E025": 1.0,
+          "L33_E028": 1.0,
+          "L33_E029": 1.0,
+          "L33_E047": 1.0,
+          "L33_E068": 1.0,
+          "L33_E197": 1.0,
+          "L33_E212": 1.0,
+          "L33_E084": 1.0,
+          "L33_E214": 1.0,
+          "L33_E090": 1.0,
+          "L33_E094": 1.0,
+          "L33_E098": 1.0,
+          "L33_E104": 1.0,
+          "L33_E237": 1.0,
+          "L33_E117": 1.0,
+          "L33_E250": 1.0,
+          "L33_E124": 1.0,
+          "L34_E153": 1.0,
+          "L34_E163": 1.0,
+          "L34_E170": 1.0,
+          "L34_E044": 1.0,
+          "L34_E173": 1.0,
+          "L34_E047": 1.0,
+          "L34_E048": 1.0,
+          "L34_E058": 1.0,
+          "L34_E187": 1.0,
+          "L34_E061": 1.0,
+          "L34_E202": 1.0,
+          "L34_E215": 1.0,
+          "L34_E091": 1.0,
+          "L34_E094": 1.0,
+          "L34_E225": 1.0,
+          "L34_E102": 1.0,
+          "L34_E103": 1.0,
+          "L34_E238": 1.0,
+          "L34_E239": 1.0,
+          "L34_E114": 1.0,
+          "L35_E003": 1.0,
+          "L35_E131": 1.0,
+          "L35_E009": 1.0,
+          "L35_E145": 1.0,
+          "L35_E148": 1.0,
+          "L35_E030": 1.0,
+          "L35_E159": 1.0,
+          "L35_E034": 1.0,
+          "L35_E165": 1.0,
+          "L35_E184": 1.0,
+          "L35_E190": 1.0,
+          "L35_E071": 1.0,
+          "L35_E072": 1.0,
+          "L35_E201": 1.0,
+          "L35_E206": 1.0,
+          "L35_E085": 1.0,
+          "L35_E223": 1.0,
+          "L35_E252": 1.0,
+          "L35_E126": 1.0,
+          "L35_E255": 1.0,
+          "L36_E000": 1.0,
+          "L36_E001": 1.0,
+          "L36_E002": 1.0,
+          "L36_E015": 1.0,
+          "L36_E145": 1.0,
+          "L36_E018": 1.0,
+          "L36_E025": 1.0,
+          "L36_E031": 1.0,
+          "L36_E160": 1.0,
+          "L36_E039": 1.0,
+          "L36_E058": 1.0,
+          "L36_E063": 1.0,
+          "L36_E192": 1.0,
+          "L36_E195": 1.0,
+          "L36_E202": 1.0,
+          "L36_E204": 1.0,
+          "L36_E084": 1.0,
+          "L36_E227": 1.0,
+          "L36_E244": 1.0,
+          "L36_E116": 1.0,
+          "L37_E003": 1.0,
+          "L37_E139": 1.0,
+          "L37_E014": 1.0,
+          "L37_E027": 1.0,
+          "L37_E159": 1.0,
+          "L37_E161": 1.0,
+          "L37_E037": 1.0,
+          "L37_E174": 1.0,
+          "L37_E055": 1.0,
+          "L37_E059": 1.0,
+          "L37_E060": 1.0,
+          "L37_E084": 1.0,
+          "L37_E087": 1.0,
+          "L37_E220": 1.0,
+          "L37_E221": 1.0,
+          "L37_E097": 1.0,
+          "L37_E101": 1.0,
+          "L37_E102": 1.0,
+          "L37_E233": 1.0,
+          "L37_E112": 1.0,
+          "L38_E004": 1.0,
+          "L38_E009": 1.0,
+          "L38_E157": 1.0,
+          "L38_E030": 1.0,
+          "L38_E033": 1.0,
+          "L38_E168": 1.0,
+          "L38_E044": 1.0,
+          "L38_E173": 1.0,
+          "L38_E075": 1.0,
+          "L38_E080": 1.0,
+          "L38_E209": 1.0,
+          "L38_E210": 1.0,
+          "L38_E215": 1.0,
+          "L38_E095": 1.0,
+          "L38_E097": 1.0,
+          "L38_E228": 1.0,
+          "L38_E232": 1.0,
+          "L38_E234": 1.0,
+          "L38_E242": 1.0,
+          "L38_E244": 1.0,
+          "L39_E013": 1.0,
+          "L39_E014": 1.0,
+          "L39_E016": 1.0,
+          "L39_E145": 1.0,
+          "L39_E023": 1.0,
+          "L39_E154": 1.0,
+          "L39_E031": 1.0,
+          "L39_E035": 1.0,
+          "L39_E052": 1.0,
+          "L39_E181": 1.0,
+          "L39_E182": 1.0,
+          "L39_E183": 1.0,
+          "L39_E186": 1.0,
+          "L39_E061": 1.0,
+          "L39_E062": 1.0,
+          "L39_E072": 1.0,
+          "L39_E213": 1.0,
+          "L39_E092": 1.0,
+          "L39_E239": 1.0,
+          "L39_E125": 1.0
+        }
+      }
+    },
+    "metric_ranking": [
+      {
+        "metric": "output_perturbation_hot_experts_with_real_hessian_fallback",
+        "mean_spearman": 1.0,
+        "mean_gini": 0.129493
+      },
+      {
+        "metric": "real_hessian",
+        "mean_spearman": 0.878979,
+        "mean_gini": 0.134051
+      },
+      {
+        "metric": "activation_kurtosis",
+        "mean_spearman": 0.680988,
+        "mean_gini": 0.079031
+      }
+    ],
+    "runtime_seconds_pre_eval": 245.138,
+    "requested_plan_order": [
+      "perchannel_real_hessian_25pct",
+      "perchannel_real_hessian_w1_4_w2_16",
+      "perchannel_real_hessian_w1_0_w2_25",
+      "perchannel_output_perturbation_25pct",
+      "perchannel_output_perturbation_w1_4_w2_16",
+      "perchannel_output_perturbation_w1_0_w2_25"
+    ],
+    "runtime_seconds": 1492.109,
+    "cache_version_expectation": {
+      "seqlen": 2048,
+      "calibration_samples": 128,
+      "metric_cache_version": 1
+    }
+  },
+  "results": {
+    "perchannel_real_hessian_25pct": {
+      "description": "Routing-aware per-channel plan with real routed Hessian scores for both W1 pairs and W2 channels at 25% / 25%.",
+      "mode": "per_channel",
+      "ppl": 6.603661,
+      "nll": 1.887624,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.25,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 207.9,
+      "budget_source": "routing_aware_two_level",
+      "w1_fraction_target": 0.25,
+      "w2_fraction_target": 0.25,
+      "w1_channel_metric_requested": "real_hessian",
+      "w1_channel_metric_effective": "real_hessian",
+      "w2_channel_metric_requested": "real_hessian",
+      "w2_channel_metric_effective": "real_hessian",
+      "w2_channel_metric_fallback_used": false
+    },
+    "perchannel_real_hessian_w1_4_w2_16": {
+      "description": "Routing-aware per-channel plan with real routed Hessian scores for W1=4% and W2=16%.",
+      "mode": "per_channel",
+      "ppl": 6.603787,
+      "nll": 1.887643,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576998400,
+      "fp8_fraction": 0.080001,
+      "w1_pair_fraction": 0.040001,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 206.8,
+      "budget_source": "routing_aware_two_level",
+      "w1_fraction_target": 0.04,
+      "w2_fraction_target": 0.16,
+      "w1_channel_metric_requested": "real_hessian",
+      "w1_channel_metric_effective": "real_hessian",
+      "w2_channel_metric_requested": "real_hessian",
+      "w2_channel_metric_effective": "real_hessian",
+      "w2_channel_metric_fallback_used": false
+    },
+    "perchannel_real_hessian_w1_0_w2_25": {
+      "description": "Routing-aware per-channel plan that spends the full channel budget on W2 using real routed Hessian scores.",
+      "mode": "per_channel",
+      "ppl": 6.615687,
+      "nll": 1.889444,
+      "memory_gb": 24.927,
+      "fp8_weights": 2684354560,
+      "fp8_fraction": 0.083333,
+      "w1_pair_fraction": 0.0,
+      "w2_channel_fraction": 0.25,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 208.6,
+      "budget_source": "routing_aware_two_level",
+      "w1_fraction_target": 0.0,
+      "w2_fraction_target": 0.25,
+      "w1_channel_metric_requested": "real_hessian",
+      "w1_channel_metric_effective": "real_hessian",
+      "w2_channel_metric_requested": "real_hessian",
+      "w2_channel_metric_effective": "real_hessian",
+      "w2_channel_metric_fallback_used": false
+    },
+    "perchannel_output_perturbation_25pct": {
+      "description": "Routing-aware per-channel plan with real Hessian W1 scores and W2 scores from exact hot-expert output perturbation plus real-Hessian fallback elsewhere at 25% / 25%.",
+      "mode": "per_channel",
+      "ppl": 6.599597,
+      "nll": 1.887009,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.25,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 207.2,
+      "budget_source": "routing_aware_two_level",
+      "w1_fraction_target": 0.25,
+      "w2_fraction_target": 0.25,
+      "w1_channel_metric_requested": "real_hessian",
+      "w1_channel_metric_effective": "real_hessian",
+      "w2_channel_metric_requested": "output_perturbation_hot_experts",
+      "w2_channel_metric_effective": "output_perturbation_hot_experts_with_real_hessian_fallback",
+      "w2_channel_metric_fallback_used": true,
+      "w2_hot_experts": 800,
+      "w2_fallback_active_experts": 9437
+    },
+    "perchannel_output_perturbation_w1_4_w2_16": {
+      "description": "Routing-aware per-channel plan with real Hessian W1 scores and W2 scores from exact hot-expert output perturbation plus real-Hessian fallback elsewhere at W1=4% and W2=16%.",
+      "mode": "per_channel",
+      "ppl": 6.603022,
+      "nll": 1.887527,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576998400,
+      "fp8_fraction": 0.080001,
+      "w1_pair_fraction": 0.040001,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 207.2,
+      "budget_source": "routing_aware_two_level",
+      "w1_fraction_target": 0.04,
+      "w2_fraction_target": 0.16,
+      "w1_channel_metric_requested": "real_hessian",
+      "w1_channel_metric_effective": "real_hessian",
+      "w2_channel_metric_requested": "output_perturbation_hot_experts",
+      "w2_channel_metric_effective": "output_perturbation_hot_experts_with_real_hessian_fallback",
+      "w2_channel_metric_fallback_used": true,
+      "w2_hot_experts": 800,
+      "w2_fallback_active_experts": 9437
+    },
+    "perchannel_output_perturbation_w1_0_w2_25": {
+      "description": "Routing-aware W2-only channel plan with exact hot-expert output perturbation for W2 and real-Hessian fallback for the remaining experts.",
+      "mode": "per_channel",
+      "ppl": 6.61138,
+      "nll": 1.888792,
+      "memory_gb": 24.927,
+      "fp8_weights": 2684354560,
+      "fp8_fraction": 0.083333,
+      "w1_pair_fraction": 0.0,
+      "w2_channel_fraction": 0.25,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 206.8,
+      "budget_source": "routing_aware_two_level",
+      "w1_fraction_target": 0.0,
+      "w2_fraction_target": 0.25,
+      "w1_channel_metric_requested": "real_hessian",
+      "w1_channel_metric_effective": "real_hessian",
+      "w2_channel_metric_requested": "output_perturbation_hot_experts",
+      "w2_channel_metric_effective": "output_perturbation_hot_experts_with_real_hessian_fallback",
+      "w2_channel_metric_fallback_used": true,
+      "w2_hot_experts": 800,
+      "w2_fallback_active_experts": 9437
+    }
+  }
+}

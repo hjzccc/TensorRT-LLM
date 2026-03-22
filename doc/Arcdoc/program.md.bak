@@ -1,0 +1,591 @@
+# Mixed-Precision MoE Quantization with SM120 Kernel Co-Design
+
+## Direction
+
+Mixed-precision (NVFP4 + FP8) quantization for MoE expert weights on Blackwell SM120.
+
+**The hardware is fixed**: SM120 tensor cores execute FP4×FP8→FP32 and FP8×FP8→FP32 natively. CUTLASS grouped GEMM handles heterogeneous FP4/FP8 groups. Dual-tile (M32/M128) auto-tuner is built. The execution path is not the research question — it's solved.
+
+**The research question is purely: which channels/experts get FP4 vs FP8?** Given a memory budget, find the precision assignment that minimizes perplexity. This is a combinatorial optimization problem over output channels of MoE expert weight matrices. Everything else (kernel execution, weight packing, permutation) follows mechanically from the assignment.
+
+### What we bring
+
+1. **Per-channel FP4/FP8 within MoE experts** — the novel contribution. Assign different output channels within the SAME expert to different precisions (some FP4, some FP8), executed via column permutation + 2-group CUTLASS grouped GEMM. Nobody does this for MoE. ScaleBITS does channel reordering for dense LLMs; we bring it to MoE with routing-aware, activation-conditioned sensitivity.
+
+2. **SM120 hardware co-design**: NVFP4/FP8 tensor cores, CUTLASS grouped GEMM (confirmed: supports heterogeneous FP4/FP8 groups in single launch), dual-tile (M32/M128) strategy. Column permutation + 2-group GEMM + output scatter — execution path is validated.
+
+3. **Two-level precision hierarchy**: expert-level (routing frequency) + channel-level (activation-based sensitivity within expert). MoE routing creates expert-specific activation distributions, making per-channel discrimination STRONGER than in dense models — each expert's tokens are semantically coherent, so certain channels are systematically amplified.
+
+4. **Preliminary insights** (see `scripts/channel_quant/exploration.md`):
+   - Routing frequency dominates per-channel weight norms for expert-level allocation (hot experts carry 82% of ground-truth sensitivity)
+   - Weight-only proxies are nearly uniform within experts (Gini ≈ 0.06) — BUT this is because weight_l1 is the WRONG metric. Activation-based metrics (E[|x_j|], ScaleBITS's |g·x·ΔW|) show expected Gini 0.35-0.55, 6× more discriminative.
+   - Per-channel assignment IS worthwhile — we just need activation-conditioned sensitivity, not weight norms
+
+5. **Existing infrastructure**: TensorRT-LLM fork with SwiGLU epilogue fusion, dual-tile auto-tuner, NVFP4 pipeline
+
+### Research landscape
+
+| Paper | Core Idea | Limitation | Per-Channel? |
+|-------|-----------|------------|:---:|
+| **MxMoE** (ICML'25) | ILP per-block precision + roofline cost model | Static, per-layer sensitivity only | Per-projection (gate/up/down) |
+| **DynaExq** (Feb'26) | EMA hotness tracking + dual-version expert residency | Generic INT, no HW co-design | Per-expert only |
+| **DynaMo** | Cross-dataset expert significance + 1% channel caching | Coarse dataset-level trigger | 1% channels cached, not mixed-precision |
+| **ScaleBITS** (ICML'26) | Submodular greedy channel reordering | Dense LLM only, no MoE/routing | ✅ But dense only |
+| **FGMP** (NVIDIA) | Fisher-weighted FP4/FP8 per-16-block selection | Dense LLM only, custom HW | Per-block (along K, not output channels) |
+| **OWQ** (AAAI'24) | Hessian-based weak column identification | Keeps weak cols at FP16, not mixed FP4/FP8 | ✅ But FP16 outliers only |
+| **ExpertQuant** (ICLR'26 sub) | Router rank-aware calibration | Preserves routing, doesn't optimize precision | ❌ |
+| **BT-MoE** (ICLR'26 sub) | MCKP joint bit+rank allocation | No per-channel | Per-expert only |
+| **MoEQuant** (ICML'25) | Affinity-guided calibration weighting | Uniform PTQ | ❌ |
+
+**The gap: nobody does per-output-channel FP4/FP8 within MoE experts.** ScaleBITS does channel reordering for dense LLMs. FGMP does per-block FP4/FP8 but for dense LLMs with custom hardware. OWQ identifies weak columns but keeps them at FP16. We combine MoE routing awareness + per-channel sensitivity + SM120 CUTLASS execution.
+
+### Phases
+
+**Phase 1 (THE CORE) — Channel selection:** Exhaustively explore which channels/experts should be FP4 vs FP8. This is the entire research contribution. Try every metric, every assignment strategy, every granularity, every calibration approach. The goal is to find the assignment that gives the best WikiText-2 perplexity at a given memory budget. This phase uses simulated quantization (quantize weights → dequantize → BF16 matmul) to isolate weight quantization error from activation quantization effects, matching how all baseline papers (GPTQ, MxMoE, MC-MoE) measure accuracy.
+
+**Phase 2 — Kernel integration:** Take the winning assignment from Phase 1 and deploy it on SM120 tensor cores via CUTLASS grouped GEMM. Column permutation + 2-group launch (FP4 bucket + FP8 bucket) + output scatter. The assignment is fixed; this phase just makes it run fast. Benchmark tokens/s.
+
+**Phase 3 — Co-optimization (if needed):** Snap precision boundaries to N=128 tile alignment. Joint precision + tile-size optimization.
+
+## Constraints
+
+**Fixed (not research questions):**
+- Hardware: NVIDIA SM120 (RTX 5090 / Blackwell) with NVFP4/FP8 native tensor cores
+- Execution: CUTLASS grouped GEMM with 2-group heterogeneous FP4/FP8 launch. Column permutation for contiguous precision blocks. Output scatter to restore channel order. This is engineering, not research.
+- Framework: TensorRT-LLM fork at `/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile`
+- Model: Qwen3.5-35B-A3B (256 routed experts + 1 shared, top-8, hidden_size=2048, moe_intermediate_size=512, 40 layers, hybrid Gated DeltaNet + Full Attention)
+- Deployment target: fit on single RTX 5090 (32 GB) — uniform FP8 (35 GB) doesn't fit, uniform FP4 (17.5 GB) fits but loses accuracy, mixed FP4/FP8 is the target
+- Weight formats: NVFP4 (E2M1 with FP8 E4M3 block scale per 16 elements) and FP8 (E4M3)
+- Tensor core matmul: FP4 weight × FP8 activation → FP32 accumulate, or FP8 weight × FP8 activation → FP32 accumulate. This is what the hardware does — not a choice.
+- W1 pairs `(up_i, gate_i)` stay together for SwiGLU
+- No retraining or fine-tuning — strictly post-training quantization (PTQ)
+
+**The research question — explore EXHAUSTIVELY:**
+- **Which channels get FP4 vs FP8?** This is the ENTIRE contribution. Every experiment should test a different way to answer this question.
+- Granularity: per-expert, per-projection, per-output-channel, per-block-of-16, or combinations
+- Sensitivity metric: how to score each channel's importance (weight norms, activation magnitude, Hessian, output perturbation, router affinity, GPTQ residual, or novel metrics)
+- Assignment algorithm: how to turn scores into FP4/FP8 decisions (sort-and-split, threshold, K-means, ILP/knapsack, submodular greedy, per-projection split ratios)
+- Budget allocation: how to distribute FP8 budget across layers, experts, and projections (uniform, routing-weighted, perturbation-weighted, hierarchical)
+- Calibration: what data and how much to use for computing sensitivity scores (dataset, token count, sequence length diversity, language diversity)
+- Any other idea that changes WHICH CHANNELS get higher precision
+
+## Success criteria
+
+**The only metric that matters: beat related work on perplexity at equivalent memory.**
+
+**Related work to beat** (simulate their assignment strategies on our model):
+- MxMoE's ILP per-block assignment
+- MC-MoE's importance-weighted per-expert assignment
+- DynaExq's EMA-based hotness tracking
+- DynaMo's cross-dataset expert significance + channel caching
+- Uniform NVFP4 and uniform FP8 baselines
+
+## Evaluation and Calibration Protocol (MANDATORY)
+
+**Every number you report MUST follow this protocol. No exceptions. No "quick screening" with 512 tokens.**
+
+### Calibration — FOLLOW THE GPTQ STANDARD
+
+This is how EVERY quantization paper generates calibration data (verified from GPTQ, MC-MoE, MxMoE actual code):
+
+```python
+# Standard calibration data generation (from MC-MoE/MxMoE/GPTQ code):
+traindata = load_dataset('wikitext', 'wikitext-2-raw-v1', split='train')
+trainenc = tokenizer(" ".join(traindata['text']), return_tensors='pt')  # or "\n\n".join
+
+random.seed(0)
+calibration_samples = []
+for _ in range(128):  # nsamples = 128
+    i = random.randint(0, trainenc.input_ids.shape[1] - seqlen - 1)
+    j = i + seqlen  # seqlen = 2048
+    calibration_samples.append(trainenc.input_ids[:, i:j])
+```
+
+**Parameters (from actual paper codebases):**
+- **nsamples**: 128 (GPTQ default, MC-MoE default, MxMoE default)
+- **seqlen**: 2048 (MC-MoE/GPTQ) or 4096 (MxMoE). Use 2048 for our model.
+- **Sampling**: RANDOM start positions in the full training text — NOT sequential from the beginning
+- **Dataset**: WikiText-2 train (default) or C4
+- **seed**: 0 (for reproducibility)
+- **Total tokens**: 128 × 2048 = 262,144 tokens of diverse calibration data
+
+**Purpose**: Capture routing frequencies, compute sensitivity metrics, generate channel masks. Runs ONCE, shared across all configs.
+
+**What NOT to do:**
+- ❌ Using only 128 tokens total (we were doing this — 2000× too small)
+- ❌ Taking the first N tokens sequentially (biased — only sees the beginning of the text)
+- ❌ Using a single contiguous chunk (not diverse enough for routing statistics)
+
+### Evaluation — FOLLOW THE GPTQ STANDARD
+
+This is what EVERY quantization paper does (GPTQ, AWQ, MxMoE, MC-MoE, MoEQuant). You MUST match this exactly so your numbers are comparable with published results.
+
+**The GPTQ-standard eval protocol:**
+```python
+# 1. Load full WikiText-2 test set
+testenc = tokenizer("\n\n".join(dataset["text"]), return_tensors="pt")
+
+# 2. Split into non-overlapping chunks of seqlen
+nsamples = testenc.numel() // seqlen  # seqlen = 2048
+for i in range(nsamples):
+    batch = testenc[:, i*seqlen : (i+1)*seqlen]
+    logits = model(batch)
+    shift_logits = logits[:, :-1, :]
+    shift_labels = batch[:, 1:]
+    loss = cross_entropy(shift_logits, shift_labels)
+    nll = loss.float() * seqlen  # FP32
+    nlls.append(nll)
+
+# 3. PPL = exp(total_NLL / total_tokens)
+ppl = torch.exp(sum(nlls) / (nsamples * seqlen))
+```
+
+**Parameters:**
+- **seqlen**: 2048 (GPTQ/MC-MoE/MoEQuant standard) or 4096 (MxMoE). Use 2048 for our model.
+- **stride**: Same as seqlen — NO overlap. Non-overlapping chunks only.
+- **Test set**: FULL WikiText-2 test (~285K tokens = ~139 chunks of 2048)
+- **Loss**: `loss.float() * seqlen` — explicitly FP32, scaled by sequence length
+- **PPL**: `exp(sum(nlls) / (nsamples * seqlen))`
+- **Batch size**: 1
+- **use_cache**: Disabled
+
+**Key details from actual codebases:**
+- MC-MoE uses layer-by-layer CPU offloading (Catcher hook pattern) — same as what we need for our 32 GB GPU
+- MxMoE runs full model on GPU (they have larger GPUs)
+- Both use `nn.CrossEntropyLoss()` with default `reduction='mean'`, then multiply by seqlen
+- DO NOT use lm_eval harness — it uses sliding window which gives LOWER PPL than what papers report
+
+**Matmul precision for evaluation — TWO modes:**
+
+**Mode 1: Simulated (weight-only quantization) — for channel selection research**
+- Quantize weights → dequantize to BF16 → standard `F.linear` in BF16
+- Activations stay BF16 (no activation quantization)
+- This isolates WEIGHT QUANTIZATION ERROR (which is what channel selection controls)
+- This is what ALL papers use for accuracy measurement (GPTQ, AWQ, MxMoE, MC-MoE)
+- Use this mode when comparing channel assignment strategies
+
+**Mode 2: Tensor-core simulation (weight + activation quantization) — for deployment accuracy**
+- Simulates what SM120 tensor cores actually compute:
+  - FP4 path: FP4 weight × FP8 activation → FP32 accumulate
+  - FP8 path: FP8 weight × FP8 activation → FP32 accumulate
+- Quantize weight to FP4/FP8, dequantize to BF16
+- ALSO quantize activation to FP8 (per-tensor dynamic scaling), dequantize to BF16
+- Then `F.linear` in BF16
+- This adds ~0.02 PPL degradation uniformly across all configs (activation quantization noise)
+- Use this mode for final deployment accuracy prediction
+
+### Reference Quantized Models
+
+Two official/community quantized checkpoints define the real-world deployment baselines. Cross-validated from their `recipe.yaml` and `config.json`.
+
+**Per-module quantization map** (cross-validated against both models):
+
+| Module | Type | NVFP4 model | FP8 model | Our experiments |
+|--------|------|:-----------:|:---------:|:---------------:|
+| **Full attention Q/K/V/O** (`self_attn.*_proj`) | Linear | **FP4** | **FP8** | BF16 |
+| **DeltaNet QKV** (`linear_attn.in_proj_qkv`) | Linear | BF16 | **FP8** | BF16 |
+| **DeltaNet Z** (`linear_attn.in_proj_z`) | Linear | BF16 | **FP8** | BF16 |
+| **DeltaNet out** (`linear_attn.out_proj`) | Linear | BF16 | **FP8** | BF16 |
+| **DeltaNet decay** (`linear_attn.in_proj_a`) | Linear | BF16 | BF16 | BF16 |
+| **DeltaNet forget** (`linear_attn.in_proj_b`) | Linear | BF16 | BF16 | BF16 |
+| **DeltaNet conv1d** (`linear_attn.conv1d`) | Conv1d | BF16 | BF16 | BF16 |
+| **MoE expert W1** (`experts.gate_up_proj`) | Linear | **FP4** | **FP8** | **FP4/FP8 mixed** |
+| **MoE expert W2** (`experts.down_proj`) | Linear | **FP4** | **FP8** | **FP4/FP8 mixed** |
+| **Shared expert** (`shared_expert.*`) | Linear | **FP4** | **FP8** | BF16 |
+| **MoE router** (`mlp.gate`) | Linear | BF16 | BF16 | BF16 |
+| **Shared expert gate** (`shared_expert_gate`) | Linear | BF16 | BF16 | BF16 |
+| **LM head** (`lm_head`) | Linear | BF16 | BF16 | BF16 |
+| **Embeddings** (`embed_tokens`) | Embedding | BF16 | BF16 | BF16 |
+| **RMSNorm** (`*layernorm*`, `norm`) | RMSNorm | BF16 | BF16 | BF16 |
+| **Visual encoder** (`model.visual.*`) | Various | BF16 | BF16 | N/A |
+
+Key differences between the two reference models:
+1. **NVFP4 ignores ALL DeltaNet** (`re:.*linear_attn.*` in ignore list). FP8 quantizes DeltaNet qkv/z/out_proj but keeps decay (in_proj_a), forget (in_proj_b), and conv1d at BF16.
+2. **Both keep the same components unquantized**: router, shared_expert_gate, lm_head, embeddings, DeltaNet decay/forget/conv1d.
+3. **Non-Linear modules** (Embedding, RMSNorm, Conv1d, activations) are automatically skipped by `targets: [Linear]` — they are NOT quantized regardless of the ignore list.
+
+---
+
+**Reference 1: `Sehyo/Qwen3.5-35B-A3B-NVFP4`** (community, `llm-compressor` / `compressed-tensors`)
+
+```yaml
+# recipe.yaml
+QuantizationModifier:
+  targets: [Linear]                          # only nn.Linear modules
+  ignore: [lm_head, re:.*mlp.gate$, re:.*mlp.shared_expert_gate$, re:.*linear_attn.*, re:model\.visual\..*]
+  scheme: NVFP4
+```
+
+```yaml
+# config.json quantization_config
+weights:
+  num_bits: 4              # NVFP4 E2M1
+  group_size: 16           # per-16-element block scaling
+  scale_dtype: float8_e4m3fn  # FP8 E4M3 block scale factor
+  observer: memoryless_minmax  # pure RTN (absmax scaling), NO GPTQ
+  dynamic: false           # static weight quantization
+  symmetric: true
+
+input_activations:
+  num_bits: 4              # activations ALSO FP4 (not FP8!)
+  group_size: 16           # per-16-element group scaling
+  scale_dtype: float8_e4m3fn
+  observer: static_minmax
+  dynamic: "local"         # per-token dynamic quantization
+  symmetric: true
+```
+
+SM120 tensor core execution: **FP4 weight × FP4 activation → FP32 accumulate** (NVFP4 instruction).
+
+---
+
+**Reference 2: `Qwen/Qwen3.5-35B-A3B-FP8`** (official Qwen, native `transformers` FP8)
+
+```json
+// config.json quantization_config
+{
+  "quant_method": "fp8",
+  "activation_scheme": "dynamic",           // per-tensor dynamic activation scaling
+  "weight_per_tensor": false,
+  "act_per_tensor": false,
+  "weight_block_size": [128, 128]           // 2D block scaling (128×128 weight blocks)
+}
+```
+
+- Weights: FP8 E4M3 with **2D block scaling [128, 128]** — each 128×128 weight tile gets its own FP8 scale factor
+- Activations: FP8, dynamic per-tensor scaling
+- Quantizes MORE aggressively than NVFP4: includes DeltaNet qkv/z/out_proj projections
+
+SM120 tensor core execution: **FP8 weight × FP8 activation → FP32 accumulate**.
+
+---
+
+**Implications for our experiments:**
+
+1. **Our experiments only quantize MoE experts.** Both reference models ALSO quantize full attention, shared expert, and (FP8 only) DeltaNet projections. Our effective model size at "uniform FP4" is LARGER than the reference NVFP4 model because we keep attention/shared expert at BF16.
+
+2. **For fair comparison with reference models**, we should either:
+   - (a) Also quantize attention + shared expert to match their scope, OR
+   - (b) Clearly state we optimize MoE expert precision only and our memory numbers exclude attention/shared expert quantization savings
+
+3. **Activation quantization differs:**
+   - NVFP4 reference: FP4 activations (per-16-group, dynamic per-token)
+   - FP8 reference: FP8 activations (dynamic per-tensor)
+   - Our simulated eval: BF16 activations (no activation quantization)
+   - For deployment accuracy, we should add activation quantization matching the target format
+
+4. **Weight quantization method is the same:** Both reference models use RTN (round-to-nearest, no GPTQ). Our experiments also use RTN. This is a fair comparison on the weight quantization algorithm level — the only difference is which channels get which precision.
+
+5. **To reproduce reference NVFP4 baseline exactly**, quantize these modules to NVFP4 with RTN:
+   - All `self_attn.{q,k,v,o}_proj` (full attention layers: 3, 7, 11, 15, 19, 23, 27, 31, 35, 39)
+   - All `experts.gate_up_proj` and `experts.down_proj` (256 experts × 40 layers)
+   - All `shared_expert.{gate,up,down}_proj` (40 layers)
+   - With input activation quantization: FP4, group_size=16, dynamic per-token
+
+6. **To reproduce reference FP8 baseline exactly**, quantize all of the above PLUS:
+   - All `linear_attn.{in_proj_qkv, in_proj_z, out_proj}` (DeltaNet layers: 0,1,2, 4,5,6, 8,9,10, ...)
+   - With weight block_size=[128, 128] and dynamic FP8 activation scaling
+
+### Handling the full test set with layer-by-layer weight loading
+
+MC-MoE's approach (from their actual code): use the Catcher hook pattern to process layer-by-layer:
+1. Run embedding + first layer to capture all chunk activations
+2. Process remaining layers one at a time, moving each to GPU then back to CPU
+3. Apply final norm + lm_head on GPU
+
+With our model (40 layers, ~285K tokens, seqlen=2048, ~139 chunks):
+- Each layer processes 139 chunks sequentially
+- At ~0.5s per chunk per layer: 40 layers × 139 chunks × 0.5s ≈ 46 minutes per config
+- This is feasible and matches what MC-MoE does
+
+### What NOT to do
+- ❌ Evaluating on only 512 or 4096 tokens — papers use the FULL test set
+- ❌ Using sliding window / overlap — GPTQ standard is non-overlapping
+- ❌ Using `lm_eval` harness — gives different (lower) PPL than what papers report
+- ❌ BF16 loss computation — all papers use `loss.float()` (FP32)
+- ❌ FP8 `_scaled_mm` matmul — papers use standard BF16 matmul with dequantized weights
+- ❌ Different eval settings across configs in the same experiment
+
+## How to explore
+
+### Phase 1: Algorithm Exploration
+
+The goal is to find the best precision assignment strategy for MoE. Don't commit to one approach — explore the design space and let the data decide.
+
+**Start from our preliminary insights, but challenge them:**
+- We found per-channel sorting barely helps (Gini ≈ 0.06) — but weight_l1 was the WRONG METRIC. Activation-based metrics (E[|x_j|], gradient×activation×ΔW) show expected Gini 0.35-0.55. Per-channel assignment IS worthwhile with the right metric.
+- We found routing frequency matters for expert-level allocation — this gives us the two-level hierarchy: expert-level (routing) + channel-level (activation-conditioned sensitivity).
+- MoE routing creates expert-specific activation distributions. Tokens routed to the same expert share semantic similarity, so certain input channels are systematically amplified per expert. This makes per-channel discrimination STRONGER in MoE than in dense models.
+
+**The core research agenda: EXHAUSTIVELY explore which channels should be FP4 vs FP8.** This means trying every possible metric, strategy, granularity, budget allocation, and calibration approach. The tensor core execution is fixed — the ONLY variable is the channel assignment. Every experiment should change the assignment and measure the PPL impact.
+
+**What already works (from 30 iterations, 200+ configs):**
+- Best overall: joint W1/W2 3-tier + per-channel topup + MaCa calibration → PPL 6.5699
+- Best per-channel metric: router-affinity (weight by router probability per token-expert pair)
+- Best per-projection split: W1:W2 = 1:4 (W2/down_proj needs 4× more FP8 budget)
+- Best expert-level allocation: routing frequency (hot experts get more FP8)
+- Best calibration: MaCa multi-scale (mix 128/512/2048-token chunks)
+- MxMoE output perturbation is the strongest per-block metric but doesn't translate well to per-channel
+
+**What doesn't work (tested and rejected):**
+- Weight-only metrics (weight_l1, kurtosis) — too flat (Gini ≈ 0.06)
+- WANDA, RQE, BAQ — all worse than router-affinity
+- WUSH diagonal preconditioning — uniformly worse
+- RaZeR NVFP4 zero remapping — bad fit for this model's small weights
+- Router retuning — routing is already optimal, corrections hurt
+- Learned per-expert corrections — minimal benefit, overfits at per-channel level
+- Multilingual calibration — adds noise when evaluating on English WikiText-2
+
+**What still needs exploration:**
+
+**Spikes** (explore in roughly this order, but adapt based on findings):
+
+- **Spike 1 — Channel sensitivity metric shootout (the critical experiment)**:
+  Our preliminary weight_l1 metric was flat (Gini ≈ 0.06). We need to find a metric that actually discriminates channels. Test ALL of these on the same experts and compare Gini coefficients and Spearman correlation with output-perturbation ground truth:
+  
+  | Metric | Formula | Cost | Expected Gini |
+  |--------|---------|------|---------------|
+  | Weight L1 (baseline) | `Σ|w_ij|` per column | Free | 0.06 (measured) |
+  | Weight kurtosis | `Kurt(w_j)` per column | Free | 0.10-0.20 |
+  | Activation magnitude | `E[|x_j|]` over routed tokens | 1 fwd pass | 0.35-0.55 |
+  | Activation variance | `Var(x_j)` over routed tokens | 1 fwd pass | 0.30-0.50 |
+  | Activation kurtosis | `Kurt(x_j)` over routed tokens | 1 fwd pass | 0.35-0.50 |
+  | Hessian diagonal | `H_jj · ‖ΔW_j‖²` (OWQ-style) | 1 fwd pass | 0.25-0.40 |
+  | ScaleBITS sensitivity | `|g_i^(y)| · |x_j| · |ΔW_ij|` | 1 fwd+bwd on quantized model | 0.40-0.60 |
+  | Fisher per block | `Σ g_i² · (ΔQ v_i)²` (FGMP-style) | 1 fwd+bwd | 0.20-0.35 |
+  | SliM-LLM salience | `|w_i| × |a_i|` | 1 fwd pass | 0.30-0.45 |
+  | Gate-aware Hessian | `(X·√c)(X·√c)^T` (MoEQuant) | 1 fwd pass | 0.30-0.50 |
+  | Output perturbation | per-channel PPL impact (ground truth) | Expensive | 0.50-0.70 |
+
+  **Key insight to test**: ScaleBITS showed that gradients must be evaluated on the QUANTIZED model (not FP16) to get correct sensitivity ranking. Evaluate gradient-based metrics at both FP16 and draft-FP4 to verify.
+  
+  **MoE-specific test**: Compare Gini coefficients for the SAME metric on hot vs cold experts. Preliminary ground truth shows cold experts have HIGHER Gini (0.44) than hot experts (0.10) — the opposite of initial expectations. Test whether the new metrics show the same pattern or different.
+  
+  **Output**: Per-metric Gini coefficient table, correlation matrix, best metric identified.
+
+- **Spike 2 — Channel-level assignment strategies**:
+  Using the best metric from Spike 1, explore different strategies for deciding which channels get FP8:
+  
+  - **Sort-and-split** (ScaleBITS-style): Sort output channels by sensitivity, top-K% → FP8, rest → FP4. Requires column permutation for contiguous execution.
+  - **Weak-column protection** (OWQ-style): Keep top-k most sensitive columns at FP8, rest at FP4. k determined by sensitivity gap analysis.
+  - **Threshold-based**: All channels above a global sensitivity threshold → FP8. No fixed budget — the threshold determines the FP4/FP8 ratio automatically.
+  - **K-means clustering** (RPTQ-style): Cluster channels by activation range into 2 groups (FP4-safe vs FP8-needed). Data-driven split point.
+  - **Per-projection sensitivity** (MxMoE insight): down_proj is consistently more sensitive than gate/up. Assign different FP4/FP8 ratios per projection type.
+  - **Bi-directional reordering** (ScaleBITS): Reorder BOTH input and output channels by sensitivity, creating a 2D sensitivity map. Assign high-sensitivity blocks to FP8.
+  - **Submodular greedy** (ScaleBITS): Iteratively add channels to FP8 set by marginal gain, with (1-1/e) approximation guarantee.
+  
+  For each strategy, measure WikiText-2 perplexity at equivalent memory budgets. Let the Pareto curve tell you which strategy wins.
+  
+  **Output**: Strategy comparison table, Pareto curves, best strategy identified.
+
+- **Spike 3 — Two-level hierarchy (expert + channel)**:
+  Combine expert-level and channel-level assignment:
+  - **Level 1 — Expert budget**: Allocate FP8 memory budget across experts based on routing frequency (our preliminary finding)
+  - **Level 2 — Channel assignment**: Within each expert's budget, assign channels to FP8 using the best metric/strategy from Spikes 1-2
+  - Compare against: expert-level only (entire expert FP4 or FP8), channel-level only (uniform budget across experts), and the two-level hierarchy
+  - **Key question**: Does combining both levels beat either alone? By how much?
+  
+  **Output**: Perplexity comparison at matched memory budgets.
+
+- **Spike 4 — Dynamic channel switching**:
+  Expert activation is input-dependent — static assignment can't be optimal for all inputs. Explore runtime switching:
+  - DynaExq approach: EMA hotness tracking, promote/demote experts between FP4↔FP8
+  - DynaMo approach: Cache ~1% most dynamic channels in FP8, switch on distribution shift
+  - Our approach: Router-signal-driven switching. Use current batch's router logits to select per-expert precision.
+  - Could combine: static channel-level assignment + dynamic expert-level switching
+  
+  **Key questions**: Does dynamic switching on top of per-channel assignment help? What's the overhead?
+
+- **Spike 5 — Related work comparison**:
+  Build the comparison table. Simulate each related work's assignment strategy on Qwen3.5-35B-A3B. Measure WikiText-2 perplexity at equivalent memory. Our per-channel + routing-aware method should beat:
+  - MxMoE's per-block ILP
+  - DynaExq's per-expert switching
+  - FGMP's Fisher-weighted blocks
+  - ScaleBITS's channel reordering (applied to MoE)
+  - Uniform FP4, uniform FP8
+  
+  **Output**: `method | memory (GB) | WikiText-2 PPL` table.
+
+Each spike produces **results files + exploration.md entry**. Pivot immediately if a finding changes the direction.
+
+### Phase 2: SM120 Kernel Co-Design
+
+Take the best assignment strategy from Phase 1 and implement it efficiently on SM120:
+- **Tiling**: CUTLASS grouped GEMM requires N_tile = 128 or 256. Snap precision boundaries to tile boundaries.
+- **Permutation**: Reorder channels so same-precision channels are contiguous. W1→SwiGLU→W2 permutation cancels automatically; W2 output needs scatter kernel.
+- **Weight packing**: Separate FP4 and FP8 memory pools per expert.
+- **Execution**: Two grouped GEMM launches per projection (FP4 bucket + FP8 bucket), combined with dual-tile (M32/M128) strategy.
+- **Dynamic cache** (if Spike 3 shows it helps): Implement FP8 hot cache with async promotion/demotion (similar to DynaExq's VER design but for NVFP4/FP8).
+- **Benchmark**: kernel time, end-to-end tokens/s, comparison to uniform NVFP4.
+
+### Phase 3: Co-optimization (if needed)
+
+- Alignment-aware precision assignment (include N=128 tile constraint in optimization)
+- Joint precision + tile-size optimization (combine with dual-tile auto-tuner)
+- Cache-size-aware assignment (jointly optimize static assignment + cache allocation budget)
+
+## The exploration loop
+
+**Philosophy: the tensor cores are fixed. The ONLY thing we control is which channels get FP4 vs FP8. Exhaustively explore every way to make this decision. Try every metric, every strategy, every granularity, every calibration approach. Measure rigorously. Find insights from what works and what doesn't. Combine the best ideas. Keep improving until you can't.**
+
+The spikes above are STARTING POINTS, not a checklist. The real work is the iterative loop below. Every experiment should change the CHANNEL ASSIGNMENT and measure the PPL impact. If an experiment doesn't change which channels get FP4 vs FP8, it's not the right experiment for this phase.
+
+**⚠️ EVALUATION RULES — READ BEFORE EVERY EXPERIMENT:**
+- Every experiment MUST follow the **GPTQ-standard eval protocol** described in the Evaluation section above.
+- Calibration: 128 random 2048-token chunks from WikiText-2 train (GPTQ standard, 262K total tokens)
+- Evaluation: Full WikiText-2 test set (~285K tokens), seqlen=2048, non-overlapping chunks, GPTQ-standard PPL formula
+- Matmul: Simulated quantization (quantize → dequant → BF16 `F.linear`) for ALL configs
+- Loss: `loss.float() * seqlen` — FP32, scaled by sequence length
+- ALL configs in one experiment use the SAME eval code path
+- Use MC-MoE's layer-by-layer Catcher pattern for memory-efficient evaluation (~46 min per config)
+
+LOOP FOREVER:
+
+1. **Pick the most promising CHANNEL SELECTION idea to try next.** This could be:
+   - A new sensitivity metric for scoring channels (the core variable)
+   - A different assignment algorithm for turning scores into FP4/FP8 decisions
+   - A different granularity (per-channel vs per-block vs per-expert)
+   - A different budget allocation across layers/experts/projections
+   - A different calibration approach (data, length, diversity)
+   - Combining two approaches that each partially improved channel selection
+   - An idea stolen from a related paper's channel/column importance method
+   - A hypothesis formed from analyzing WHY the last channel assignment succeeded or failed
+
+2. **Run it and measure.** Follow the GPTQ-standard eval protocol — no shortcuts.
+   - Full WikiText-2 test set, seqlen=2048, non-overlapping chunks
+   - Simulated quantization (quantize → dequant → BF16 matmul), `loss.float() * seqlen`
+   - Compare against your current best result AND uniform FP4/FP8 baselines
+   - Record in every result JSON: `{"eval_tokens": "full_wikitext2_test", "seqlen": 2048, "nsamples": N, "matmul": "simulated_bf16", "loss_precision": "fp32"}`
+   - ~46 min per config with layer-by-layer eval. Budget time accordingly.
+
+3. **Analyze and learn.** Don't just record numbers — understand them:
+   - WHY did this approach beat/lose to the previous one?
+   - What does the sensitivity distribution look like? (plot it)
+   - Are there patterns across layers? Across expert tiers?
+   - Does this suggest a new hypothesis to test?
+   - With full test set eval (~285K tokens), PPL differences of 0.01 are meaningful
+
+4. **Log the insight.** Append to `exploration.md`:
+   ```
+   ## [N] Short Title
+   **Eval**: Full WikiText-2 test, seqlen=2048, N chunks, simulated quant, FP32 loss
+   **Approach**: What you tried
+   **Result**: What happened (include numbers)
+   **Insight**: What you LEARNED from this (not just the numbers — the understanding)
+   **Next**: What this suggests trying next
+   ```
+
+5. **Iterate.** Each experiment should either:
+   - **Improve PPL** → push this direction harder (variations, ablations, combinations)
+   - **Not improve** → understand why, extract the insight, pivot to the next idea
+   - **Reveal a surprise** → investigate the surprise, it often leads to the best insights
+
+6. **Combine winners.** After testing many individual strategies, combine the best ones:
+   - Best metric + best assignment strategy + best budget allocation + routing awareness
+   - Does the combination beat each individual approach?
+
+7. **Final comparison table.** Every result already uses the full test set (GPTQ standard). The table is always publication-ready. Every row uses identical evaluation settings.
+
+**The goal is NOT to complete 5 spikes. The goal is to find the assignment strategy that gives the best WikiText-2 perplexity at a given memory budget. Keep improving until you can't.**
+
+### Decision-making guidelines
+
+- **Try everything.** Don't theorize about which metric is better — compute all of them and compare. Don't debate assignment strategies — implement all of them and measure.
+- **Evaluation is sacred.** Always use the full WikiText-2 test set with GPTQ-standard protocol. ~46 min per config is the cost — budget accordingly. Never truncate to save time.
+- **Follow the signal.** If activation magnitude gives Gini 0.45 but gradient×activation×ΔW gives 0.55, drop everything and explore the gradient-based metric deeper.
+- **Steal from related work.** Read the analysis docs in `doc/Arcdoc/` when stuck. Each paper has an insight. MxMoE's per-projection finding, OWQ's weak-column concept, ScaleBITS's bi-directional reordering — test all of them.
+- **Always compare to baselines.** Every result alongside uniform FP4 and uniform FP8. A mixed-precision result is only interesting if it beats the uniform interpolation at the same memory.
+- **Think about hardware.** An approach that maps cleanly to 2-group CUTLASS grouped GEMM (column permutation + split) is preferred over one requiring custom kernels. But don't over-constrain Phase 1 — find the best accuracy first.
+- **Insights > numbers.** Understanding WHY something works is more valuable than getting 0.01 PPL better. The insight leads to the next 0.1 PPL improvement.
+
+### Autonomy rules
+
+**NEVER STOP** to ask. Keep exploring until manually stopped.
+
+**If your best approach plateaus:**
+- Try a fundamentally different metric (if using activation-based, try gradient-based)
+- Try a different granularity (if doing per-channel, try per-16-block FGMP-style)
+- Try combining expert-level and channel-level (the two-level hierarchy)
+- Try dynamic switching on top of static assignment
+- Re-read related work for ideas you haven't tried yet
+- Analyze which specific channels/experts cause the most error — the pathological cases often reveal the bottleneck
+
+## Reference material
+
+### Related work (read these for algorithmic ideas)
+
+**MoE-specific mixed-precision:**
+- `MxMoE_analysis.md` — ILP formulation, per-block sensitivity, roofline cost model, GroupGEMM codegen
+- `DynaMo_analysis.md` — Expert significance, channel switching, fuzzy c-means, cross-dataset dynamics
+- `DynaExq_abstract.md` — EMA hotness tracking, dual-version expert residency, async promotion/demotion
+- `MoEQuant_analysis.md` — Expert-balanced self-sampling, affinity-guided calibration
+- `MC_MixtureCompressor_analysis.md` — Per-expert IP assignment + dynamic expert pruning
+- `QMoE_analysis.md` — Sub-1-bit ternary compression + dictionary encoding
+- `MoE_Mixed_Precisions_analysis.md` — Random FP16/4-bit assignment as QoS knob
+- `MiLo_analysis.md` — Low-rank residual compensation for aggressive quantization
+
+**Router-aware quantization:**
+- ExpertQuant (ICLR'26 sub) — Rank-Aware Jaccard + Gap Hinge Loss to prevent router rank flips
+- EAQuant — Router logits KL divergence alignment during calibration
+- MoQa — Multi-stage data-model distribution awareness
+
+**Algorithmic foundations:**
+- BT-MoE (ICLR'26 sub) — MCKP formulation for joint bit+rank allocation
+- FGMP (NVIDIA) — Fisher information per 16-element block for NVFP4/FP8 selection
+- ScaleBITS (ICML'26) — Submodular greedy channel reordering with (1-1/e) guarantee
+- MoBiQuant (Feb'26) — Recursive residual bit slices for token-adaptive precision
+
+**Per-channel sensitivity metrics** (ranked by expected discriminative power):
+
+| Rank | Metric | Formula | Expected Gini | Cost |
+|------|--------|---------|---------------|------|
+| 1 | Activation magnitude | `E[\|x_j\|]` over routed tokens | 0.35-0.55 | 1 fwd pass |
+| 2 | ScaleBITS sensitivity | `\|g_i^(y)\| · \|x_j\| · \|ΔW_ij\|` | 0.40-0.60 | 1 fwd+bwd on quantized model |
+| 3 | Hessian diagonal (OWQ) | `H_jj · \|\|ΔW_j\|\|²` | 0.25-0.40 | 1 fwd pass |
+| 4 | Post-Quantization Integral | `(1/N)Σ\|∇F(w + t·Δw)\|` | 0.50-0.70 | 32 fwd+bwd (expensive) |
+| 5 | Activation variance | `Var(x_j)` over routed tokens | 0.30-0.50 | 1 fwd pass |
+| 6 | SliM-LLM salience | `\|w_i\| × \|a_i\|` | 0.30-0.45 | 1 fwd pass |
+| 7 | Gate-aware Hessian | `(X·√c)(X·√c)^T` (MoEQuant) | 0.30-0.50 | 1 fwd pass |
+| 8 | Fisher per block (FGMP) | `Σ g_i² · (ΔQ v_i)²` | 0.20-0.35 | 1 fwd+bwd |
+| 9 | Weight L1 norm | `Σ\|w_ij\|` per column | 0.06 (measured) | Free |
+
+**Critical insight from ScaleBITS**: Gradients must be evaluated on the QUANTIZED model (draft FP4), not the FP16 original. Full-precision gradients are near zero at the minimum and give wrong rankings.
+
+**MoE-specific insight**: Each expert sees semantically coherent tokens (routing acts as a topic filter). This AMPLIFIES the natural activation outlier structure — channels processing the expert's "specialty" will have systematically higher activation magnitudes. Expected Gini for activation magnitude in MoE should be HIGHER than in dense models.
+
+**Channel-level assignment strategies:**
+
+| Strategy | From | Key Mechanism |
+|----------|------|---------------|
+| Sort-and-split | ScaleBITS | Sort channels by sensitivity, top-K% → FP8. Column permutation for contiguous GEMM. |
+| Weak-column protection | OWQ | Keep top-k most sensitive columns at FP8, k from sensitivity gap. |
+| Threshold-based | FGMP | Global threshold on sensitivity; ratio determined automatically. |
+| K-means clustering | RPTQ | Cluster by activation range → 2 groups (FP4-safe vs FP8-needed). |
+| Bi-directional reorder | ScaleBITS | Reorder BOTH input+output channels; 2D sensitivity map. |
+| Submodular greedy | ScaleBITS | Add channels to FP8 by marginal gain; (1-1/e) approximation guarantee. |
+| Per-projection split | MxMoE | down_proj more sensitive than gate/up → different ratios per projection. |
+
+### Architecture references
+- `doc/nvfp4_moe_pipeline_trace.md` — NVFP4 quantization algorithm (scale = global_scale * absmax/6.0, CVT to E2M1)
+- `doc/dual_tile_moe_summary.md` — Dual-tile grouped GEMM infrastructure
+- Permutation math: P_half cancels in W2 reduction (sum is commutative), only Q needs runtime scatter
+
+### Hardware execution for per-channel mixed FP4/FP8
+
+**Confirmed**: CUTLASS grouped GEMM supports heterogeneous FP4/FP8 groups in a single launch (CUTLASS issue #2583, NVIDIA collaborator confirmed). The kernel naming convention:
+```
+gemm_grouped_ue8m0xe4m3_ue8m0xe2m1_f32_void_bf16  (FP8 group + FP4 group)
+```
+
+**Execution strategy** (ScaleBITS approach, adapted for MoE):
+1. **Offline**: Sort output channels by sensitivity. Permute weight matrix columns so FP4 columns are contiguous, FP8 columns are contiguous.
+2. **Online**: Single grouped GEMM launch with 2 groups per expert (FP4 block + FP8 block). Output scatter to restore original column order (~300ns overhead for M=128, N=4096 — negligible vs GEMM).
+3. **Constraint**: SM120 tensor core requires uniform precision per N-tile (N=128 minimum). The FP4/FP8 split must align to N=128 boundaries.
+
+### Key insights from related work
+
+1. **Per-channel in MoE is novel**: ScaleBITS does channel reordering for dense LLMs. OWQ identifies weak columns. FGMP does per-block FP4/FP8. Nobody does per-output-channel FP4/FP8 within MoE experts.
+2. **Activation metrics >> weight metrics in MoE**: Routing creates expert-specific activation distributions. Channel importance is driven by activation patterns, not weight magnitudes. Expected Gini improvement: 0.06 → 0.35-0.55 (6×).
+3. **Two-level hierarchy is natural**: Expert-level allocation (routing frequency) + channel-level assignment (activation sensitivity) — each level captures a different dimension of importance.
+4. **Down_proj is consistently more sensitive** (MxMoE): Could assign more FP8 budget to down_proj channels.
+5. **Cross-layer error propagation is unmeasured**: All papers do per-layer sensitivity. Nobody checks how quantization errors compound across 40 layers.

@@ -1,0 +1,1083 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: MoE expert weights quantize -> dequantize -> BF16 -> F.linear; embeddings, attention, shared expert, and lm_head remain BF16 unless future infra changes.",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/proper_eval.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      },
+      "mxmoe_perturbation_perchannel": {
+        "ppl": 6.59972,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_25pct": {
+        "ppl": 6.590387,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_w1_4_w2_16": {
+        "ppl": 6.606149,
+        "memory_gb": 24.874
+      },
+      "mxmoe_block_plus_channel_topup": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "output_perturbation_per_channel_9experts": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "topup_01pct": {
+        "ppl": 6.5769,
+        "memory_gb": 20.251
+      },
+      "topup_02pct": {
+        "ppl": 6.5788,
+        "memory_gb": 20.37
+      },
+      "topup_03pct": {
+        "ppl": 6.5791,
+        "memory_gb": 20.488
+      },
+      "topup_05pct": {
+        "ppl": 6.5763,
+        "memory_gb": 20.743
+      },
+      "topup_08pct": {
+        "ppl": 6.5798,
+        "memory_gb": 21.1
+      },
+      "topup_10pct": {
+        "ppl": 6.5791,
+        "memory_gb": 21.337
+      },
+      "topup_15pct": {
+        "ppl": 6.5872,
+        "memory_gb": 21.948
+      },
+      "topup_20pct": {
+        "ppl": 6.5939,
+        "memory_gb": 22.542
+      },
+      "perchannel_hessian_25pct": {
+        "ppl": 6.614806,
+        "memory_gb": 27.612
+      },
+      "perchannel_hessian_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_30pct": {
+        "ppl": 6.627915,
+        "memory_gb": 28.417
+      },
+      "perchannel_akurt_40pct": {
+        "ppl": 6.614058,
+        "memory_gb": 30.028
+      },
+      "mxmoe_topup_hessian_5pct": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "perturbation_proportional_30pct": {
+        "ppl": 6.5893,
+        "memory_gb": 28.417
+      },
+      "perturbation_proportional_40pct": {
+        "ppl": 6.596071,
+        "memory_gb": 30.028
+      },
+      "mxmoe_block_35pct": {
+        "ppl": 6.57889,
+        "memory_gb": 29.222
+      },
+      "mxmoe_layer_adaptive": {
+        "ppl": 6.583283,
+        "memory_gb": 27.813
+      },
+      "global_channel_ranking": {
+        "ppl": 6.612899,
+        "memory_gb": 25.281
+      },
+      "mxmoe_block_15pct": {
+        "ppl": 6.584293,
+        "memory_gb": 26.001
+      },
+      "mxmoe_block_20pct": {
+        "ppl": 6.58199,
+        "memory_gb": 26.806
+      },
+      "mxmoe_block_10pct": {
+        "ppl": 6.58375,
+        "memory_gb": 25.196
+      },
+      "perchannel_akurt_w1_0_w2_25": {
+        "ppl": 6.618204,
+        "memory_gb": 24.927
+      },
+      "perchannel_akurt_w1_0_w2_40": {
+        "ppl": 6.615269,
+        "memory_gb": 25.733
+      },
+      "mxmoe_topup_w2_only_5pct": {
+        "ppl": 6.583489,
+        "memory_gb": 27.774
+      },
+      "mxmoe_topup_perturbation_channel": {
+        "ppl": 6.580924,
+        "memory_gb": 28.222
+      },
+      "mxmoe_topup_perturbation_10pct": {
+        "ppl": 6.578362,
+        "memory_gb": 28.817
+      },
+      "mxmoe_topup_perturbation_15pct": {
+        "ppl": 6.582766,
+        "memory_gb": 29.427
+      },
+      "pure_perturbation_perchannel_25pct": {
+        "ppl": 6.613174,
+        "memory_gb": 27.612
+      },
+      "mxmoe_block_w2_heavy": {
+        "ppl": 6.598593,
+        "memory_gb": 27.612
+      },
+      "joint_w1_w2_optimization": {
+        "ppl": 6.576243,
+        "memory_gb": 28.953
+      },
+      "mxmoe_topup_combined_5pct": {
+        "ppl": 6.581458,
+        "memory_gb": 28.222
+      },
+      "perturbation_per_channel_w1_4_w2_16": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "scalebits_topup_5pct": {
+        "ppl": 6.578943,
+        "memory_gb": 28.222
+      },
+      "scalebits_perchannel_w1_4_w2_16": {
+        "ppl": 6.604948,
+        "memory_gb": 24.874
+      },
+      "dynamic_oracle_25pct": {
+        "ppl": 6.600562,
+        "memory_gb": 27.612
+      },
+      "dynamic_oracle_10pct": {
+        "ppl": 6.593817,
+        "memory_gb": 25.221
+      },
+      "cascade_aware_25pct": {
+        "ppl": 6.628183,
+        "memory_gb": 27.601
+      },
+      "cascade_aware_reverse": {
+        "ppl": 6.581219,
+        "memory_gb": 27.601
+      },
+      "mxmoe_topup_8pct_at_20pct_budget": {
+        "ppl": 6.580448,
+        "memory_gb": 27.838
+      },
+      "joint_w1w2_with_topup": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_topup_1pct": {
+        "ppl": 6.578734,
+        "memory_gb": 29.058
+      },
+      "joint_topup_3pct": {
+        "ppl": 6.574401,
+        "memory_gb": 29.269
+      },
+      "joint_topup_5pct": {
+        "ppl": 6.573759,
+        "memory_gb": 29.496
+      },
+      "joint_topup_10pct": {
+        "ppl": 6.581485,
+        "memory_gb": 30.024
+      },
+      "joint_topup_15pct": {
+        "ppl": 6.590167,
+        "memory_gb": 30.567
+      },
+      "joint_cascade_reverse_topup_5pct": {
+        "ppl": 6.574862,
+        "memory_gb": 29.486
+      },
+      "joint_cascade_reverse_topup_10pct": {
+        "ppl": 6.580087,
+        "memory_gb": 30.015
+      },
+      "mxmoe_cascade_reverse_topup_5pct": {
+        "ppl": 6.581586,
+        "memory_gb": 28.212
+      },
+      "replicate_iter07_joint": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_w1w2_topup_w2_only_5pct": {
+        "ppl": 6.579621,
+        "memory_gb": 29.087
+      },
+      "joint_w1w2_topup_w2_only_3pct": {
+        "ppl": 6.582795,
+        "memory_gb": 29.033
+      },
+      "joint_w1w2_at_30pct_base": {
+        "ppl": 6.582143,
+        "memory_gb": 30.516
+      },
+      "joint_w1w2_at_40pct_base": {
+        "ppl": 6.577684,
+        "memory_gb": 30.006
+      },
+      "mxmoe_topup_w1_0_w2_10": {
+        "ppl": 6.584496,
+        "memory_gb": 27.938
+      },
+      "ensemble_metric_topup_5pct": {
+        "ppl": 6.578666,
+        "memory_gb": 28.222
+      },
+      "adaptive_topup_per_expert": {
+        "ppl": 6.5804,
+        "memory_gb": 27.863
+      },
+      "perchannel_real_hessian_25pct": {
+        "ppl": 6.603661,
+        "memory_gb": 27.612
+      },
+      "perchannel_real_hessian_w1_4_w2_16": {
+        "ppl": 6.603787,
+        "memory_gb": 24.874
+      },
+      "perchannel_real_hessian_w1_0_w2_25": {
+        "ppl": 6.615687,
+        "memory_gb": 24.927
+      },
+      "perchannel_output_perturbation_25pct": {
+        "ppl": 6.599597,
+        "memory_gb": 27.612
+      },
+      "perchannel_output_perturbation_w1_4_w2_16": {
+        "ppl": 6.603022,
+        "memory_gb": 24.874
+      },
+      "perchannel_output_perturbation_w1_0_w2_25": {
+        "ppl": 6.61138,
+        "memory_gb": 24.927
+      },
+      "micromix_threshold": {
+        "ppl": 6.618633,
+        "memory_gb": 28.946
+      },
+      "micromix_threshold_routing": {
+        "ppl": 6.618053,
+        "memory_gb": 26.266
+      },
+      "router_affinity_weighted_25pct": {
+        "ppl": 6.589607,
+        "memory_gb": 27.612
+      },
+      "router_affinity_weighted_w1_4_w2_16": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "cross_expert_outlier_agreement_5pct": {
+        "ppl": 6.62236,
+        "memory_gb": 23.589
+      },
+      "cross_expert_outlier_10pct": {
+        "ppl": 6.622091,
+        "memory_gb": 23.619
+      },
+      "hessian_normalized_25pct": {
+        "ppl": 6.616846,
+        "memory_gb": 27.612
+      },
+      "hessian_normalized_w1_4_w2_16": {
+        "ppl": 6.609929,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_10pct": {
+        "ppl": 6.605976,
+        "memory_gb": 24.23
+      },
+      "ra_perchannel_15pct": {
+        "ppl": 6.591708,
+        "memory_gb": 24.552
+      },
+      "ra_perchannel_20pct": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_30pct": {
+        "ppl": 6.592682,
+        "memory_gb": 25.518
+      },
+      "ra_perchannel_40pct": {
+        "ppl": 6.593389,
+        "memory_gb": 26.162
+      },
+      "ra_plus_mxmoe_topup_5pct": {
+        "ppl": 6.582004,
+        "memory_gb": 27.828
+      },
+      "ra_plus_mxmoe_topup_3pct": {
+        "ppl": 6.583331,
+        "memory_gb": 27.741
+      },
+      "ra_joint_w1w2": {
+        "ppl": 6.576245,
+        "memory_gb": 28.283
+      },
+      "gptq_residual_perchannel_20pct": {
+        "ppl": 6.606762,
+        "memory_gb": 24.874
+      },
+      "gptq_residual_perchannel_25pct": {
+        "ppl": 6.601963,
+        "memory_gb": 25.196
+      },
+      "gptq_residual_perchannel_w1_4_w2_16": {
+        "ppl": 6.606762,
+        "memory_gb": 24.874
+      },
+      "gptq_residual_plus_mxmoe_topup_5pct": {
+        "ppl": 6.573739,
+        "memory_gb": 28.222
+      },
+      "gptq_residual_plus_router_affinity_25pct": {
+        "ppl": 6.593733,
+        "memory_gb": 25.196
+      },
+      "gptq_residual_joint_w1w2": {
+        "ppl": 6.578532,
+        "memory_gb": 28.283
+      },
+      "wanda_w1_4_w2_16": {
+        "ppl": 6.610881,
+        "memory_gb": 24.874
+      },
+      "rqe_w1_4_w2_16": {
+        "ppl": 6.628687,
+        "memory_gb": 24.874
+      },
+      "baq_equalloss_2x": {
+        "ppl": 6.607711,
+        "memory_gb": 25.887
+      },
+      "baq_equalloss_3x": {
+        "ppl": 6.604456,
+        "memory_gb": 24.761
+      },
+      "ra_joint_w1w2_topup_3pct": {
+        "ppl": 6.577888,
+        "memory_gb": 29.269
+      },
+      "ra_joint_w1w2_topup_5pct": {
+        "ppl": 6.577093,
+        "memory_gb": 29.496
+      },
+      "ra_joint_w1w2_topup_8pct": {
+        "ppl": 6.584755,
+        "memory_gb": 29.813
+      },
+      "ra_extreme_hot": {
+        "ppl": 6.606742,
+        "memory_gb": 26.202
+      },
+      "ra_extreme_hot_perchannel": {
+        "ppl": 6.602858,
+        "memory_gb": 26.041
+      },
+      "ra_mxmoe_topup_router_affinity_8pct": {
+        "ppl": 6.583336,
+        "memory_gb": 28.579
+      },
+      "ra_perchannel_30pct_uniform": {
+        "ppl": 6.614181,
+        "memory_gb": 25.525
+      },
+      "output_perturbation_mxmoe_topup_router_affinity_5pct": {
+        "ppl": 6.575752,
+        "memory_gb": 29.498
+      },
+      "mxmoe_block_plus_residual_1pct": {
+        "ppl": 6.574685,
+        "memory_gb": 27.73
+      },
+      "mxmoe_block_plus_residual_3pct": {
+        "ppl": 6.578832,
+        "memory_gb": 27.967
+      },
+      "mxmoe_block_plus_residual_5pct": {
+        "ppl": 6.574262,
+        "memory_gb": 28.222
+      },
+      "mxmoe_block_plus_residual_8pct": {
+        "ppl": 6.581616,
+        "memory_gb": 28.579
+      },
+      "joint_topup_residual_5pct": {
+        "ppl": 6.576196,
+        "memory_gb": 29.496
+      },
+      "joint_topup_residual_3pct": {
+        "ppl": 6.57291,
+        "memory_gb": 29.269
+      },
+      "mxmoe_block_plus_fp8_3pct_and_residual_3pct": {
+        "ppl": 6.578276,
+        "memory_gb": 28.323
+      },
+      "joint_fp8_3pct_residual_3pct": {
+        "ppl": 6.577194,
+        "memory_gb": 29.585
+      },
+      "cfk_joint_plus_0p25gb": {
+        "ppl": 6.58713,
+        "memory_gb": 28.184
+      },
+      "cfk_joint_plus_0p50gb": {
+        "ppl": 6.579591,
+        "memory_gb": 28.434
+      },
+      "cfk_union_plus_0p25gb": {
+        "ppl": 6.589761,
+        "memory_gb": 29.748
+      },
+      "cfk_union_plus_0p50gb": {
+        "ppl": 6.588386,
+        "memory_gb": 29.998
+      },
+      "cfk_mxmoe_plus_0p25gb": {
+        "ppl": 6.575977,
+        "memory_gb": 28.472
+      },
+      "cfk_mxmoe_plus_0p50gb": {
+        "ppl": 6.586991,
+        "memory_gb": 28.722
+      },
+      "agq_perchannel_20pct": {
+        "ppl": 6.601373,
+        "memory_gb": 25.196
+      },
+      "agq_perchannel_w1_4_w2_16": {
+        "ppl": 6.600996,
+        "memory_gb": 24.874
+      },
+      "agq_joint_w1w2": {
+        "ppl": 6.572765,
+        "memory_gb": 27.934
+      },
+      "agq_joint_w1w2_topup_5pct": {
+        "ppl": 6.576964,
+        "memory_gb": 29.496
+      },
+      "agq_mxmoe_topup_5pct": {
+        "ppl": 6.574663,
+        "memory_gb": 28.222
+      },
+      "agq_union_router_affinity_topup_5pct": {
+        "ppl": 6.575529,
+        "memory_gb": 29.498
+      },
+      "cfk_mxmoe_plus_0p10gb": {
+        "ppl": 6.577299,
+        "memory_gb": 28.322
+      },
+      "cfk_mxmoe_plus_0p15gb": {
+        "ppl": 6.576781,
+        "memory_gb": 28.372
+      },
+      "cfk_mxmoe_plus_0p20gb": {
+        "ppl": 6.578807,
+        "memory_gb": 28.422
+      },
+      "cfk_mxmoe_plus_0p30gb": {
+        "ppl": 6.578927,
+        "memory_gb": 28.522
+      },
+      "cfk_mxmoe_w2only_plus_0p10gb": {
+        "ppl": 6.577299,
+        "memory_gb": 28.322
+      },
+      "cfk_mxmoe_w2only_plus_0p20gb": {
+        "ppl": 6.578809,
+        "memory_gb": 28.422
+      },
+      "cfk_mxmoe_w2only_plus_0p30gb": {
+        "ppl": 6.578927,
+        "memory_gb": 28.522
+      },
+      "cfk_mxmoe_smallbundles_plus_0p20gb": {
+        "ppl": 6.582004,
+        "memory_gb": 28.422
+      },
+      "routergap_joint_topup_3pct": {
+        "ppl": 6.590375,
+        "memory_gb": 27.73
+      },
+      "routergap_joint_topup_5pct": {
+        "ppl": 6.594716,
+        "memory_gb": 27.815
+      },
+      "routergap_joint_topup_8pct": {
+        "ppl": 6.592926,
+        "memory_gb": 27.934
+      },
+      "routergap_union_topup_5pct": {
+        "ppl": 6.573449,
+        "memory_gb": 29.498
+      },
+      "routergap_mxmoe_topup_8pct": {
+        "ppl": 6.577843,
+        "memory_gb": 28.579
+      },
+      "routergap_perchannel_20pct": {
+        "ppl": 6.605868,
+        "memory_gb": 24.874
+      },
+      "joint_topup_residual_2pct": {
+        "ppl": 6.57472,
+        "memory_gb": 28.172
+      },
+      "joint_topup_residual_4pct": {
+        "ppl": 6.574115,
+        "memory_gb": 28.41
+      },
+      "union_topup_residual_2pct": {
+        "ppl": 6.579173,
+        "memory_gb": 29.709
+      },
+      "union_topup_residual_3pct": {
+        "ppl": 6.580066,
+        "memory_gb": 29.814
+      },
+      "union_topup_residual_5pct": {
+        "ppl": 6.581548,
+        "memory_gb": 30.04
+      },
+      "routergap_union_residual_3pct": {
+        "ppl": 6.575683,
+        "memory_gb": 29.814
+      },
+      "serq_joint_salient_1pct": {
+        "ppl": 6.579768,
+        "memory_gb": 28.578
+      },
+      "serq_joint_salient_3pct": {
+        "ppl": 6.583334,
+        "memory_gb": 29.867
+      },
+      "serq_union_salient_1pct": {
+        "ppl": 6.584853,
+        "memory_gb": 30.142
+      },
+      "serq_union_salient_3pct": {
+        "ppl": 6.585099,
+        "memory_gb": 31.431
+      },
+      "serq_mxmoe_salient_1pct": {
+        "ppl": 6.575306,
+        "memory_gb": 28.866
+      },
+      "serq_mxmoe_salient_3pct": {
+        "ppl": 6.579932,
+        "memory_gb": 30.155
+      },
+      "wushdiag_joint_base": {
+        "ppl": 6.588455,
+        "memory_gb": 28.953
+      },
+      "wushdiag_joint_topup_5pct": {
+        "ppl": 6.594819,
+        "memory_gb": 27.815
+      },
+      "wushdiag_mxmoe_topup_5pct": {
+        "ppl": 6.589036,
+        "memory_gb": 28.222
+      },
+      "wushdiag_union_topup_5pct": {
+        "ppl": 6.588998,
+        "memory_gb": 29.498
+      },
+      "wushdiag_perchannel_ra_20pct": {
+        "ppl": 6.59304,
+        "memory_gb": 24.874
+      },
+      "wushdiag_joint_residual_2pct": {
+        "ppl": 6.592798,
+        "memory_gb": 28.172
+      },
+      "scalebits128_joint_topup_5pct": {
+        "ppl": 6.573678,
+        "memory_gb": 27.815
+      },
+      "scalebits128_joint_topup_8pct": {
+        "ppl": 6.580198,
+        "memory_gb": 27.934
+      },
+      "scalebits128_union_topup_5pct": {
+        "ppl": 6.572765,
+        "memory_gb": 29.498
+      }
+    },
+    "experiment": "Iteration 23 subsystem BF16 restoration sweep on top of joint_w1w2_with_topup",
+    "base_plan": "joint_w1w2_with_topup",
+    "base_plan_reference": {
+      "ppl": 6.572458,
+      "memory_gb": 27.934
+    },
+    "bf16_reference": {
+      "ppl": 6.58517,
+      "memory_gb": 71.904
+    },
+    "joint_topup_fraction": 0.08,
+    "bf16_component_confirmation": {
+      "lm_head": "already BF16 in proper_eval.evaluate_plan()",
+      "embeddings": "already BF16 in proper_eval.embed_chunks()",
+      "attention": "already BF16 because prepare_layer_tensors_for_plan() only quantizes mlp.experts.* tensors",
+      "shared_expert": "already BF16 in proper_eval.moe_forward_eval()"
+    },
+    "top3_layers_by_output_perturbation": [
+      {
+        "layer": 39,
+        "score": 2759.150391
+      },
+      {
+        "layer": 38,
+        "score": 2696.429443
+      },
+      {
+        "layer": 37,
+        "score": 2644.221436
+      }
+    ],
+    "elapsed_s": 1860.9
+  },
+  "results": {
+    "joint_w1w2_with_topup": {
+      "description": "Reuse the Iteration 5 global three-tier perturbation buckets, keep the high tier fully FP8, and replace the medium tier's coarse promotion with 8% within-expert W1/W2 topups by activation_kurtosis.",
+      "mode": "per_channel",
+      "ppl": 6.572458,
+      "nll": 1.882888,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697686016,
+      "fp8_fraction": 0.270012,
+      "w1_pair_fraction": 0.270012,
+      "w2_channel_fraction": 0.270012,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 209.3,
+      "budget_source": "global_perturbation_percentile_buckets_with_medium_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "medium_tier_w1_fraction": 0.08,
+      "medium_tier_w2_fraction": 0.08,
+      "medium_tier_w1_pairs": 41,
+      "medium_tier_w2_channels": 164,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false,
+      "restored_components": [],
+      "restored_moe_layers": [],
+      "effective_restore": false,
+      "restore_note": "Base joint_w1w2_with_topup plan with no BF16 restoration overrides.",
+      "restored_bf16_weights": 0,
+      "restored_bf16_fraction": 0.0,
+      "ppl_gain_vs_base": 0.0,
+      "ppl_delta_vs_base": 0.0
+    },
+    "restore_lm_head_bf16": {
+      "description": "Explicitly keep lm_head in BF16 while leaving the joint_w1w2_with_topup expert mask unchanged.",
+      "mode": "per_channel",
+      "ppl": 6.572458,
+      "nll": 1.882888,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697686016,
+      "fp8_fraction": 0.270012,
+      "w1_pair_fraction": 0.270012,
+      "w2_channel_fraction": 0.270012,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 217.6,
+      "restored_components": [
+        "lm_head"
+      ],
+      "restored_moe_layers": [],
+      "effective_restore": false,
+      "restore_note": "`lm_head` already loads as BF16 in proper_eval.evaluate_plan().",
+      "restored_bf16_weights": 0,
+      "restored_bf16_fraction": 0.0,
+      "ppl_gain_vs_base": 0.0,
+      "ppl_delta_vs_base": 0.0
+    },
+    "restore_embeddings_bf16": {
+      "description": "Explicitly keep token embeddings in BF16 while leaving the joint_w1w2_with_topup expert mask unchanged.",
+      "mode": "per_channel",
+      "ppl": 6.572458,
+      "nll": 1.882888,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697686016,
+      "fp8_fraction": 0.270012,
+      "w1_pair_fraction": 0.270012,
+      "w2_channel_fraction": 0.270012,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 207.0,
+      "restored_components": [
+        "embeddings"
+      ],
+      "restored_moe_layers": [],
+      "effective_restore": false,
+      "restore_note": "`embed_tokens.weight` already stays BF16 in proper_eval.embed_chunks().",
+      "restored_bf16_weights": 0,
+      "restored_bf16_fraction": 0.0,
+      "ppl_gain_vs_base": 0.0,
+      "ppl_delta_vs_base": 0.0
+    },
+    "restore_attention_bf16": {
+      "description": "Explicitly keep all self_attn and linear_attn weights in BF16; only MoE experts remain quantized by the joint mask.",
+      "mode": "per_channel",
+      "ppl": 6.572458,
+      "nll": 1.882888,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697686016,
+      "fp8_fraction": 0.270012,
+      "w1_pair_fraction": 0.270012,
+      "w2_channel_fraction": 0.270012,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 202.0,
+      "restored_components": [
+        "attention"
+      ],
+      "restored_moe_layers": [],
+      "effective_restore": false,
+      "restore_note": "Attention weights are already BF16 because prepare_layer_tensors_for_plan() only quantizes mlp.experts.* tensors.",
+      "restored_bf16_weights": 0,
+      "restored_bf16_fraction": 0.0,
+      "ppl_gain_vs_base": 0.0,
+      "ppl_delta_vs_base": 0.0
+    },
+    "restore_shared_expert_bf16": {
+      "description": "Explicitly keep the shared expert in BF16 while leaving routed-expert quantization unchanged.",
+      "mode": "per_channel",
+      "ppl": 6.572458,
+      "nll": 1.882888,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697686016,
+      "fp8_fraction": 0.270012,
+      "w1_pair_fraction": 0.270012,
+      "w2_channel_fraction": 0.270012,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 196.5,
+      "restored_components": [
+        "shared_expert"
+      ],
+      "restored_moe_layers": [],
+      "effective_restore": false,
+      "restore_note": "The shared expert already stays BF16 inside moe_forward_eval().",
+      "restored_bf16_weights": 0,
+      "restored_bf16_fraction": 0.0,
+      "ppl_gain_vs_base": 0.0,
+      "ppl_delta_vs_base": 0.0
+    },
+    "restore_layer0_moe_bf16": {
+      "description": "Restore all routed MoE experts in layer 0 to BF16 and keep the remaining layers on the joint_w1w2_with_topup mask.",
+      "mode": "per_channel",
+      "ppl": 6.575724,
+      "nll": 1.883385,
+      "memory_gb": 29.142,
+      "fp8_weights": 8696930304,
+      "fp8_fraction": 0.269988,
+      "w1_pair_fraction": 0.269988,
+      "w2_channel_fraction": 0.269988,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 200.4,
+      "restored_components": [],
+      "restored_moe_layers": [
+        0
+      ],
+      "effective_restore": true,
+      "restore_note": "Layer 0 routed MoE experts skip quantization in prepare_layer_tensors_for_plan().",
+      "restored_bf16_weights": 805306368,
+      "restored_bf16_fraction": 0.025,
+      "ppl_gain_vs_base": -0.003266,
+      "ppl_delta_vs_base": 0.003266
+    },
+    "restore_layer19_moe_bf16": {
+      "description": "Restore all routed MoE experts in layer 19 to BF16 and keep the remaining layers on the joint_w1w2_with_topup mask.",
+      "mode": "per_channel",
+      "ppl": 6.572213,
+      "nll": 1.882851,
+      "memory_gb": 29.052,
+      "fp8_weights": 8517728256,
+      "fp8_fraction": 0.264425,
+      "w1_pair_fraction": 0.264425,
+      "w2_channel_fraction": 0.264425,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 205.1,
+      "restored_components": [],
+      "restored_moe_layers": [
+        19
+      ],
+      "effective_restore": true,
+      "restore_note": "Layer 19 routed MoE experts skip quantization in prepare_layer_tensors_for_plan().",
+      "restored_bf16_weights": 805306368,
+      "restored_bf16_fraction": 0.025,
+      "ppl_gain_vs_base": 0.000245,
+      "ppl_delta_vs_base": -0.000245
+    },
+    "restore_layer39_moe_bf16": {
+      "description": "Restore all routed MoE experts in layer 39 to BF16 and keep the remaining layers on the joint_w1w2_with_topup mask.",
+      "mode": "per_channel",
+      "ppl": 6.571918,
+      "nll": 1.882806,
+      "memory_gb": 28.893,
+      "fp8_weights": 8200525824,
+      "fp8_fraction": 0.254578,
+      "w1_pair_fraction": 0.254578,
+      "w2_channel_fraction": 0.254578,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 203.1,
+      "restored_components": [],
+      "restored_moe_layers": [
+        39
+      ],
+      "effective_restore": true,
+      "restore_note": "Layer 39 routed MoE experts skip quantization in prepare_layer_tensors_for_plan().",
+      "restored_bf16_weights": 805306368,
+      "restored_bf16_fraction": 0.025,
+      "ppl_gain_vs_base": 0.00054,
+      "ppl_delta_vs_base": -0.00054
+    },
+    "restore_top3_layers_moe_bf16": {
+      "description": "Restore the three MoE layers with the largest summed output perturbation to BF16 and keep the remaining layers on the joint_w1w2_with_topup mask.",
+      "mode": "per_channel",
+      "ppl": 6.571202,
+      "nll": 1.882697,
+      "memory_gb": 30.856,
+      "fp8_weights": 7293898752,
+      "fp8_fraction": 0.226432,
+      "w1_pair_fraction": 0.226432,
+      "w2_channel_fraction": 0.226432,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 206.7,
+      "restored_components": [],
+      "restored_moe_layers": [
+        37,
+        38,
+        39
+      ],
+      "effective_restore": true,
+      "restore_note": "The top-3 MoE layers are ranked by summed active-expert output perturbation from calibration.mxmoe_w1_deltas + calibration.mxmoe_w2_deltas.",
+      "restored_bf16_weights": 2415919104,
+      "restored_bf16_fraction": 0.075,
+      "ppl_gain_vs_base": 0.001256,
+      "ppl_delta_vs_base": -0.001256
+    }
+  },
+  "summary": {
+    "base_plan": "joint_w1w2_with_topup",
+    "base_ppl": 6.572458,
+    "top3_layers_by_output_perturbation": [
+      {
+        "layer": 39,
+        "score": 2759.150391
+      },
+      {
+        "layer": 38,
+        "score": 2696.429443
+      },
+      {
+        "layer": 37,
+        "score": 2644.221436
+      }
+    ],
+    "ranked_ppl_gains": [
+      {
+        "name": "restore_top3_layers_moe_bf16",
+        "ppl": 6.571202,
+        "memory_gb": 30.856,
+        "ppl_gain_vs_base": 0.001256,
+        "effective_restore": true,
+        "restored_components": [],
+        "restored_moe_layers": [
+          37,
+          38,
+          39
+        ]
+      },
+      {
+        "name": "restore_layer39_moe_bf16",
+        "ppl": 6.571918,
+        "memory_gb": 28.893,
+        "ppl_gain_vs_base": 0.00054,
+        "effective_restore": true,
+        "restored_components": [],
+        "restored_moe_layers": [
+          39
+        ]
+      },
+      {
+        "name": "restore_layer19_moe_bf16",
+        "ppl": 6.572213,
+        "memory_gb": 29.052,
+        "ppl_gain_vs_base": 0.000245,
+        "effective_restore": true,
+        "restored_components": [],
+        "restored_moe_layers": [
+          19
+        ]
+      },
+      {
+        "name": "restore_shared_expert_bf16",
+        "ppl": 6.572458,
+        "memory_gb": 27.934,
+        "ppl_gain_vs_base": 0.0,
+        "effective_restore": false,
+        "restored_components": [
+          "shared_expert"
+        ],
+        "restored_moe_layers": []
+      },
+      {
+        "name": "restore_lm_head_bf16",
+        "ppl": 6.572458,
+        "memory_gb": 27.934,
+        "ppl_gain_vs_base": 0.0,
+        "effective_restore": false,
+        "restored_components": [
+          "lm_head"
+        ],
+        "restored_moe_layers": []
+      },
+      {
+        "name": "restore_embeddings_bf16",
+        "ppl": 6.572458,
+        "memory_gb": 27.934,
+        "ppl_gain_vs_base": 0.0,
+        "effective_restore": false,
+        "restored_components": [
+          "embeddings"
+        ],
+        "restored_moe_layers": []
+      },
+      {
+        "name": "restore_attention_bf16",
+        "ppl": 6.572458,
+        "memory_gb": 27.934,
+        "ppl_gain_vs_base": 0.0,
+        "effective_restore": false,
+        "restored_components": [
+          "attention"
+        ],
+        "restored_moe_layers": []
+      },
+      {
+        "name": "restore_layer0_moe_bf16",
+        "ppl": 6.575724,
+        "memory_gb": 29.142,
+        "ppl_gain_vs_base": -0.003266,
+        "effective_restore": true,
+        "restored_components": [],
+        "restored_moe_layers": [
+          0
+        ]
+      }
+    ],
+    "best_restore": {
+      "name": "restore_top3_layers_moe_bf16",
+      "ppl": 6.571202,
+      "memory_gb": 30.856,
+      "ppl_gain_vs_base": 0.001256,
+      "effective_restore": true,
+      "restored_components": [],
+      "restored_moe_layers": [
+        37,
+        38,
+        39
+      ]
+    }
+  }
+}

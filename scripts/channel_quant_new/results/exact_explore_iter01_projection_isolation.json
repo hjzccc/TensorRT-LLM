@@ -1,0 +1,81 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "nsamples": 4,
+    "seqlen": 2048,
+    "eval_tokens": 8192,
+    "dtype": "float16",
+    "layer_batch_size": 1,
+    "runtime": "docker-only TRT-LLM fused wrappers",
+    "experiment": "projection_isolation_ablations",
+    "purpose": "Isolate which projection (W1/W2) and which format (FP4/FP8/BF16) contributes most to quantization error under exact TRT-LLM kernels",
+    "nvfp4_linear": "torch.ops.auto_deploy.torch_quant_nvfp4_linear",
+    "fp8_linear": "torch.ops.auto_deploy.torch_quant_fp8_linear",
+    "quant_scope_note": "moe_only for ALL configs \u2014 attention, shared expert, DeltaNet stay BF16"
+  },
+  "results": {
+    "uniform_bf16": {
+      "w1_mode": "bf16",
+      "w2_mode": "bf16",
+      "quant_scope": "moe_only",
+      "ppl": 7.2353,
+      "time_s": 62.2
+    },
+    "uniform_fp8": {
+      "w1_mode": "fp8",
+      "w2_mode": "fp8",
+      "quant_scope": "moe_only",
+      "ppl": 7.2933,
+      "time_s": 91.7
+    },
+    "uniform_nvfp4": {
+      "w1_mode": "nvfp4",
+      "w2_mode": "nvfp4",
+      "quant_scope": "moe_only",
+      "ppl": 7.3368,
+      "time_s": 67.4
+    },
+    "w1_fp4_w2_fp8": {
+      "w1_mode": "nvfp4",
+      "w2_mode": "fp8",
+      "quant_scope": "moe_only",
+      "ppl": 7.3325,
+      "time_s": 68.0
+    },
+    "w1_fp8_w2_fp4": {
+      "w1_mode": "fp8",
+      "w2_mode": "nvfp4",
+      "quant_scope": "moe_only",
+      "ppl": 7.3083,
+      "time_s": 73.2
+    },
+    "w1_only_fp4": {
+      "w1_mode": "nvfp4",
+      "w2_mode": "bf16",
+      "quant_scope": "moe_only",
+      "ppl": 7.3075,
+      "time_s": 63.7
+    },
+    "w2_only_fp4": {
+      "w1_mode": "bf16",
+      "w2_mode": "nvfp4",
+      "quant_scope": "moe_only",
+      "ppl": 7.3101,
+      "time_s": 62.4
+    },
+    "w1_only_fp8": {
+      "w1_mode": "fp8",
+      "w2_mode": "bf16",
+      "quant_scope": "moe_only",
+      "ppl": 7.263,
+      "time_s": 53.0
+    },
+    "w2_only_fp8": {
+      "w1_mode": "bf16",
+      "w2_mode": "fp8",
+      "quant_scope": "moe_only",
+      "ppl": 7.2678,
+      "time_s": 52.8
+    }
+  }
+}

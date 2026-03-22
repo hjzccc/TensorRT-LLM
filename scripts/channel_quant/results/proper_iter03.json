@@ -1,0 +1,313 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/MC-MoE/eval_ppl_utils.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      },
+      "mxmoe_perturbation_perchannel": {
+        "ppl": 6.59972,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_25pct": {
+        "ppl": 6.590387,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_w1_4_w2_16": {
+        "ppl": 6.606149,
+        "memory_gb": 24.874
+      },
+      "mxmoe_block_plus_channel_topup": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "output_perturbation_per_channel_9experts": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "topup_01pct": {
+        "ppl": 6.5769,
+        "memory_gb": 20.251
+      },
+      "topup_02pct": {
+        "ppl": 6.5788,
+        "memory_gb": 20.37
+      },
+      "topup_03pct": {
+        "ppl": 6.5791,
+        "memory_gb": 20.488
+      },
+      "topup_05pct": {
+        "ppl": 6.5763,
+        "memory_gb": 20.743
+      },
+      "topup_08pct": {
+        "ppl": 6.5798,
+        "memory_gb": 21.1
+      },
+      "topup_10pct": {
+        "ppl": 6.5791,
+        "memory_gb": 21.337
+      },
+      "topup_15pct": {
+        "ppl": 6.5872,
+        "memory_gb": 21.948
+      },
+      "topup_20pct": {
+        "ppl": 6.5939,
+        "memory_gb": 22.542
+      }
+    },
+    "experiment": "Iteration 3 broader exploration with cached proper_eval calibration",
+    "hessian_metric": {
+      "requested_metric": "hessian_diag",
+      "effective_metric": "activation_kurtosis",
+      "fallback_used": true,
+      "source": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+      "fallback_reason": "proper_iter01 cache only stores routing counts, activation_kurtosis scores, and projection perturbation summaries; it does not retain E[x^2] or raw moments needed to reconstruct hessian_diag without recalibration"
+    },
+    "runtime_seconds_pre_eval": 10.812,
+    "calibration_cache_compatible": true,
+    "runtime_seconds": 13.266,
+    "cache_version_expectation": {
+      "seqlen": 2048,
+      "calibration_samples": 128
+    }
+  },
+  "results": {
+    "perchannel_hessian_25pct": {
+      "description": "Routing-aware per-channel plan at 25% W1 and 25% W2, requesting hessian_diag channel ranking.",
+      "mode": "per_channel",
+      "ppl": 6.614806,
+      "nll": 1.88931,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.25,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 195.3,
+      "budget_source": "routing_aware_two_level",
+      "w1_fraction_target": 0.25,
+      "w2_fraction_target": 0.25,
+      "channel_metric_requested": "hessian_diag",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": true
+    },
+    "perchannel_hessian_w1_4_w2_16": {
+      "description": "Routing-aware per-channel plan with W1=4% and W2=16%, requesting hessian_diag channel ranking.",
+      "mode": "per_channel",
+      "ppl": 6.606775,
+      "nll": 1.888096,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576998400,
+      "fp8_fraction": 0.080001,
+      "w1_pair_fraction": 0.040001,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 193.9,
+      "budget_source": "routing_aware_two_level",
+      "w1_fraction_target": 0.04,
+      "w2_fraction_target": 0.16,
+      "channel_metric_requested": "hessian_diag",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": true
+    },
+    "perchannel_akurt_30pct": {
+      "description": "Routing-aware per-channel activation_kurtosis plan at 30% W1 and 30% W2.",
+      "mode": "per_channel",
+      "ppl": 6.627915,
+      "nll": 1.89129,
+      "memory_gb": 28.417,
+      "fp8_weights": 9663733760,
+      "fp8_fraction": 0.300002,
+      "w1_pair_fraction": 0.300003,
+      "w2_channel_fraction": 0.299999,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 192.9,
+      "budget_source": "routing_aware_two_level",
+      "w1_fraction_target": 0.3,
+      "w2_fraction_target": 0.3,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false
+    },
+    "perchannel_akurt_40pct": {
+      "description": "Routing-aware per-channel activation_kurtosis plan at 40% W1 and 40% W2.",
+      "mode": "per_channel",
+      "ppl": 6.614058,
+      "nll": 1.889197,
+      "memory_gb": 30.028,
+      "fp8_weights": 12884930560,
+      "fp8_fraction": 0.400001,
+      "w1_pair_fraction": 0.400002,
+      "w2_channel_fraction": 0.4,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 192.8,
+      "budget_source": "routing_aware_two_level",
+      "w1_fraction_target": 0.4,
+      "w2_fraction_target": 0.4,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false
+    },
+    "mxmoe_topup_hessian_5pct": {
+      "description": "Start from the 25% MxMoE per-block assignment, then top up remaining FP4 channels with a 5% requested hessian_diag ranking.",
+      "mode": "per_channel",
+      "ppl": 6.578639,
+      "nll": 1.883828,
+      "memory_gb": 28.222,
+      "fp8_weights": 9273524224,
+      "fp8_fraction": 0.287888,
+      "w1_pair_fraction": 0.220602,
+      "w2_channel_fraction": 0.422459,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 190.5,
+      "budget_source": "mxmoe_per_block_plus_topup",
+      "channel_metric_requested": "hessian_diag",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": true,
+      "mxmoe_base_fraction": 0.25,
+      "topup_fraction": 0.05,
+      "mxmoe_promoted_w1_projections": 1832,
+      "mxmoe_promoted_w2_projections": 4016
+    },
+    "perturbation_proportional_30pct": {
+      "description": "Allocate a 30% W1 and 30% W2 channel budget across experts in proportion to combined output perturbation, then rank channels by activation_kurtosis.",
+      "mode": "per_channel",
+      "ppl": 6.5893,
+      "nll": 1.885447,
+      "memory_gb": 28.417,
+      "fp8_weights": 9663676416,
+      "fp8_fraction": 0.3,
+      "w1_pair_fraction": 0.3,
+      "w2_channel_fraction": 0.3,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 190.7,
+      "budget_source": "combined_perturbation_global",
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false,
+      "w1_fraction_target": 0.3,
+      "w2_fraction_target": 0.3,
+      "target_w1_pairs": 1572864,
+      "target_w2_channels": 6291456,
+      "realized_w1_pairs": 1572864,
+      "realized_w2_channels": 6291456
+    },
+    "perturbation_proportional_40pct": {
+      "description": "Allocate a 40% W1 and 40% W2 channel budget across experts in proportion to combined output perturbation, then rank channels by activation_kurtosis.",
+      "mode": "per_channel",
+      "ppl": 6.596071,
+      "nll": 1.886474,
+      "memory_gb": 30.028,
+      "fp8_weights": 12884901888,
+      "fp8_fraction": 0.4,
+      "w1_pair_fraction": 0.4,
+      "w2_channel_fraction": 0.4,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 192.8,
+      "budget_source": "combined_perturbation_global",
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false,
+      "w1_fraction_target": 0.4,
+      "w2_fraction_target": 0.4,
+      "target_w1_pairs": 2097152,
+      "target_w2_channels": 8388608,
+      "realized_w1_pairs": 2097152,
+      "realized_w2_channels": 8388608
+    },
+    "mxmoe_block_35pct": {
+      "description": "MxMoE greedy knapsack over per-projection output perturbation at a 35% FP8 budget.",
+      "mode": "per_block",
+      "ppl": 6.57889,
+      "nll": 1.883866,
+      "memory_gb": 29.222,
+      "fp8_weights": 11274289152,
+      "fp8_fraction": 0.35,
+      "w1_pair_fraction": 0.0,
+      "w2_channel_fraction": 0.0,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 191.1,
+      "budget_source": "mxmoe_projection_perturbation",
+      "channel_metric_requested": "output_perturbation",
+      "channel_metric_effective": "output_perturbation",
+      "channel_metric_fallback_used": false,
+      "mxmoe_fraction_target": 0.35,
+      "mxmoe_promoted_w1_projections": 2767,
+      "mxmoe_promoted_w2_projections": 5218
+    }
+  }
+}

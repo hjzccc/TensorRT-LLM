@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "eval_tokens": 512,
+    "calib_tokens": 128,
+    "note": "Iteration 8: push outlier approach with per-projection split"
+  },
+  "results": {
+    "hess_w1_4_w2_16": {
+      "ppl": 5.3613,
+      "nll": 1.679202,
+      "memory_gb": 17.198,
+      "fp8_frac": 0.0678,
+      "time_s": 42.0
+    },
+    "hess_w1_2_w2_8": {
+      "ppl": 5.3805,
+      "nll": 1.682789,
+      "memory_gb": 16.706,
+      "fp8_frac": 0.0372,
+      "time_s": 41.1
+    },
+    "hess_5pct_uniform": {
+      "ppl": 5.3858,
+      "nll": 1.68376,
+      "memory_gb": 16.893,
+      "fp8_frac": 0.0488,
+      "time_s": 41.1
+    },
+    "hess_w1_10_w2_40": {
+      "ppl": 5.3422,
+      "nll": 1.675635,
+      "memory_gb": 18.316,
+      "fp8_frac": 0.1372,
+      "time_s": 40.7
+    },
+    "hess_w2_only_20": {
+      "ppl": 5.3666,
+      "nll": 1.680197,
+      "memory_gb": 16.903,
+      "fp8_frac": 0.0495,
+      "time_s": 41.1
+    },
+    "hess_w1_5_w2_20": {
+      "ppl": 5.398,
+      "nll": 1.68602,
+      "memory_gb": 17.43,
+      "fp8_frac": 0.0822,
+      "time_s": 40.9
+    },
+    "hess_w2_only_10": {
+      "ppl": 5.3819,
+      "nll": 1.683043,
+      "memory_gb": 16.575,
+      "fp8_frac": 0.0291,
+      "time_s": 41.2
+    },
+    "hess_w1_3_w2_12": {
+      "ppl": 5.387,
+      "nll": 1.683985,
+      "memory_gb": 16.964,
+      "fp8_frac": 0.0533,
+      "time_s": 41.1
+    }
+  }
+}

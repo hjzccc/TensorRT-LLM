@@ -39,9 +39,9 @@ HIDDEN = 2048
 INTER = 768
 FC1_ROWS = INTER * 2
 SWIGLU = 5
-NUM_BASE_TACTICS = 3
+NUM_BASE_TACTICS = 4
 INTERLEAVE_GROUP_SIZE = 64
-SUPPORTED_FUSION_TACTICS = {0, 1}
+SUPPORTED_FUSION_TACTICS = {0, 1, 2}
 ACTIVATION_CHOICES = (
     "identity",
     "gelu",
@@ -58,7 +58,8 @@ DEFAULT_QUANTIZATION = "nvfp4"
 TACTIC_NAMES = {
     0: "M128",
     1: "M64",
-    2: "M256",
+    2: "M32",
+    3: "M256",
 }
 
 
@@ -82,7 +83,7 @@ def interleave_linear_and_gate(x: torch.Tensor,
 def get_profile_ids(tactic: int) -> list[int]:
     if tactic not in TACTIC_NAMES:
         raise ValueError(f"Unsupported tactic {tactic}; expected one of {sorted(TACTIC_NAMES)}")
-    if tactic == 2:
+    if tactic == 3:
         return [3, 4]
     gemm1 = tactic
     gemm2 = tactic + NUM_BASE_TACTICS

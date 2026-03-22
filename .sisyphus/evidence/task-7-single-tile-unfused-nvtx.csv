@@ -1,0 +1,9 @@
+
+NOTICE: Existing SQLite export found: /code/tensorrt_llm/.sisyphus/evidence/task-7-single-tile-unfused.sqlite
+        It is assumed file was previously exported from: /code/tensorrt_llm/.sisyphus/evidence/task-7-single-tile-unfused.nsys-rep
+        Consider using --force-export=true if needed.
+
+Processing [/code/tensorrt_llm/.sisyphus/evidence/task-7-single-tile-unfused.sqlite] with [/usr/local/cuda-13.1/NsightSystems-cli-2025.5.2/target-linux-x64/reports/cuda_gpu_kern_sum.py](single_tile_swiglu_unfused_tactic_0:base)... 
+
+ERROR: Invalid argument passed to report 'cuda_gpu_kern_sum.py': unrecognized arguments: single_tile_swiglu_unfused_tactic_0
+

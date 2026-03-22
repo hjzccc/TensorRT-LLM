@@ -1,0 +1,162 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "calibration_tokens": 128,
+    "eval_tokens": 512,
+    "eval_dataset": "wikitext-2-raw-v1 test",
+    "calibration_dataset": "wikitext-2-raw-v1 train",
+    "metric": "gate_aware_act_qerror",
+    "quantization": "simulated (quantize \u2192 dequantize \u2192 BF16 matmul)",
+    "note": "All configs computed fresh with identical methodology. Sources: iteration2_results.json + iteration3_results.json"
+  },
+  "baselines": {
+    "uniform_fp4": {
+      "ppl": 5.413143259894901,
+      "memory_gb": 23.585,
+      "description": "All MoE expert weights NVFP4"
+    },
+    "uniform_fp8": {
+      "ppl": 5.35234659873438,
+      "memory_gb": 39.691,
+      "description": "All MoE expert weights FP8"
+    }
+  },
+  "our_method_budget_sweep": {
+    "0": {
+      "ppl": 5.413143259894901,
+      "memory_gb": 23.585
+    },
+    "10": {
+      "ppl": 5.410476534628187,
+      "memory_gb": 25.196
+    },
+    "20": {
+      "ppl": 5.348816420761596,
+      "memory_gb": 26.806
+    },
+    "30": {
+      "ppl": 5.343127039937184,
+      "memory_gb": 28.417
+    },
+    "40": {
+      "ppl": 5.322821859244032,
+      "memory_gb": 30.028
+    },
+    "50": {
+      "ppl": 5.336829377947354,
+      "memory_gb": 31.638
+    },
+    "60": {
+      "ppl": 5.358977386685462,
+      "memory_gb": 33.249
+    },
+    "70": {
+      "ppl": 5.3490920231734504,
+      "memory_gb": 34.86
+    },
+    "80": {
+      "ppl": 5.348520409560706,
+      "memory_gb": 36.47
+    },
+    "90": {
+      "ppl": 5.352948831411389,
+      "memory_gb": 38.081
+    },
+    "100": {
+      "ppl": 5.35234659873438,
+      "memory_gb": 39.691
+    }
+  },
+  "hierarchy_ablation": {
+    "expert_only": {
+      "avg_nll": 1.6815492439643278,
+      "ppl": 5.373874968740015,
+      "memory_gb": 27.612
+    },
+    "channel_only": {
+      "avg_nll": 1.6819619031335042,
+      "ppl": 5.376093005134925,
+      "memory_gb": 27.612
+    },
+    "two_level": {
+      "avg_nll": 1.6757510683541195,
+      "ppl": 5.342806455352808,
+      "memory_gb": 27.612
+    },
+    "aggressive_two_level": {
+      "avg_nll": 1.6836429267480182,
+      "ppl": 5.385137944678901,
+      "memory_gb": 27.628
+    }
+  },
+  "related_work_comparison": {
+    "random_baseline": {
+      "ppl": 5.376270589660941,
+      "memory_gb": 27.612
+    },
+    "dynaexq_per_expert": {
+      "ppl": 5.373874968740015,
+      "memory_gb": 27.612
+    },
+    "ours_two_level": {
+      "ppl": 5.342806455352808,
+      "memory_gb": 27.612
+    },
+    "mxmoe_per_block": {
+      "ppl": 5.373719778978464,
+      "memory_gb": 27.612
+    },
+    "fgmp_per_16block": {
+      "ppl": 5.359788002035124,
+      "memory_gb": 27.627
+    },
+    "scalebits_submodular": {
+      "ppl": 5.374658066426865,
+      "memory_gb": 27.612
+    }
+  },
+  "per_projection": {
+    "uniform_25_25": {
+      "avg_nll": 1.6757510683541195,
+      "ppl": 5.342806455352808,
+      "memory_gb": 27.612
+    },
+    "w2_heavy_50_0": {
+      "avg_nll": 1.6805652088381773,
+      "ppl": 5.3685894879831,
+      "memory_gb": 26.27
+    },
+    "w2_heavy_40_10": {
+      "avg_nll": 1.6845358682471945,
+      "ppl": 5.389948705372774,
+      "memory_gb": 26.806
+    },
+    "w1_heavy_0_50": {
+      "avg_nll": 1.6805425371442522,
+      "ppl": 5.368467774345151,
+      "memory_gb": 28.954
+    }
+  },
+  "alternative_strategies": {
+    "threshold_median": {
+      "ppl": 5.35010522965796,
+      "memory_gb": 30.793
+    },
+    "threshold_p75": {
+      "ppl": 5.36909733254448,
+      "memory_gb": 25.402
+    },
+    "threshold_p90": {
+      "ppl": 5.363619789266511,
+      "memory_gb": 24.29
+    },
+    "kmeans_2cluster": {
+      "ppl": 5.387927887488816,
+      "memory_gb": 25.255
+    },
+    "sensitivity_gap": {
+      "ppl": 5.397274610621005,
+      "memory_gb": 24.423
+    }
+  }
+}

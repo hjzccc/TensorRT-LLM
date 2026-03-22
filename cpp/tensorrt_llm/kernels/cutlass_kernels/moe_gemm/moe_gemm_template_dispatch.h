@@ -941,7 +941,8 @@ size_t MoeGemmRunner<T, WeightType, OutputType, ScaleBiasType>::calcMaxWorkspace
                 if (sm_ == 120 || sm_ == 121)
                 {
                     if (conf.tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape128x128x128B
-                        || conf.tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape64x128x64B)
+                        || conf.tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape64x128x64B
+                        || conf.tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape32x128x64B)
                     {
                         CALC_SIZE_FUSION(TmaWarpSpecializedGroupedGemmInput::EpilogueFusion::SWIGLU);
                     }

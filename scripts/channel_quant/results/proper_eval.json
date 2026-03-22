@@ -1,0 +1,1063 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/MC-MoE/eval_ppl_utils.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "calibration_summary": {
+      "active_experts_per_layer": {
+        "0": 256,
+        "1": 256,
+        "2": 256,
+        "3": 256,
+        "4": 256,
+        "5": 256,
+        "6": 256,
+        "7": 256,
+        "8": 256,
+        "9": 256,
+        "10": 256,
+        "11": 256,
+        "12": 256,
+        "13": 256,
+        "14": 256,
+        "15": 256,
+        "16": 256,
+        "17": 256,
+        "18": 256,
+        "19": 256,
+        "20": 256,
+        "21": 256,
+        "22": 256,
+        "23": 256,
+        "24": 256,
+        "25": 256,
+        "26": 256,
+        "27": 256,
+        "28": 256,
+        "29": 256,
+        "30": 256,
+        "31": 256,
+        "32": 256,
+        "33": 256,
+        "34": 254,
+        "35": 256,
+        "36": 256,
+        "37": 256,
+        "38": 256,
+        "39": 255
+      },
+      "routing_top5_per_layer": {
+        "0": [
+          {
+            "expert_idx": 108,
+            "count": 32486
+          },
+          {
+            "expert_idx": 31,
+            "count": 32478
+          },
+          {
+            "expert_idx": 89,
+            "count": 26609
+          },
+          {
+            "expert_idx": 64,
+            "count": 25557
+          },
+          {
+            "expert_idx": 242,
+            "count": 22152
+          }
+        ],
+        "1": [
+          {
+            "expert_idx": 238,
+            "count": 36946
+          },
+          {
+            "expert_idx": 205,
+            "count": 28231
+          },
+          {
+            "expert_idx": 138,
+            "count": 27117
+          },
+          {
+            "expert_idx": 42,
+            "count": 26926
+          },
+          {
+            "expert_idx": 11,
+            "count": 23465
+          }
+        ],
+        "2": [
+          {
+            "expert_idx": 88,
+            "count": 27729
+          },
+          {
+            "expert_idx": 223,
+            "count": 26575
+          },
+          {
+            "expert_idx": 41,
+            "count": 23791
+          },
+          {
+            "expert_idx": 40,
+            "count": 22729
+          },
+          {
+            "expert_idx": 6,
+            "count": 22340
+          }
+        ],
+        "3": [
+          {
+            "expert_idx": 61,
+            "count": 56163
+          },
+          {
+            "expert_idx": 39,
+            "count": 51599
+          },
+          {
+            "expert_idx": 94,
+            "count": 51474
+          },
+          {
+            "expert_idx": 19,
+            "count": 35783
+          },
+          {
+            "expert_idx": 101,
+            "count": 31973
+          }
+        ],
+        "4": [
+          {
+            "expert_idx": 25,
+            "count": 73143
+          },
+          {
+            "expert_idx": 204,
+            "count": 34852
+          },
+          {
+            "expert_idx": 212,
+            "count": 33057
+          },
+          {
+            "expert_idx": 93,
+            "count": 30583
+          },
+          {
+            "expert_idx": 206,
+            "count": 29553
+          }
+        ],
+        "5": [
+          {
+            "expert_idx": 203,
+            "count": 34353
+          },
+          {
+            "expert_idx": 46,
+            "count": 32763
+          },
+          {
+            "expert_idx": 64,
+            "count": 29125
+          },
+          {
+            "expert_idx": 52,
+            "count": 28791
+          },
+          {
+            "expert_idx": 253,
+            "count": 28337
+          }
+        ],
+        "6": [
+          {
+            "expert_idx": 162,
+            "count": 47584
+          },
+          {
+            "expert_idx": 100,
+            "count": 46196
+          },
+          {
+            "expert_idx": 126,
+            "count": 42282
+          },
+          {
+            "expert_idx": 85,
+            "count": 35482
+          },
+          {
+            "expert_idx": 250,
+            "count": 32207
+          }
+        ],
+        "7": [
+          {
+            "expert_idx": 215,
+            "count": 60715
+          },
+          {
+            "expert_idx": 254,
+            "count": 54031
+          },
+          {
+            "expert_idx": 210,
+            "count": 48121
+          },
+          {
+            "expert_idx": 130,
+            "count": 43871
+          },
+          {
+            "expert_idx": 74,
+            "count": 39121
+          }
+        ],
+        "8": [
+          {
+            "expert_idx": 150,
+            "count": 150864
+          },
+          {
+            "expert_idx": 228,
+            "count": 44088
+          },
+          {
+            "expert_idx": 28,
+            "count": 43366
+          },
+          {
+            "expert_idx": 9,
+            "count": 34979
+          },
+          {
+            "expert_idx": 199,
+            "count": 33051
+          }
+        ],
+        "9": [
+          {
+            "expert_idx": 42,
+            "count": 48837
+          },
+          {
+            "expert_idx": 66,
+            "count": 48239
+          },
+          {
+            "expert_idx": 65,
+            "count": 44686
+          },
+          {
+            "expert_idx": 37,
+            "count": 39239
+          },
+          {
+            "expert_idx": 34,
+            "count": 34751
+          }
+        ],
+        "10": [
+          {
+            "expert_idx": 246,
+            "count": 43051
+          },
+          {
+            "expert_idx": 181,
+            "count": 41607
+          },
+          {
+            "expert_idx": 20,
+            "count": 37864
+          },
+          {
+            "expert_idx": 85,
+            "count": 30697
+          },
+          {
+            "expert_idx": 187,
+            "count": 28316
+          }
+        ],
+        "11": [
+          {
+            "expert_idx": 115,
+            "count": 67278
+          },
+          {
+            "expert_idx": 250,
+            "count": 41251
+          },
+          {
+            "expert_idx": 240,
+            "count": 34727
+          },
+          {
+            "expert_idx": 110,
+            "count": 33487
+          },
+          {
+            "expert_idx": 71,
+            "count": 27712
+          }
+        ],
+        "12": [
+          {
+            "expert_idx": 241,
+            "count": 63173
+          },
+          {
+            "expert_idx": 20,
+            "count": 53619
+          },
+          {
+            "expert_idx": 36,
+            "count": 42001
+          },
+          {
+            "expert_idx": 3,
+            "count": 40088
+          },
+          {
+            "expert_idx": 125,
+            "count": 39822
+          }
+        ],
+        "13": [
+          {
+            "expert_idx": 224,
+            "count": 86181
+          },
+          {
+            "expert_idx": 41,
+            "count": 68572
+          },
+          {
+            "expert_idx": 124,
+            "count": 54219
+          },
+          {
+            "expert_idx": 175,
+            "count": 49590
+          },
+          {
+            "expert_idx": 207,
+            "count": 39736
+          }
+        ],
+        "14": [
+          {
+            "expert_idx": 105,
+            "count": 77395
+          },
+          {
+            "expert_idx": 168,
+            "count": 61447
+          },
+          {
+            "expert_idx": 247,
+            "count": 47811
+          },
+          {
+            "expert_idx": 250,
+            "count": 42582
+          },
+          {
+            "expert_idx": 16,
+            "count": 38314
+          }
+        ],
+        "15": [
+          {
+            "expert_idx": 245,
+            "count": 85201
+          },
+          {
+            "expert_idx": 63,
+            "count": 51628
+          },
+          {
+            "expert_idx": 135,
+            "count": 41368
+          },
+          {
+            "expert_idx": 26,
+            "count": 40568
+          },
+          {
+            "expert_idx": 32,
+            "count": 35252
+          }
+        ],
+        "16": [
+          {
+            "expert_idx": 224,
+            "count": 85098
+          },
+          {
+            "expert_idx": 6,
+            "count": 65850
+          },
+          {
+            "expert_idx": 184,
+            "count": 54412
+          },
+          {
+            "expert_idx": 30,
+            "count": 42551
+          },
+          {
+            "expert_idx": 180,
+            "count": 33918
+          }
+        ],
+        "17": [
+          {
+            "expert_idx": 220,
+            "count": 102300
+          },
+          {
+            "expert_idx": 255,
+            "count": 55862
+          },
+          {
+            "expert_idx": 232,
+            "count": 47075
+          },
+          {
+            "expert_idx": 247,
+            "count": 33810
+          },
+          {
+            "expert_idx": 237,
+            "count": 33681
+          }
+        ],
+        "18": [
+          {
+            "expert_idx": 196,
+            "count": 56188
+          },
+          {
+            "expert_idx": 21,
+            "count": 48048
+          },
+          {
+            "expert_idx": 235,
+            "count": 44295
+          },
+          {
+            "expert_idx": 25,
+            "count": 42841
+          },
+          {
+            "expert_idx": 145,
+            "count": 42509
+          }
+        ],
+        "19": [
+          {
+            "expert_idx": 160,
+            "count": 73973
+          },
+          {
+            "expert_idx": 197,
+            "count": 68270
+          },
+          {
+            "expert_idx": 253,
+            "count": 53127
+          },
+          {
+            "expert_idx": 42,
+            "count": 39691
+          },
+          {
+            "expert_idx": 13,
+            "count": 35001
+          }
+        ],
+        "20": [
+          {
+            "expert_idx": 150,
+            "count": 137868
+          },
+          {
+            "expert_idx": 228,
+            "count": 47578
+          },
+          {
+            "expert_idx": 9,
+            "count": 42577
+          },
+          {
+            "expert_idx": 28,
+            "count": 41895
+          },
+          {
+            "expert_idx": 211,
+            "count": 34418
+          }
+        ],
+        "21": [
+          {
+            "expert_idx": 42,
+            "count": 54241
+          },
+          {
+            "expert_idx": 66,
+            "count": 52786
+          },
+          {
+            "expert_idx": 6,
+            "count": 51275
+          },
+          {
+            "expert_idx": 44,
+            "count": 49300
+          },
+          {
+            "expert_idx": 65,
+            "count": 47472
+          }
+        ],
+        "22": [
+          {
+            "expert_idx": 181,
+            "count": 44031
+          },
+          {
+            "expert_idx": 246,
+            "count": 42351
+          },
+          {
+            "expert_idx": 20,
+            "count": 39515
+          },
+          {
+            "expert_idx": 28,
+            "count": 34854
+          },
+          {
+            "expert_idx": 85,
+            "count": 30480
+          }
+        ],
+        "23": [
+          {
+            "expert_idx": 115,
+            "count": 74919
+          },
+          {
+            "expert_idx": 110,
+            "count": 37487
+          },
+          {
+            "expert_idx": 131,
+            "count": 36598
+          },
+          {
+            "expert_idx": 240,
+            "count": 35656
+          },
+          {
+            "expert_idx": 71,
+            "count": 31791
+          }
+        ],
+        "24": [
+          {
+            "expert_idx": 241,
+            "count": 58066
+          },
+          {
+            "expert_idx": 20,
+            "count": 50447
+          },
+          {
+            "expert_idx": 36,
+            "count": 38759
+          },
+          {
+            "expert_idx": 125,
+            "count": 33264
+          },
+          {
+            "expert_idx": 230,
+            "count": 31576
+          }
+        ],
+        "25": [
+          {
+            "expert_idx": 224,
+            "count": 102164
+          },
+          {
+            "expert_idx": 47,
+            "count": 53237
+          },
+          {
+            "expert_idx": 124,
+            "count": 51235
+          },
+          {
+            "expert_idx": 237,
+            "count": 48997
+          },
+          {
+            "expert_idx": 41,
+            "count": 44242
+          }
+        ],
+        "26": [
+          {
+            "expert_idx": 105,
+            "count": 66877
+          },
+          {
+            "expert_idx": 168,
+            "count": 57623
+          },
+          {
+            "expert_idx": 160,
+            "count": 43232
+          },
+          {
+            "expert_idx": 250,
+            "count": 38197
+          },
+          {
+            "expert_idx": 247,
+            "count": 36869
+          }
+        ],
+        "27": [
+          {
+            "expert_idx": 218,
+            "count": 144410
+          },
+          {
+            "expert_idx": 245,
+            "count": 73259
+          },
+          {
+            "expert_idx": 63,
+            "count": 44880
+          },
+          {
+            "expert_idx": 26,
+            "count": 35116
+          },
+          {
+            "expert_idx": 95,
+            "count": 34162
+          }
+        ],
+        "28": [
+          {
+            "expert_idx": 224,
+            "count": 68527
+          },
+          {
+            "expert_idx": 130,
+            "count": 68100
+          },
+          {
+            "expert_idx": 6,
+            "count": 62619
+          },
+          {
+            "expert_idx": 184,
+            "count": 45270
+          },
+          {
+            "expert_idx": 105,
+            "count": 36217
+          }
+        ],
+        "29": [
+          {
+            "expert_idx": 220,
+            "count": 86249
+          },
+          {
+            "expert_idx": 247,
+            "count": 43218
+          },
+          {
+            "expert_idx": 232,
+            "count": 40808
+          },
+          {
+            "expert_idx": 73,
+            "count": 38748
+          },
+          {
+            "expert_idx": 180,
+            "count": 36574
+          }
+        ],
+        "30": [
+          {
+            "expert_idx": 196,
+            "count": 49740
+          },
+          {
+            "expert_idx": 235,
+            "count": 45612
+          },
+          {
+            "expert_idx": 25,
+            "count": 37382
+          },
+          {
+            "expert_idx": 27,
+            "count": 37327
+          },
+          {
+            "expert_idx": 209,
+            "count": 37298
+          }
+        ],
+        "31": [
+          {
+            "expert_idx": 197,
+            "count": 52619
+          },
+          {
+            "expert_idx": 253,
+            "count": 50656
+          },
+          {
+            "expert_idx": 190,
+            "count": 38119
+          },
+          {
+            "expert_idx": 13,
+            "count": 36471
+          },
+          {
+            "expert_idx": 160,
+            "count": 34815
+          }
+        ],
+        "32": [
+          {
+            "expert_idx": 66,
+            "count": 108338
+          },
+          {
+            "expert_idx": 117,
+            "count": 94408
+          },
+          {
+            "expert_idx": 103,
+            "count": 45047
+          },
+          {
+            "expert_idx": 55,
+            "count": 35319
+          },
+          {
+            "expert_idx": 212,
+            "count": 34314
+          }
+        ],
+        "33": [
+          {
+            "expert_idx": 29,
+            "count": 53359
+          },
+          {
+            "expert_idx": 47,
+            "count": 35304
+          },
+          {
+            "expert_idx": 10,
+            "count": 33150
+          },
+          {
+            "expert_idx": 212,
+            "count": 28514
+          },
+          {
+            "expert_idx": 197,
+            "count": 27341
+          }
+        ],
+        "34": [
+          {
+            "expert_idx": 202,
+            "count": 96643
+          },
+          {
+            "expert_idx": 102,
+            "count": 40773
+          },
+          {
+            "expert_idx": 48,
+            "count": 40497
+          },
+          {
+            "expert_idx": 173,
+            "count": 38447
+          },
+          {
+            "expert_idx": 47,
+            "count": 36903
+          }
+        ],
+        "35": [
+          {
+            "expert_idx": 126,
+            "count": 47855
+          },
+          {
+            "expert_idx": 3,
+            "count": 43255
+          },
+          {
+            "expert_idx": 34,
+            "count": 41847
+          },
+          {
+            "expert_idx": 255,
+            "count": 40286
+          },
+          {
+            "expert_idx": 159,
+            "count": 40086
+          }
+        ],
+        "36": [
+          {
+            "expert_idx": 1,
+            "count": 41937
+          },
+          {
+            "expert_idx": 84,
+            "count": 40657
+          },
+          {
+            "expert_idx": 31,
+            "count": 36661
+          },
+          {
+            "expert_idx": 18,
+            "count": 35425
+          },
+          {
+            "expert_idx": 15,
+            "count": 35381
+          }
+        ],
+        "37": [
+          {
+            "expert_idx": 55,
+            "count": 67296
+          },
+          {
+            "expert_idx": 3,
+            "count": 54991
+          },
+          {
+            "expert_idx": 59,
+            "count": 51414
+          },
+          {
+            "expert_idx": 87,
+            "count": 41143
+          },
+          {
+            "expert_idx": 102,
+            "count": 40917
+          }
+        ],
+        "38": [
+          {
+            "expert_idx": 33,
+            "count": 64734
+          },
+          {
+            "expert_idx": 209,
+            "count": 61976
+          },
+          {
+            "expert_idx": 157,
+            "count": 52336
+          },
+          {
+            "expert_idx": 4,
+            "count": 46563
+          },
+          {
+            "expert_idx": 168,
+            "count": 46419
+          }
+        ],
+        "39": [
+          {
+            "expert_idx": 35,
+            "count": 147375
+          },
+          {
+            "expert_idx": 52,
+            "count": 50223
+          },
+          {
+            "expert_idx": 239,
+            "count": 48599
+          },
+          {
+            "expert_idx": 213,
+            "count": 45184
+          },
+          {
+            "expert_idx": 181,
+            "count": 42520
+          }
+        ]
+      }
+    },
+    "runtime_seconds": 1787.349
+  },
+  "results": {
+    "bf16": {
+      "description": "No expert quantization.",
+      "mode": "bf16",
+      "ppl": 6.58517,
+      "nll": 1.88482,
+      "memory_gb": 71.904,
+      "fp8_weights": 0,
+      "fp8_fraction": 0.0,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 168.9
+    },
+    "uniform_fp4": {
+      "description": "All expert weights quantized to NVFP4, dequantized to BF16, evaluated with F.linear.",
+      "mode": "uniform_fp4",
+      "ppl": 6.620491,
+      "nll": 1.89017,
+      "memory_gb": 23.585,
+      "fp8_weights": 0,
+      "fp8_fraction": 0.0,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 176.5
+    },
+    "uniform_fp8": {
+      "description": "All expert weights quantized to FP8, dequantized to BF16, evaluated with F.linear.",
+      "mode": "uniform_fp8",
+      "ppl": 6.606242,
+      "nll": 1.888015,
+      "memory_gb": 39.691,
+      "fp8_weights": 32212254720,
+      "fp8_fraction": 1.0,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 174.9
+    },
+    "routing_per_expert_25pct": {
+      "description": "Top 25% experts per layer by routing count promoted to FP8; remaining experts use FP4.",
+      "mode": "per_expert",
+      "ppl": 6.612707,
+      "nll": 1.888993,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 176.4
+    },
+    "perchannel_akurt_w1_4_w2_16": {
+      "description": "Routing-aware activation_kurtosis masks with W1=4% and W2=16% FP8.",
+      "mode": "per_channel",
+      "ppl": 6.606775,
+      "nll": 1.888096,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576998400,
+      "fp8_fraction": 0.080001,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 179.6
+    },
+    "perchannel_akurt_w1_10_w2_40": {
+      "description": "Routing-aware activation_kurtosis masks with W1=10% and W2=40% FP8.",
+      "mode": "per_channel",
+      "ppl": 6.616776,
+      "nll": 1.889608,
+      "memory_gb": 26.806,
+      "fp8_weights": 6442414080,
+      "fp8_fraction": 0.199999,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 178.3
+    },
+    "mxmoe_per_block": {
+      "description": "MxMoE greedy knapsack over per-projection output perturbation at 25% budget.",
+      "mode": "per_block",
+      "ppl": 6.584854,
+      "nll": 1.884772,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 176.6
+    },
+    "mc_moe_per_expert": {
+      "description": "MC-MoE importance = freq^1 * weight^1.5 * quant_loss^2, greedy per-expert at 25%.",
+      "mode": "per_expert",
+      "ppl": 6.612743,
+      "nll": 1.888999,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 176.6
+    }
+  }
+}

@@ -1,0 +1,1024 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/proper_eval.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+    "metric_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter23_scalebits_full_cache.pt",
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      },
+      "mxmoe_perturbation_perchannel": {
+        "ppl": 6.59972,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_25pct": {
+        "ppl": 6.590387,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_w1_4_w2_16": {
+        "ppl": 6.606149,
+        "memory_gb": 24.874
+      },
+      "mxmoe_block_plus_channel_topup": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "output_perturbation_per_channel_9experts": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "topup_01pct": {
+        "ppl": 6.5769,
+        "memory_gb": 20.251
+      },
+      "topup_02pct": {
+        "ppl": 6.5788,
+        "memory_gb": 20.37
+      },
+      "topup_03pct": {
+        "ppl": 6.5791,
+        "memory_gb": 20.488
+      },
+      "topup_05pct": {
+        "ppl": 6.5763,
+        "memory_gb": 20.743
+      },
+      "topup_08pct": {
+        "ppl": 6.5798,
+        "memory_gb": 21.1
+      },
+      "topup_10pct": {
+        "ppl": 6.5791,
+        "memory_gb": 21.337
+      },
+      "topup_15pct": {
+        "ppl": 6.5872,
+        "memory_gb": 21.948
+      },
+      "topup_20pct": {
+        "ppl": 6.5939,
+        "memory_gb": 22.542
+      },
+      "perchannel_hessian_25pct": {
+        "ppl": 6.614806,
+        "memory_gb": 27.612
+      },
+      "perchannel_hessian_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_30pct": {
+        "ppl": 6.627915,
+        "memory_gb": 28.417
+      },
+      "perchannel_akurt_40pct": {
+        "ppl": 6.614058,
+        "memory_gb": 30.028
+      },
+      "mxmoe_topup_hessian_5pct": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "perturbation_proportional_30pct": {
+        "ppl": 6.5893,
+        "memory_gb": 28.417
+      },
+      "perturbation_proportional_40pct": {
+        "ppl": 6.596071,
+        "memory_gb": 30.028
+      },
+      "mxmoe_block_35pct": {
+        "ppl": 6.57889,
+        "memory_gb": 29.222
+      },
+      "mxmoe_layer_adaptive": {
+        "ppl": 6.583283,
+        "memory_gb": 27.813
+      },
+      "global_channel_ranking": {
+        "ppl": 6.612899,
+        "memory_gb": 25.281
+      },
+      "mxmoe_block_15pct": {
+        "ppl": 6.584293,
+        "memory_gb": 26.001
+      },
+      "mxmoe_block_20pct": {
+        "ppl": 6.58199,
+        "memory_gb": 26.806
+      },
+      "mxmoe_block_10pct": {
+        "ppl": 6.58375,
+        "memory_gb": 25.196
+      },
+      "perchannel_akurt_w1_0_w2_25": {
+        "ppl": 6.618204,
+        "memory_gb": 24.927
+      },
+      "perchannel_akurt_w1_0_w2_40": {
+        "ppl": 6.615269,
+        "memory_gb": 25.733
+      },
+      "mxmoe_topup_w2_only_5pct": {
+        "ppl": 6.583489,
+        "memory_gb": 27.774
+      },
+      "mxmoe_topup_perturbation_channel": {
+        "ppl": 6.580924,
+        "memory_gb": 28.222
+      },
+      "mxmoe_topup_perturbation_10pct": {
+        "ppl": 6.578362,
+        "memory_gb": 28.817
+      },
+      "mxmoe_topup_perturbation_15pct": {
+        "ppl": 6.582766,
+        "memory_gb": 29.427
+      },
+      "pure_perturbation_perchannel_25pct": {
+        "ppl": 6.613174,
+        "memory_gb": 27.612
+      },
+      "mxmoe_block_w2_heavy": {
+        "ppl": 6.598593,
+        "memory_gb": 27.612
+      },
+      "joint_w1_w2_optimization": {
+        "ppl": 6.576243,
+        "memory_gb": 28.953
+      },
+      "mxmoe_topup_combined_5pct": {
+        "ppl": 6.581458,
+        "memory_gb": 28.222
+      },
+      "perturbation_per_channel_w1_4_w2_16": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "scalebits_topup_5pct": {
+        "ppl": 6.578943,
+        "memory_gb": 28.222
+      },
+      "scalebits_perchannel_w1_4_w2_16": {
+        "ppl": 6.604948,
+        "memory_gb": 24.874
+      },
+      "dynamic_oracle_25pct": {
+        "ppl": 6.600562,
+        "memory_gb": 27.612
+      },
+      "dynamic_oracle_10pct": {
+        "ppl": 6.593817,
+        "memory_gb": 25.221
+      },
+      "cascade_aware_25pct": {
+        "ppl": 6.628183,
+        "memory_gb": 27.601
+      },
+      "cascade_aware_reverse": {
+        "ppl": 6.581219,
+        "memory_gb": 27.601
+      },
+      "mxmoe_topup_8pct_at_20pct_budget": {
+        "ppl": 6.580448,
+        "memory_gb": 27.838
+      },
+      "joint_w1w2_with_topup": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_topup_1pct": {
+        "ppl": 6.578734,
+        "memory_gb": 29.058
+      },
+      "joint_topup_3pct": {
+        "ppl": 6.574401,
+        "memory_gb": 29.269
+      },
+      "joint_topup_5pct": {
+        "ppl": 6.573759,
+        "memory_gb": 29.496
+      },
+      "joint_topup_10pct": {
+        "ppl": 6.581485,
+        "memory_gb": 30.024
+      },
+      "joint_topup_15pct": {
+        "ppl": 6.590167,
+        "memory_gb": 30.567
+      },
+      "joint_cascade_reverse_topup_5pct": {
+        "ppl": 6.574862,
+        "memory_gb": 29.486
+      },
+      "joint_cascade_reverse_topup_10pct": {
+        "ppl": 6.580087,
+        "memory_gb": 30.015
+      },
+      "mxmoe_cascade_reverse_topup_5pct": {
+        "ppl": 6.581586,
+        "memory_gb": 28.212
+      },
+      "replicate_iter07_joint": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_w1w2_topup_w2_only_5pct": {
+        "ppl": 6.579621,
+        "memory_gb": 29.087
+      },
+      "joint_w1w2_topup_w2_only_3pct": {
+        "ppl": 6.582795,
+        "memory_gb": 29.033
+      },
+      "joint_w1w2_at_30pct_base": {
+        "ppl": 6.582143,
+        "memory_gb": 30.516
+      },
+      "joint_w1w2_at_40pct_base": {
+        "ppl": 6.577684,
+        "memory_gb": 30.006
+      },
+      "mxmoe_topup_w1_0_w2_10": {
+        "ppl": 6.584496,
+        "memory_gb": 27.938
+      },
+      "ensemble_metric_topup_5pct": {
+        "ppl": 6.578666,
+        "memory_gb": 28.222
+      },
+      "adaptive_topup_per_expert": {
+        "ppl": 6.5804,
+        "memory_gb": 27.863
+      },
+      "perchannel_real_hessian_25pct": {
+        "ppl": 6.603661,
+        "memory_gb": 27.612
+      },
+      "perchannel_real_hessian_w1_4_w2_16": {
+        "ppl": 6.603787,
+        "memory_gb": 24.874
+      },
+      "perchannel_real_hessian_w1_0_w2_25": {
+        "ppl": 6.615687,
+        "memory_gb": 24.927
+      },
+      "perchannel_output_perturbation_25pct": {
+        "ppl": 6.599597,
+        "memory_gb": 27.612
+      },
+      "perchannel_output_perturbation_w1_4_w2_16": {
+        "ppl": 6.603022,
+        "memory_gb": 24.874
+      },
+      "perchannel_output_perturbation_w1_0_w2_25": {
+        "ppl": 6.61138,
+        "memory_gb": 24.927
+      },
+      "micromix_threshold": {
+        "ppl": 6.618633,
+        "memory_gb": 28.946
+      },
+      "micromix_threshold_routing": {
+        "ppl": 6.618053,
+        "memory_gb": 26.266
+      },
+      "router_affinity_weighted_25pct": {
+        "ppl": 6.589607,
+        "memory_gb": 27.612
+      },
+      "router_affinity_weighted_w1_4_w2_16": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "cross_expert_outlier_agreement_5pct": {
+        "ppl": 6.62236,
+        "memory_gb": 23.589
+      },
+      "cross_expert_outlier_10pct": {
+        "ppl": 6.622091,
+        "memory_gb": 23.619
+      },
+      "hessian_normalized_25pct": {
+        "ppl": 6.616846,
+        "memory_gb": 27.612
+      },
+      "hessian_normalized_w1_4_w2_16": {
+        "ppl": 6.609929,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_10pct": {
+        "ppl": 6.605976,
+        "memory_gb": 24.23
+      },
+      "ra_perchannel_15pct": {
+        "ppl": 6.591708,
+        "memory_gb": 24.552
+      },
+      "ra_perchannel_20pct": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_30pct": {
+        "ppl": 6.592682,
+        "memory_gb": 25.518
+      },
+      "ra_perchannel_40pct": {
+        "ppl": 6.593389,
+        "memory_gb": 26.162
+      },
+      "ra_plus_mxmoe_topup_5pct": {
+        "ppl": 6.582004,
+        "memory_gb": 27.828
+      },
+      "ra_plus_mxmoe_topup_3pct": {
+        "ppl": 6.583331,
+        "memory_gb": 27.741
+      },
+      "ra_joint_w1w2": {
+        "ppl": 6.576245,
+        "memory_gb": 28.283
+      },
+      "gptq_residual_perchannel_20pct": {
+        "ppl": 6.606762,
+        "memory_gb": 24.874
+      },
+      "gptq_residual_perchannel_25pct": {
+        "ppl": 6.601963,
+        "memory_gb": 25.196
+      },
+      "gptq_residual_perchannel_w1_4_w2_16": {
+        "ppl": 6.606762,
+        "memory_gb": 24.874
+      },
+      "gptq_residual_plus_mxmoe_topup_5pct": {
+        "ppl": 6.573739,
+        "memory_gb": 28.222
+      },
+      "gptq_residual_plus_router_affinity_25pct": {
+        "ppl": 6.593733,
+        "memory_gb": 25.196
+      },
+      "gptq_residual_joint_w1w2": {
+        "ppl": 6.578532,
+        "memory_gb": 28.283
+      },
+      "wanda_w1_4_w2_16": {
+        "ppl": 6.610881,
+        "memory_gb": 24.874
+      },
+      "rqe_w1_4_w2_16": {
+        "ppl": 6.628687,
+        "memory_gb": 24.874
+      },
+      "baq_equalloss_2x": {
+        "ppl": 6.607711,
+        "memory_gb": 25.887
+      },
+      "baq_equalloss_3x": {
+        "ppl": 6.604456,
+        "memory_gb": 24.761
+      },
+      "ra_joint_w1w2_topup_3pct": {
+        "ppl": 6.577888,
+        "memory_gb": 29.269
+      },
+      "ra_joint_w1w2_topup_5pct": {
+        "ppl": 6.577093,
+        "memory_gb": 29.496
+      },
+      "ra_joint_w1w2_topup_8pct": {
+        "ppl": 6.584755,
+        "memory_gb": 29.813
+      },
+      "ra_extreme_hot": {
+        "ppl": 6.606742,
+        "memory_gb": 26.202
+      },
+      "ra_extreme_hot_perchannel": {
+        "ppl": 6.602858,
+        "memory_gb": 26.041
+      },
+      "ra_mxmoe_topup_router_affinity_8pct": {
+        "ppl": 6.583336,
+        "memory_gb": 28.579
+      },
+      "ra_perchannel_30pct_uniform": {
+        "ppl": 6.614181,
+        "memory_gb": 25.525
+      },
+      "output_perturbation_mxmoe_topup_router_affinity_5pct": {
+        "ppl": 6.575752,
+        "memory_gb": 29.498
+      },
+      "mxmoe_block_plus_residual_1pct": {
+        "ppl": 6.574685,
+        "memory_gb": 27.73
+      },
+      "mxmoe_block_plus_residual_3pct": {
+        "ppl": 6.578832,
+        "memory_gb": 27.967
+      },
+      "mxmoe_block_plus_residual_5pct": {
+        "ppl": 6.574262,
+        "memory_gb": 28.222
+      },
+      "mxmoe_block_plus_residual_8pct": {
+        "ppl": 6.581616,
+        "memory_gb": 28.579
+      },
+      "joint_topup_residual_5pct": {
+        "ppl": 6.576196,
+        "memory_gb": 29.496
+      },
+      "joint_topup_residual_3pct": {
+        "ppl": 6.57291,
+        "memory_gb": 29.269
+      },
+      "mxmoe_block_plus_fp8_3pct_and_residual_3pct": {
+        "ppl": 6.578276,
+        "memory_gb": 28.323
+      },
+      "joint_fp8_3pct_residual_3pct": {
+        "ppl": 6.577194,
+        "memory_gb": 29.585
+      },
+      "cfk_joint_plus_0p25gb": {
+        "ppl": 6.58713,
+        "memory_gb": 28.184
+      },
+      "cfk_joint_plus_0p50gb": {
+        "ppl": 6.579591,
+        "memory_gb": 28.434
+      },
+      "cfk_union_plus_0p25gb": {
+        "ppl": 6.589761,
+        "memory_gb": 29.748
+      },
+      "cfk_union_plus_0p50gb": {
+        "ppl": 6.588386,
+        "memory_gb": 29.998
+      },
+      "cfk_mxmoe_plus_0p25gb": {
+        "ppl": 6.575977,
+        "memory_gb": 28.472
+      },
+      "cfk_mxmoe_plus_0p50gb": {
+        "ppl": 6.586991,
+        "memory_gb": 28.722
+      },
+      "agq_perchannel_20pct": {
+        "ppl": 6.601373,
+        "memory_gb": 25.196
+      },
+      "agq_perchannel_w1_4_w2_16": {
+        "ppl": 6.600996,
+        "memory_gb": 24.874
+      },
+      "agq_joint_w1w2": {
+        "ppl": 6.572765,
+        "memory_gb": 27.934
+      },
+      "agq_joint_w1w2_topup_5pct": {
+        "ppl": 6.576964,
+        "memory_gb": 29.496
+      },
+      "agq_mxmoe_topup_5pct": {
+        "ppl": 6.574663,
+        "memory_gb": 28.222
+      },
+      "agq_union_router_affinity_topup_5pct": {
+        "ppl": 6.575529,
+        "memory_gb": 29.498
+      },
+      "cfk_mxmoe_plus_0p10gb": {
+        "ppl": 6.577299,
+        "memory_gb": 28.322
+      },
+      "cfk_mxmoe_plus_0p15gb": {
+        "ppl": 6.576781,
+        "memory_gb": 28.372
+      },
+      "cfk_mxmoe_plus_0p20gb": {
+        "ppl": 6.578807,
+        "memory_gb": 28.422
+      },
+      "cfk_mxmoe_plus_0p30gb": {
+        "ppl": 6.578927,
+        "memory_gb": 28.522
+      },
+      "cfk_mxmoe_w2only_plus_0p10gb": {
+        "ppl": 6.577299,
+        "memory_gb": 28.322
+      },
+      "cfk_mxmoe_w2only_plus_0p20gb": {
+        "ppl": 6.578809,
+        "memory_gb": 28.422
+      },
+      "cfk_mxmoe_w2only_plus_0p30gb": {
+        "ppl": 6.578927,
+        "memory_gb": 28.522
+      },
+      "cfk_mxmoe_smallbundles_plus_0p20gb": {
+        "ppl": 6.582004,
+        "memory_gb": 28.422
+      },
+      "routergap_joint_topup_3pct": {
+        "ppl": 6.590375,
+        "memory_gb": 27.73
+      },
+      "routergap_joint_topup_5pct": {
+        "ppl": 6.594716,
+        "memory_gb": 27.815
+      },
+      "routergap_joint_topup_8pct": {
+        "ppl": 6.592926,
+        "memory_gb": 27.934
+      },
+      "routergap_union_topup_5pct": {
+        "ppl": 6.573449,
+        "memory_gb": 29.498
+      },
+      "routergap_mxmoe_topup_8pct": {
+        "ppl": 6.577843,
+        "memory_gb": 28.579
+      },
+      "routergap_perchannel_20pct": {
+        "ppl": 6.605868,
+        "memory_gb": 24.874
+      },
+      "joint_topup_residual_2pct": {
+        "ppl": 6.57472,
+        "memory_gb": 28.172
+      },
+      "joint_topup_residual_4pct": {
+        "ppl": 6.574115,
+        "memory_gb": 28.41
+      },
+      "union_topup_residual_2pct": {
+        "ppl": 6.579173,
+        "memory_gb": 29.709
+      },
+      "union_topup_residual_3pct": {
+        "ppl": 6.580066,
+        "memory_gb": 29.814
+      },
+      "union_topup_residual_5pct": {
+        "ppl": 6.581548,
+        "memory_gb": 30.04
+      },
+      "routergap_union_residual_3pct": {
+        "ppl": 6.575683,
+        "memory_gb": 29.814
+      },
+      "serq_joint_salient_1pct": {
+        "ppl": 6.579768,
+        "memory_gb": 28.578
+      },
+      "serq_joint_salient_3pct": {
+        "ppl": 6.583334,
+        "memory_gb": 29.867
+      },
+      "serq_union_salient_1pct": {
+        "ppl": 6.584853,
+        "memory_gb": 30.142
+      },
+      "serq_union_salient_3pct": {
+        "ppl": 6.585099,
+        "memory_gb": 31.431
+      },
+      "serq_mxmoe_salient_1pct": {
+        "ppl": 6.575306,
+        "memory_gb": 28.866
+      },
+      "serq_mxmoe_salient_3pct": {
+        "ppl": 6.579932,
+        "memory_gb": 30.155
+      },
+      "wushdiag_joint_base": {
+        "ppl": 6.588455,
+        "memory_gb": 28.953
+      },
+      "wushdiag_joint_topup_5pct": {
+        "ppl": 6.594819,
+        "memory_gb": 27.815
+      },
+      "wushdiag_mxmoe_topup_5pct": {
+        "ppl": 6.589036,
+        "memory_gb": 28.222
+      },
+      "wushdiag_union_topup_5pct": {
+        "ppl": 6.588998,
+        "memory_gb": 29.498
+      },
+      "wushdiag_perchannel_ra_20pct": {
+        "ppl": 6.59304,
+        "memory_gb": 24.874
+      },
+      "wushdiag_joint_residual_2pct": {
+        "ppl": 6.592798,
+        "memory_gb": 28.172
+      }
+    },
+    "experiment": "Iteration 23 full-chunk ScaleBITS refresh on current strongest base families",
+    "scalebits_metric": {
+      "channel_metric_requested": "scalebits_gxdelta_local_mse",
+      "channel_metric_effective": "scalebits_gxdelta_local_mse",
+      "channel_metric_fallback_used": false,
+      "scalebits_backed_active_experts": 10237,
+      "total_active_experts": 10237,
+      "metric_name": "scalebits_gxdelta_local_mse",
+      "gradient_term_used": true,
+      "gradient_calibration_chunks": 128,
+      "available_calibration_chunks": 128,
+      "loss_proxy": "layer_local_mse_to_bf16_moe_output",
+      "draft_quant_model": "fp4_gate_up_and_down",
+      "runtime_seconds": 1293.212,
+      "gini_summary": {
+        "active_experts": 10237,
+        "mean_gini": 0.105924,
+        "median_gini": 0.104998,
+        "min_gini": 0.036527,
+        "max_gini": 0.436145,
+        "experts_in_040_060_band": 5,
+        "layer_mean_gini": {
+          "0": 0.098784,
+          "1": 0.071345,
+          "2": 0.086977,
+          "3": 0.076469,
+          "4": 0.07887,
+          "5": 0.077397,
+          "6": 0.081154,
+          "7": 0.089246,
+          "8": 0.094878,
+          "9": 0.094945,
+          "10": 0.083704,
+          "11": 0.089052,
+          "12": 0.106089,
+          "13": 0.118429,
+          "14": 0.12169,
+          "15": 0.130445,
+          "16": 0.12879,
+          "17": 0.114678,
+          "18": 0.1205,
+          "19": 0.122846,
+          "20": 0.12142,
+          "21": 0.112393,
+          "22": 0.089011,
+          "23": 0.094969,
+          "24": 0.108016,
+          "25": 0.113445,
+          "26": 0.108016,
+          "27": 0.117863,
+          "28": 0.112815,
+          "29": 0.0994,
+          "30": 0.110655,
+          "31": 0.121825,
+          "32": 0.106875,
+          "33": 0.10031,
+          "34": 0.100596,
+          "35": 0.128823,
+          "36": 0.126191,
+          "37": 0.129854,
+          "38": 0.127926,
+          "39": 0.120299
+        }
+      }
+    },
+    "tested_plans": [
+      "scalebits128_joint_topup_5pct",
+      "scalebits128_joint_topup_8pct",
+      "scalebits128_union_topup_5pct"
+    ],
+    "runtime_seconds": 1892.598
+  },
+  "results": {
+    "scalebits128_joint_topup_5pct": {
+      "description": "Reuse the Iteration 7 joint three-tier base, keep W1 medium-tier ranking on activation-kurtosis, and replace W2 medium-tier ranking with full-128-chunk ScaleBITS.",
+      "mode": "per_channel",
+      "ppl": 6.573678,
+      "nll": 1.883073,
+      "memory_gb": 27.815,
+      "fp8_weights": 8459228160,
+      "fp8_fraction": 0.262609,
+      "w1_pair_fraction": 0.26269,
+      "w2_channel_fraction": 0.262446,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 197.6,
+      "channel_metric_requested": "scalebits_gxdelta_local_mse",
+      "channel_metric_effective": "scalebits_gxdelta_local_mse",
+      "channel_metric_fallback_used": false,
+      "scalebits_backed_active_experts": 10237,
+      "total_active_experts": 10237,
+      "metric_name": "scalebits_gxdelta_local_mse",
+      "gradient_term_used": true,
+      "gradient_calibration_chunks": 128,
+      "available_calibration_chunks": 128,
+      "loss_proxy": "layer_local_mse_to_bf16_moe_output",
+      "draft_quant_model": "fp4_gate_up_and_down",
+      "runtime_seconds": 1293.212,
+      "gini_summary": {
+        "active_experts": 10237,
+        "mean_gini": 0.105924,
+        "median_gini": 0.104998,
+        "min_gini": 0.036527,
+        "max_gini": 0.436145,
+        "experts_in_040_060_band": 5,
+        "layer_mean_gini": {
+          "0": 0.098784,
+          "1": 0.071345,
+          "2": 0.086977,
+          "3": 0.076469,
+          "4": 0.07887,
+          "5": 0.077397,
+          "6": 0.081154,
+          "7": 0.089246,
+          "8": 0.094878,
+          "9": 0.094945,
+          "10": 0.083704,
+          "11": 0.089052,
+          "12": 0.106089,
+          "13": 0.118429,
+          "14": 0.12169,
+          "15": 0.130445,
+          "16": 0.12879,
+          "17": 0.114678,
+          "18": 0.1205,
+          "19": 0.122846,
+          "20": 0.12142,
+          "21": 0.112393,
+          "22": 0.089011,
+          "23": 0.094969,
+          "24": 0.108016,
+          "25": 0.113445,
+          "26": 0.108016,
+          "27": 0.117863,
+          "28": 0.112815,
+          "29": 0.0994,
+          "30": 0.110655,
+          "31": 0.121825,
+          "32": 0.106875,
+          "33": 0.10031,
+          "34": 0.100596,
+          "35": 0.128823,
+          "36": 0.126191,
+          "37": 0.129854,
+          "38": 0.127926,
+          "39": 0.120299
+        }
+      },
+      "budget_source": "global_perturbation_percentile_buckets_with_medium_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "medium_tier_w1_fraction": 0.05,
+      "medium_tier_w2_fraction": 0.05,
+      "medium_tier_w1_pairs": 26,
+      "medium_tier_w2_channels": 102,
+      "source_base": "joint_w1w2_with_topup"
+    },
+    "scalebits128_joint_topup_8pct": {
+      "description": "Reuse the Iteration 7 joint three-tier base, keep W1 medium-tier ranking on activation-kurtosis, and replace W2 medium-tier ranking with full-128-chunk ScaleBITS.",
+      "mode": "per_channel",
+      "ppl": 6.580198,
+      "nll": 1.884065,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697686016,
+      "fp8_fraction": 0.270012,
+      "w1_pair_fraction": 0.270012,
+      "w2_channel_fraction": 0.270012,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 195.5,
+      "channel_metric_requested": "scalebits_gxdelta_local_mse",
+      "channel_metric_effective": "scalebits_gxdelta_local_mse",
+      "channel_metric_fallback_used": false,
+      "scalebits_backed_active_experts": 10237,
+      "total_active_experts": 10237,
+      "metric_name": "scalebits_gxdelta_local_mse",
+      "gradient_term_used": true,
+      "gradient_calibration_chunks": 128,
+      "available_calibration_chunks": 128,
+      "loss_proxy": "layer_local_mse_to_bf16_moe_output",
+      "draft_quant_model": "fp4_gate_up_and_down",
+      "runtime_seconds": 1293.212,
+      "gini_summary": {
+        "active_experts": 10237,
+        "mean_gini": 0.105924,
+        "median_gini": 0.104998,
+        "min_gini": 0.036527,
+        "max_gini": 0.436145,
+        "experts_in_040_060_band": 5,
+        "layer_mean_gini": {
+          "0": 0.098784,
+          "1": 0.071345,
+          "2": 0.086977,
+          "3": 0.076469,
+          "4": 0.07887,
+          "5": 0.077397,
+          "6": 0.081154,
+          "7": 0.089246,
+          "8": 0.094878,
+          "9": 0.094945,
+          "10": 0.083704,
+          "11": 0.089052,
+          "12": 0.106089,
+          "13": 0.118429,
+          "14": 0.12169,
+          "15": 0.130445,
+          "16": 0.12879,
+          "17": 0.114678,
+          "18": 0.1205,
+          "19": 0.122846,
+          "20": 0.12142,
+          "21": 0.112393,
+          "22": 0.089011,
+          "23": 0.094969,
+          "24": 0.108016,
+          "25": 0.113445,
+          "26": 0.108016,
+          "27": 0.117863,
+          "28": 0.112815,
+          "29": 0.0994,
+          "30": 0.110655,
+          "31": 0.121825,
+          "32": 0.106875,
+          "33": 0.10031,
+          "34": 0.100596,
+          "35": 0.128823,
+          "36": 0.126191,
+          "37": 0.129854,
+          "38": 0.127926,
+          "39": 0.120299
+        }
+      },
+      "budget_source": "global_perturbation_percentile_buckets_with_medium_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "medium_tier_w1_fraction": 0.08,
+      "medium_tier_w2_fraction": 0.08,
+      "medium_tier_w1_pairs": 41,
+      "medium_tier_w2_channels": 164,
+      "source_base": "joint_w1w2_with_topup"
+    },
+    "scalebits128_union_topup_5pct": {
+      "description": "Union the MxMoE and joint bases, then rank remaining FP4 W1/W2 paths with the full-128-chunk ScaleBITS-backed metric cache.",
+      "mode": "per_channel",
+      "ppl": 6.572765,
+      "nll": 1.882935,
+      "memory_gb": 29.498,
+      "fp8_weights": 11825207296,
+      "fp8_fraction": 0.367103,
+      "w1_pair_fraction": 0.288071,
+      "w2_channel_fraction": 0.525166,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 192.3,
+      "channel_metric_requested": "scalebits_gxdelta_local_mse",
+      "channel_metric_effective": "scalebits_gxdelta_local_mse",
+      "channel_metric_fallback_used": false,
+      "scalebits_backed_active_experts": 10237,
+      "total_active_experts": 10237,
+      "metric_name": "scalebits_gxdelta_local_mse",
+      "gradient_term_used": true,
+      "gradient_calibration_chunks": 128,
+      "available_calibration_chunks": 128,
+      "loss_proxy": "layer_local_mse_to_bf16_moe_output",
+      "draft_quant_model": "fp4_gate_up_and_down",
+      "runtime_seconds": 1293.212,
+      "gini_summary": {
+        "active_experts": 10237,
+        "mean_gini": 0.105924,
+        "median_gini": 0.104998,
+        "min_gini": 0.036527,
+        "max_gini": 0.436145,
+        "experts_in_040_060_band": 5,
+        "layer_mean_gini": {
+          "0": 0.098784,
+          "1": 0.071345,
+          "2": 0.086977,
+          "3": 0.076469,
+          "4": 0.07887,
+          "5": 0.077397,
+          "6": 0.081154,
+          "7": 0.089246,
+          "8": 0.094878,
+          "9": 0.094945,
+          "10": 0.083704,
+          "11": 0.089052,
+          "12": 0.106089,
+          "13": 0.118429,
+          "14": 0.12169,
+          "15": 0.130445,
+          "16": 0.12879,
+          "17": 0.114678,
+          "18": 0.1205,
+          "19": 0.122846,
+          "20": 0.12142,
+          "21": 0.112393,
+          "22": 0.089011,
+          "23": 0.094969,
+          "24": 0.108016,
+          "25": 0.113445,
+          "26": 0.108016,
+          "27": 0.117863,
+          "28": 0.112815,
+          "29": 0.0994,
+          "30": 0.110655,
+          "31": 0.121825,
+          "32": 0.106875,
+          "33": 0.10031,
+          "34": 0.100596,
+          "35": 0.128823,
+          "36": 0.126191,
+          "37": 0.129854,
+          "38": 0.127926,
+          "39": 0.120299
+        }
+      },
+      "budget_source": "mxmoe_plus_joint_base_plus_scalebits_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "mxmoe_promoted_w1_projections": 2560,
+      "mxmoe_promoted_w2_projections": 5123,
+      "merged_base_w1_projections": 2560,
+      "merged_base_w2_projections": 5123,
+      "w1_topup_fraction": 0.05,
+      "w2_topup_fraction": 0.05,
+      "mxmoe_base_fraction": 0.25,
+      "topup_fraction": 0.05,
+      "source_base": "output_perturbation_mxmoe_topup_router_affinity_5pct"
+    }
+  }
+}

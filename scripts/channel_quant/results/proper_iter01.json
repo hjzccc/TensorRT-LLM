@@ -1,0 +1,6658 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/MC-MoE/eval_ppl_utils.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+    "hot_experts_per_layer": 40,
+    "min_hot_routing_count": 128,
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      }
+    },
+    "hot_expert_summary": {
+      "0": [
+        {
+          "expert_idx": 108,
+          "routing_count": 32486
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 32478
+        },
+        {
+          "expert_idx": 89,
+          "routing_count": 26609
+        },
+        {
+          "expert_idx": 64,
+          "routing_count": 25557
+        },
+        {
+          "expert_idx": 242,
+          "routing_count": 22152
+        },
+        {
+          "expert_idx": 177,
+          "routing_count": 20077
+        },
+        {
+          "expert_idx": 191,
+          "routing_count": 19554
+        },
+        {
+          "expert_idx": 58,
+          "routing_count": 18982
+        },
+        {
+          "expert_idx": 152,
+          "routing_count": 18916
+        },
+        {
+          "expert_idx": 226,
+          "routing_count": 18066
+        },
+        {
+          "expert_idx": 120,
+          "routing_count": 17598
+        },
+        {
+          "expert_idx": 117,
+          "routing_count": 17518
+        },
+        {
+          "expert_idx": 55,
+          "routing_count": 17195
+        },
+        {
+          "expert_idx": 249,
+          "routing_count": 16681
+        },
+        {
+          "expert_idx": 181,
+          "routing_count": 16477
+        },
+        {
+          "expert_idx": 2,
+          "routing_count": 16373
+        },
+        {
+          "expert_idx": 185,
+          "routing_count": 16204
+        },
+        {
+          "expert_idx": 109,
+          "routing_count": 16118
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 15781
+        },
+        {
+          "expert_idx": 74,
+          "routing_count": 15763
+        },
+        {
+          "expert_idx": 135,
+          "routing_count": 15038
+        },
+        {
+          "expert_idx": 234,
+          "routing_count": 14672
+        },
+        {
+          "expert_idx": 245,
+          "routing_count": 14183
+        },
+        {
+          "expert_idx": 107,
+          "routing_count": 14121
+        },
+        {
+          "expert_idx": 13,
+          "routing_count": 14092
+        },
+        {
+          "expert_idx": 189,
+          "routing_count": 13738
+        },
+        {
+          "expert_idx": 82,
+          "routing_count": 13561
+        },
+        {
+          "expert_idx": 1,
+          "routing_count": 13335
+        },
+        {
+          "expert_idx": 188,
+          "routing_count": 13180
+        },
+        {
+          "expert_idx": 163,
+          "routing_count": 12999
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 12800
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 12761
+        },
+        {
+          "expert_idx": 139,
+          "routing_count": 12526
+        },
+        {
+          "expert_idx": 186,
+          "routing_count": 12432
+        },
+        {
+          "expert_idx": 85,
+          "routing_count": 12358
+        },
+        {
+          "expert_idx": 65,
+          "routing_count": 12342
+        },
+        {
+          "expert_idx": 96,
+          "routing_count": 12117
+        },
+        {
+          "expert_idx": 122,
+          "routing_count": 12013
+        },
+        {
+          "expert_idx": 16,
+          "routing_count": 11889
+        },
+        {
+          "expert_idx": 166,
+          "routing_count": 11600
+        }
+      ],
+      "1": [
+        {
+          "expert_idx": 238,
+          "routing_count": 36946
+        },
+        {
+          "expert_idx": 205,
+          "routing_count": 28231
+        },
+        {
+          "expert_idx": 138,
+          "routing_count": 27117
+        },
+        {
+          "expert_idx": 42,
+          "routing_count": 26926
+        },
+        {
+          "expert_idx": 11,
+          "routing_count": 23465
+        },
+        {
+          "expert_idx": 236,
+          "routing_count": 23252
+        },
+        {
+          "expert_idx": 239,
+          "routing_count": 22232
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 21680
+        },
+        {
+          "expert_idx": 84,
+          "routing_count": 21250
+        },
+        {
+          "expert_idx": 213,
+          "routing_count": 20647
+        },
+        {
+          "expert_idx": 153,
+          "routing_count": 20270
+        },
+        {
+          "expert_idx": 167,
+          "routing_count": 18812
+        },
+        {
+          "expert_idx": 235,
+          "routing_count": 17735
+        },
+        {
+          "expert_idx": 191,
+          "routing_count": 17133
+        },
+        {
+          "expert_idx": 69,
+          "routing_count": 16419
+        },
+        {
+          "expert_idx": 226,
+          "routing_count": 16323
+        },
+        {
+          "expert_idx": 232,
+          "routing_count": 15670
+        },
+        {
+          "expert_idx": 125,
+          "routing_count": 15426
+        },
+        {
+          "expert_idx": 198,
+          "routing_count": 15231
+        },
+        {
+          "expert_idx": 86,
+          "routing_count": 15175
+        },
+        {
+          "expert_idx": 82,
+          "routing_count": 14883
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 14677
+        },
+        {
+          "expert_idx": 13,
+          "routing_count": 14401
+        },
+        {
+          "expert_idx": 66,
+          "routing_count": 14361
+        },
+        {
+          "expert_idx": 43,
+          "routing_count": 14244
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 14050
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 14018
+        },
+        {
+          "expert_idx": 190,
+          "routing_count": 13690
+        },
+        {
+          "expert_idx": 154,
+          "routing_count": 13585
+        },
+        {
+          "expert_idx": 88,
+          "routing_count": 13470
+        },
+        {
+          "expert_idx": 29,
+          "routing_count": 13352
+        },
+        {
+          "expert_idx": 70,
+          "routing_count": 12937
+        },
+        {
+          "expert_idx": 96,
+          "routing_count": 12821
+        },
+        {
+          "expert_idx": 183,
+          "routing_count": 12769
+        },
+        {
+          "expert_idx": 26,
+          "routing_count": 12690
+        },
+        {
+          "expert_idx": 111,
+          "routing_count": 12537
+        },
+        {
+          "expert_idx": 223,
+          "routing_count": 12383
+        },
+        {
+          "expert_idx": 40,
+          "routing_count": 12354
+        },
+        {
+          "expert_idx": 207,
+          "routing_count": 12330
+        },
+        {
+          "expert_idx": 132,
+          "routing_count": 12189
+        }
+      ],
+      "2": [
+        {
+          "expert_idx": 88,
+          "routing_count": 27729
+        },
+        {
+          "expert_idx": 223,
+          "routing_count": 26575
+        },
+        {
+          "expert_idx": 41,
+          "routing_count": 23791
+        },
+        {
+          "expert_idx": 40,
+          "routing_count": 22729
+        },
+        {
+          "expert_idx": 6,
+          "routing_count": 22340
+        },
+        {
+          "expert_idx": 230,
+          "routing_count": 19719
+        },
+        {
+          "expert_idx": 180,
+          "routing_count": 18423
+        },
+        {
+          "expert_idx": 150,
+          "routing_count": 17977
+        },
+        {
+          "expert_idx": 164,
+          "routing_count": 17576
+        },
+        {
+          "expert_idx": 187,
+          "routing_count": 17231
+        },
+        {
+          "expert_idx": 3,
+          "routing_count": 16840
+        },
+        {
+          "expert_idx": 184,
+          "routing_count": 16756
+        },
+        {
+          "expert_idx": 17,
+          "routing_count": 16694
+        },
+        {
+          "expert_idx": 221,
+          "routing_count": 15995
+        },
+        {
+          "expert_idx": 104,
+          "routing_count": 15770
+        },
+        {
+          "expert_idx": 42,
+          "routing_count": 15620
+        },
+        {
+          "expert_idx": 8,
+          "routing_count": 15151
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 15043
+        },
+        {
+          "expert_idx": 13,
+          "routing_count": 14789
+        },
+        {
+          "expert_idx": 110,
+          "routing_count": 14766
+        },
+        {
+          "expert_idx": 185,
+          "routing_count": 14761
+        },
+        {
+          "expert_idx": 70,
+          "routing_count": 14568
+        },
+        {
+          "expert_idx": 107,
+          "routing_count": 14086
+        },
+        {
+          "expert_idx": 249,
+          "routing_count": 13944
+        },
+        {
+          "expert_idx": 212,
+          "routing_count": 13874
+        },
+        {
+          "expert_idx": 175,
+          "routing_count": 13739
+        },
+        {
+          "expert_idx": 4,
+          "routing_count": 13602
+        },
+        {
+          "expert_idx": 47,
+          "routing_count": 13061
+        },
+        {
+          "expert_idx": 99,
+          "routing_count": 12814
+        },
+        {
+          "expert_idx": 16,
+          "routing_count": 12768
+        },
+        {
+          "expert_idx": 58,
+          "routing_count": 12386
+        },
+        {
+          "expert_idx": 218,
+          "routing_count": 12064
+        },
+        {
+          "expert_idx": 207,
+          "routing_count": 11946
+        },
+        {
+          "expert_idx": 216,
+          "routing_count": 11802
+        },
+        {
+          "expert_idx": 183,
+          "routing_count": 11638
+        },
+        {
+          "expert_idx": 71,
+          "routing_count": 11585
+        },
+        {
+          "expert_idx": 111,
+          "routing_count": 11482
+        },
+        {
+          "expert_idx": 194,
+          "routing_count": 11453
+        },
+        {
+          "expert_idx": 83,
+          "routing_count": 11359
+        },
+        {
+          "expert_idx": 60,
+          "routing_count": 11325
+        }
+      ],
+      "3": [
+        {
+          "expert_idx": 61,
+          "routing_count": 56163
+        },
+        {
+          "expert_idx": 39,
+          "routing_count": 51599
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 51474
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 35783
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 31973
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 27959
+        },
+        {
+          "expert_idx": 211,
+          "routing_count": 24234
+        },
+        {
+          "expert_idx": 163,
+          "routing_count": 23096
+        },
+        {
+          "expert_idx": 129,
+          "routing_count": 22844
+        },
+        {
+          "expert_idx": 155,
+          "routing_count": 22751
+        },
+        {
+          "expert_idx": 108,
+          "routing_count": 20881
+        },
+        {
+          "expert_idx": 16,
+          "routing_count": 20480
+        },
+        {
+          "expert_idx": 156,
+          "routing_count": 20288
+        },
+        {
+          "expert_idx": 8,
+          "routing_count": 18364
+        },
+        {
+          "expert_idx": 58,
+          "routing_count": 18186
+        },
+        {
+          "expert_idx": 206,
+          "routing_count": 18152
+        },
+        {
+          "expert_idx": 197,
+          "routing_count": 17776
+        },
+        {
+          "expert_idx": 63,
+          "routing_count": 16845
+        },
+        {
+          "expert_idx": 250,
+          "routing_count": 16474
+        },
+        {
+          "expert_idx": 120,
+          "routing_count": 15981
+        },
+        {
+          "expert_idx": 118,
+          "routing_count": 15950
+        },
+        {
+          "expert_idx": 221,
+          "routing_count": 15819
+        },
+        {
+          "expert_idx": 146,
+          "routing_count": 15652
+        },
+        {
+          "expert_idx": 132,
+          "routing_count": 15570
+        },
+        {
+          "expert_idx": 180,
+          "routing_count": 15225
+        },
+        {
+          "expert_idx": 82,
+          "routing_count": 15001
+        },
+        {
+          "expert_idx": 67,
+          "routing_count": 14940
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 14253
+        },
+        {
+          "expert_idx": 11,
+          "routing_count": 13967
+        },
+        {
+          "expert_idx": 234,
+          "routing_count": 13563
+        },
+        {
+          "expert_idx": 213,
+          "routing_count": 13549
+        },
+        {
+          "expert_idx": 157,
+          "routing_count": 13498
+        },
+        {
+          "expert_idx": 36,
+          "routing_count": 13307
+        },
+        {
+          "expert_idx": 66,
+          "routing_count": 13181
+        },
+        {
+          "expert_idx": 55,
+          "routing_count": 12700
+        },
+        {
+          "expert_idx": 90,
+          "routing_count": 12365
+        },
+        {
+          "expert_idx": 116,
+          "routing_count": 12292
+        },
+        {
+          "expert_idx": 15,
+          "routing_count": 12264
+        },
+        {
+          "expert_idx": 247,
+          "routing_count": 12214
+        },
+        {
+          "expert_idx": 202,
+          "routing_count": 12197
+        }
+      ],
+      "4": [
+        {
+          "expert_idx": 25,
+          "routing_count": 73143
+        },
+        {
+          "expert_idx": 204,
+          "routing_count": 34852
+        },
+        {
+          "expert_idx": 212,
+          "routing_count": 33057
+        },
+        {
+          "expert_idx": 93,
+          "routing_count": 30583
+        },
+        {
+          "expert_idx": 206,
+          "routing_count": 29553
+        },
+        {
+          "expert_idx": 129,
+          "routing_count": 28649
+        },
+        {
+          "expert_idx": 117,
+          "routing_count": 26704
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 26343
+        },
+        {
+          "expert_idx": 1,
+          "routing_count": 26137
+        },
+        {
+          "expert_idx": 169,
+          "routing_count": 25024
+        },
+        {
+          "expert_idx": 151,
+          "routing_count": 24832
+        },
+        {
+          "expert_idx": 33,
+          "routing_count": 23918
+        },
+        {
+          "expert_idx": 243,
+          "routing_count": 23858
+        },
+        {
+          "expert_idx": 166,
+          "routing_count": 20856
+        },
+        {
+          "expert_idx": 29,
+          "routing_count": 20212
+        },
+        {
+          "expert_idx": 51,
+          "routing_count": 20085
+        },
+        {
+          "expert_idx": 217,
+          "routing_count": 19984
+        },
+        {
+          "expert_idx": 71,
+          "routing_count": 19889
+        },
+        {
+          "expert_idx": 139,
+          "routing_count": 19747
+        },
+        {
+          "expert_idx": 113,
+          "routing_count": 19477
+        },
+        {
+          "expert_idx": 180,
+          "routing_count": 19476
+        },
+        {
+          "expert_idx": 55,
+          "routing_count": 19404
+        },
+        {
+          "expert_idx": 190,
+          "routing_count": 18104
+        },
+        {
+          "expert_idx": 198,
+          "routing_count": 17488
+        },
+        {
+          "expert_idx": 2,
+          "routing_count": 16705
+        },
+        {
+          "expert_idx": 44,
+          "routing_count": 16028
+        },
+        {
+          "expert_idx": 221,
+          "routing_count": 15970
+        },
+        {
+          "expert_idx": 65,
+          "routing_count": 15614
+        },
+        {
+          "expert_idx": 10,
+          "routing_count": 15587
+        },
+        {
+          "expert_idx": 253,
+          "routing_count": 15329
+        },
+        {
+          "expert_idx": 32,
+          "routing_count": 15279
+        },
+        {
+          "expert_idx": 41,
+          "routing_count": 15177
+        },
+        {
+          "expert_idx": 14,
+          "routing_count": 15043
+        },
+        {
+          "expert_idx": 194,
+          "routing_count": 14848
+        },
+        {
+          "expert_idx": 240,
+          "routing_count": 14800
+        },
+        {
+          "expert_idx": 12,
+          "routing_count": 14640
+        },
+        {
+          "expert_idx": 239,
+          "routing_count": 14520
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 14512
+        },
+        {
+          "expert_idx": 149,
+          "routing_count": 14482
+        },
+        {
+          "expert_idx": 118,
+          "routing_count": 14369
+        }
+      ],
+      "5": [
+        {
+          "expert_idx": 203,
+          "routing_count": 34353
+        },
+        {
+          "expert_idx": 46,
+          "routing_count": 32763
+        },
+        {
+          "expert_idx": 64,
+          "routing_count": 29125
+        },
+        {
+          "expert_idx": 52,
+          "routing_count": 28791
+        },
+        {
+          "expert_idx": 253,
+          "routing_count": 28337
+        },
+        {
+          "expert_idx": 240,
+          "routing_count": 27237
+        },
+        {
+          "expert_idx": 133,
+          "routing_count": 27130
+        },
+        {
+          "expert_idx": 62,
+          "routing_count": 25085
+        },
+        {
+          "expert_idx": 232,
+          "routing_count": 23338
+        },
+        {
+          "expert_idx": 77,
+          "routing_count": 23285
+        },
+        {
+          "expert_idx": 65,
+          "routing_count": 22659
+        },
+        {
+          "expert_idx": 174,
+          "routing_count": 22567
+        },
+        {
+          "expert_idx": 24,
+          "routing_count": 21367
+        },
+        {
+          "expert_idx": 48,
+          "routing_count": 21254
+        },
+        {
+          "expert_idx": 226,
+          "routing_count": 20613
+        },
+        {
+          "expert_idx": 14,
+          "routing_count": 20196
+        },
+        {
+          "expert_idx": 1,
+          "routing_count": 19968
+        },
+        {
+          "expert_idx": 75,
+          "routing_count": 19639
+        },
+        {
+          "expert_idx": 69,
+          "routing_count": 19374
+        },
+        {
+          "expert_idx": 249,
+          "routing_count": 19236
+        },
+        {
+          "expert_idx": 225,
+          "routing_count": 18677
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 18641
+        },
+        {
+          "expert_idx": 169,
+          "routing_count": 18582
+        },
+        {
+          "expert_idx": 186,
+          "routing_count": 18580
+        },
+        {
+          "expert_idx": 103,
+          "routing_count": 18535
+        },
+        {
+          "expert_idx": 63,
+          "routing_count": 17727
+        },
+        {
+          "expert_idx": 228,
+          "routing_count": 17593
+        },
+        {
+          "expert_idx": 35,
+          "routing_count": 17494
+        },
+        {
+          "expert_idx": 213,
+          "routing_count": 17466
+        },
+        {
+          "expert_idx": 149,
+          "routing_count": 17427
+        },
+        {
+          "expert_idx": 168,
+          "routing_count": 17336
+        },
+        {
+          "expert_idx": 223,
+          "routing_count": 17247
+        },
+        {
+          "expert_idx": 5,
+          "routing_count": 16886
+        },
+        {
+          "expert_idx": 167,
+          "routing_count": 16795
+        },
+        {
+          "expert_idx": 3,
+          "routing_count": 16467
+        },
+        {
+          "expert_idx": 142,
+          "routing_count": 16146
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 16127
+        },
+        {
+          "expert_idx": 165,
+          "routing_count": 15767
+        },
+        {
+          "expert_idx": 89,
+          "routing_count": 15528
+        },
+        {
+          "expert_idx": 81,
+          "routing_count": 14977
+        }
+      ],
+      "6": [
+        {
+          "expert_idx": 162,
+          "routing_count": 47584
+        },
+        {
+          "expert_idx": 100,
+          "routing_count": 46196
+        },
+        {
+          "expert_idx": 126,
+          "routing_count": 42282
+        },
+        {
+          "expert_idx": 85,
+          "routing_count": 35482
+        },
+        {
+          "expert_idx": 250,
+          "routing_count": 32207
+        },
+        {
+          "expert_idx": 108,
+          "routing_count": 27017
+        },
+        {
+          "expert_idx": 178,
+          "routing_count": 25513
+        },
+        {
+          "expert_idx": 195,
+          "routing_count": 25269
+        },
+        {
+          "expert_idx": 2,
+          "routing_count": 23657
+        },
+        {
+          "expert_idx": 58,
+          "routing_count": 23656
+        },
+        {
+          "expert_idx": 10,
+          "routing_count": 22716
+        },
+        {
+          "expert_idx": 174,
+          "routing_count": 22360
+        },
+        {
+          "expert_idx": 3,
+          "routing_count": 22338
+        },
+        {
+          "expert_idx": 25,
+          "routing_count": 22273
+        },
+        {
+          "expert_idx": 114,
+          "routing_count": 22187
+        },
+        {
+          "expert_idx": 103,
+          "routing_count": 21504
+        },
+        {
+          "expert_idx": 223,
+          "routing_count": 21046
+        },
+        {
+          "expert_idx": 232,
+          "routing_count": 20524
+        },
+        {
+          "expert_idx": 187,
+          "routing_count": 20519
+        },
+        {
+          "expert_idx": 104,
+          "routing_count": 20228
+        },
+        {
+          "expert_idx": 71,
+          "routing_count": 19716
+        },
+        {
+          "expert_idx": 167,
+          "routing_count": 19680
+        },
+        {
+          "expert_idx": 255,
+          "routing_count": 18596
+        },
+        {
+          "expert_idx": 59,
+          "routing_count": 18232
+        },
+        {
+          "expert_idx": 253,
+          "routing_count": 18004
+        },
+        {
+          "expert_idx": 216,
+          "routing_count": 17710
+        },
+        {
+          "expert_idx": 32,
+          "routing_count": 17623
+        },
+        {
+          "expert_idx": 158,
+          "routing_count": 17505
+        },
+        {
+          "expert_idx": 136,
+          "routing_count": 16830
+        },
+        {
+          "expert_idx": 243,
+          "routing_count": 16462
+        },
+        {
+          "expert_idx": 92,
+          "routing_count": 16418
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 15974
+        },
+        {
+          "expert_idx": 128,
+          "routing_count": 15934
+        },
+        {
+          "expert_idx": 39,
+          "routing_count": 15612
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 15122
+        },
+        {
+          "expert_idx": 122,
+          "routing_count": 14960
+        },
+        {
+          "expert_idx": 57,
+          "routing_count": 14932
+        },
+        {
+          "expert_idx": 123,
+          "routing_count": 14877
+        },
+        {
+          "expert_idx": 48,
+          "routing_count": 14115
+        },
+        {
+          "expert_idx": 21,
+          "routing_count": 14071
+        }
+      ],
+      "7": [
+        {
+          "expert_idx": 215,
+          "routing_count": 60715
+        },
+        {
+          "expert_idx": 254,
+          "routing_count": 54031
+        },
+        {
+          "expert_idx": 210,
+          "routing_count": 48121
+        },
+        {
+          "expert_idx": 130,
+          "routing_count": 43871
+        },
+        {
+          "expert_idx": 74,
+          "routing_count": 39121
+        },
+        {
+          "expert_idx": 121,
+          "routing_count": 36590
+        },
+        {
+          "expert_idx": 163,
+          "routing_count": 33431
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 31440
+        },
+        {
+          "expert_idx": 119,
+          "routing_count": 28817
+        },
+        {
+          "expert_idx": 166,
+          "routing_count": 26466
+        },
+        {
+          "expert_idx": 182,
+          "routing_count": 25791
+        },
+        {
+          "expert_idx": 202,
+          "routing_count": 25628
+        },
+        {
+          "expert_idx": 38,
+          "routing_count": 24354
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 23060
+        },
+        {
+          "expert_idx": 243,
+          "routing_count": 22942
+        },
+        {
+          "expert_idx": 43,
+          "routing_count": 20475
+        },
+        {
+          "expert_idx": 224,
+          "routing_count": 19704
+        },
+        {
+          "expert_idx": 190,
+          "routing_count": 19450
+        },
+        {
+          "expert_idx": 32,
+          "routing_count": 19370
+        },
+        {
+          "expert_idx": 65,
+          "routing_count": 19226
+        },
+        {
+          "expert_idx": 106,
+          "routing_count": 19133
+        },
+        {
+          "expert_idx": 60,
+          "routing_count": 18659
+        },
+        {
+          "expert_idx": 16,
+          "routing_count": 18436
+        },
+        {
+          "expert_idx": 161,
+          "routing_count": 17971
+        },
+        {
+          "expert_idx": 218,
+          "routing_count": 17696
+        },
+        {
+          "expert_idx": 91,
+          "routing_count": 17561
+        },
+        {
+          "expert_idx": 129,
+          "routing_count": 17264
+        },
+        {
+          "expert_idx": 231,
+          "routing_count": 17201
+        },
+        {
+          "expert_idx": 125,
+          "routing_count": 17008
+        },
+        {
+          "expert_idx": 64,
+          "routing_count": 16985
+        },
+        {
+          "expert_idx": 55,
+          "routing_count": 16829
+        },
+        {
+          "expert_idx": 61,
+          "routing_count": 16482
+        },
+        {
+          "expert_idx": 85,
+          "routing_count": 16443
+        },
+        {
+          "expert_idx": 4,
+          "routing_count": 16344
+        },
+        {
+          "expert_idx": 204,
+          "routing_count": 16040
+        },
+        {
+          "expert_idx": 44,
+          "routing_count": 15737
+        },
+        {
+          "expert_idx": 146,
+          "routing_count": 15661
+        },
+        {
+          "expert_idx": 181,
+          "routing_count": 15537
+        },
+        {
+          "expert_idx": 167,
+          "routing_count": 15371
+        },
+        {
+          "expert_idx": 29,
+          "routing_count": 15158
+        }
+      ],
+      "8": [
+        {
+          "expert_idx": 150,
+          "routing_count": 150864
+        },
+        {
+          "expert_idx": 228,
+          "routing_count": 44088
+        },
+        {
+          "expert_idx": 28,
+          "routing_count": 43366
+        },
+        {
+          "expert_idx": 9,
+          "routing_count": 34979
+        },
+        {
+          "expert_idx": 199,
+          "routing_count": 33051
+        },
+        {
+          "expert_idx": 123,
+          "routing_count": 31612
+        },
+        {
+          "expert_idx": 103,
+          "routing_count": 31132
+        },
+        {
+          "expert_idx": 156,
+          "routing_count": 29093
+        },
+        {
+          "expert_idx": 158,
+          "routing_count": 27667
+        },
+        {
+          "expert_idx": 211,
+          "routing_count": 26781
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 25747
+        },
+        {
+          "expert_idx": 129,
+          "routing_count": 25518
+        },
+        {
+          "expert_idx": 236,
+          "routing_count": 24857
+        },
+        {
+          "expert_idx": 128,
+          "routing_count": 24666
+        },
+        {
+          "expert_idx": 220,
+          "routing_count": 24408
+        },
+        {
+          "expert_idx": 68,
+          "routing_count": 22491
+        },
+        {
+          "expert_idx": 232,
+          "routing_count": 22271
+        },
+        {
+          "expert_idx": 83,
+          "routing_count": 20901
+        },
+        {
+          "expert_idx": 190,
+          "routing_count": 20663
+        },
+        {
+          "expert_idx": 202,
+          "routing_count": 20227
+        },
+        {
+          "expert_idx": 183,
+          "routing_count": 19950
+        },
+        {
+          "expert_idx": 82,
+          "routing_count": 19766
+        },
+        {
+          "expert_idx": 124,
+          "routing_count": 19531
+        },
+        {
+          "expert_idx": 112,
+          "routing_count": 19262
+        },
+        {
+          "expert_idx": 134,
+          "routing_count": 18365
+        },
+        {
+          "expert_idx": 250,
+          "routing_count": 18255
+        },
+        {
+          "expert_idx": 215,
+          "routing_count": 18248
+        },
+        {
+          "expert_idx": 96,
+          "routing_count": 18095
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 17948
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 17930
+        },
+        {
+          "expert_idx": 26,
+          "routing_count": 17807
+        },
+        {
+          "expert_idx": 191,
+          "routing_count": 17410
+        },
+        {
+          "expert_idx": 43,
+          "routing_count": 17299
+        },
+        {
+          "expert_idx": 104,
+          "routing_count": 17167
+        },
+        {
+          "expert_idx": 64,
+          "routing_count": 16774
+        },
+        {
+          "expert_idx": 33,
+          "routing_count": 16562
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 16077
+        },
+        {
+          "expert_idx": 106,
+          "routing_count": 14822
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 14413
+        },
+        {
+          "expert_idx": 121,
+          "routing_count": 14340
+        }
+      ],
+      "9": [
+        {
+          "expert_idx": 42,
+          "routing_count": 48837
+        },
+        {
+          "expert_idx": 66,
+          "routing_count": 48239
+        },
+        {
+          "expert_idx": 65,
+          "routing_count": 44686
+        },
+        {
+          "expert_idx": 37,
+          "routing_count": 39239
+        },
+        {
+          "expert_idx": 34,
+          "routing_count": 34751
+        },
+        {
+          "expert_idx": 102,
+          "routing_count": 33356
+        },
+        {
+          "expert_idx": 13,
+          "routing_count": 33080
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 31953
+        },
+        {
+          "expert_idx": 192,
+          "routing_count": 30779
+        },
+        {
+          "expert_idx": 111,
+          "routing_count": 29367
+        },
+        {
+          "expert_idx": 52,
+          "routing_count": 29201
+        },
+        {
+          "expert_idx": 244,
+          "routing_count": 26487
+        },
+        {
+          "expert_idx": 95,
+          "routing_count": 26088
+        },
+        {
+          "expert_idx": 105,
+          "routing_count": 25823
+        },
+        {
+          "expert_idx": 162,
+          "routing_count": 25174
+        },
+        {
+          "expert_idx": 139,
+          "routing_count": 24971
+        },
+        {
+          "expert_idx": 58,
+          "routing_count": 24557
+        },
+        {
+          "expert_idx": 253,
+          "routing_count": 24170
+        },
+        {
+          "expert_idx": 83,
+          "routing_count": 23440
+        },
+        {
+          "expert_idx": 44,
+          "routing_count": 23422
+        },
+        {
+          "expert_idx": 196,
+          "routing_count": 22414
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 22330
+        },
+        {
+          "expert_idx": 169,
+          "routing_count": 22265
+        },
+        {
+          "expert_idx": 128,
+          "routing_count": 21082
+        },
+        {
+          "expert_idx": 206,
+          "routing_count": 20692
+        },
+        {
+          "expert_idx": 32,
+          "routing_count": 19985
+        },
+        {
+          "expert_idx": 41,
+          "routing_count": 19529
+        },
+        {
+          "expert_idx": 237,
+          "routing_count": 19397
+        },
+        {
+          "expert_idx": 8,
+          "routing_count": 18957
+        },
+        {
+          "expert_idx": 14,
+          "routing_count": 18774
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 18267
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 18010
+        },
+        {
+          "expert_idx": 180,
+          "routing_count": 17959
+        },
+        {
+          "expert_idx": 234,
+          "routing_count": 17197
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 16867
+        },
+        {
+          "expert_idx": 6,
+          "routing_count": 16222
+        },
+        {
+          "expert_idx": 73,
+          "routing_count": 15923
+        },
+        {
+          "expert_idx": 75,
+          "routing_count": 15871
+        },
+        {
+          "expert_idx": 79,
+          "routing_count": 15843
+        },
+        {
+          "expert_idx": 195,
+          "routing_count": 15066
+        }
+      ],
+      "10": [
+        {
+          "expert_idx": 246,
+          "routing_count": 43051
+        },
+        {
+          "expert_idx": 181,
+          "routing_count": 41607
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 37864
+        },
+        {
+          "expert_idx": 85,
+          "routing_count": 30697
+        },
+        {
+          "expert_idx": 187,
+          "routing_count": 28316
+        },
+        {
+          "expert_idx": 159,
+          "routing_count": 27718
+        },
+        {
+          "expert_idx": 28,
+          "routing_count": 26350
+        },
+        {
+          "expert_idx": 92,
+          "routing_count": 25339
+        },
+        {
+          "expert_idx": 158,
+          "routing_count": 24914
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 24102
+        },
+        {
+          "expert_idx": 73,
+          "routing_count": 23386
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 22804
+        },
+        {
+          "expert_idx": 253,
+          "routing_count": 22285
+        },
+        {
+          "expert_idx": 163,
+          "routing_count": 22020
+        },
+        {
+          "expert_idx": 68,
+          "routing_count": 21747
+        },
+        {
+          "expert_idx": 225,
+          "routing_count": 21624
+        },
+        {
+          "expert_idx": 204,
+          "routing_count": 21609
+        },
+        {
+          "expert_idx": 42,
+          "routing_count": 20073
+        },
+        {
+          "expert_idx": 223,
+          "routing_count": 19980
+        },
+        {
+          "expert_idx": 125,
+          "routing_count": 19779
+        },
+        {
+          "expert_idx": 128,
+          "routing_count": 19583
+        },
+        {
+          "expert_idx": 228,
+          "routing_count": 19415
+        },
+        {
+          "expert_idx": 137,
+          "routing_count": 19192
+        },
+        {
+          "expert_idx": 47,
+          "routing_count": 19088
+        },
+        {
+          "expert_idx": 218,
+          "routing_count": 19024
+        },
+        {
+          "expert_idx": 97,
+          "routing_count": 18668
+        },
+        {
+          "expert_idx": 154,
+          "routing_count": 18371
+        },
+        {
+          "expert_idx": 130,
+          "routing_count": 18361
+        },
+        {
+          "expert_idx": 239,
+          "routing_count": 18335
+        },
+        {
+          "expert_idx": 7,
+          "routing_count": 18306
+        },
+        {
+          "expert_idx": 201,
+          "routing_count": 17496
+        },
+        {
+          "expert_idx": 143,
+          "routing_count": 17252
+        },
+        {
+          "expert_idx": 98,
+          "routing_count": 16996
+        },
+        {
+          "expert_idx": 75,
+          "routing_count": 16751
+        },
+        {
+          "expert_idx": 59,
+          "routing_count": 16364
+        },
+        {
+          "expert_idx": 164,
+          "routing_count": 16285
+        },
+        {
+          "expert_idx": 9,
+          "routing_count": 16065
+        },
+        {
+          "expert_idx": 119,
+          "routing_count": 16013
+        },
+        {
+          "expert_idx": 254,
+          "routing_count": 15966
+        },
+        {
+          "expert_idx": 65,
+          "routing_count": 15927
+        }
+      ],
+      "11": [
+        {
+          "expert_idx": 115,
+          "routing_count": 67278
+        },
+        {
+          "expert_idx": 250,
+          "routing_count": 41251
+        },
+        {
+          "expert_idx": 240,
+          "routing_count": 34727
+        },
+        {
+          "expert_idx": 110,
+          "routing_count": 33487
+        },
+        {
+          "expert_idx": 71,
+          "routing_count": 27712
+        },
+        {
+          "expert_idx": 56,
+          "routing_count": 27069
+        },
+        {
+          "expert_idx": 109,
+          "routing_count": 26812
+        },
+        {
+          "expert_idx": 154,
+          "routing_count": 23895
+        },
+        {
+          "expert_idx": 131,
+          "routing_count": 23884
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 23668
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 22032
+        },
+        {
+          "expert_idx": 174,
+          "routing_count": 20588
+        },
+        {
+          "expert_idx": 142,
+          "routing_count": 20579
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 20425
+        },
+        {
+          "expert_idx": 116,
+          "routing_count": 20413
+        },
+        {
+          "expert_idx": 37,
+          "routing_count": 19667
+        },
+        {
+          "expert_idx": 114,
+          "routing_count": 19621
+        },
+        {
+          "expert_idx": 95,
+          "routing_count": 18992
+        },
+        {
+          "expert_idx": 64,
+          "routing_count": 18356
+        },
+        {
+          "expert_idx": 201,
+          "routing_count": 18240
+        },
+        {
+          "expert_idx": 128,
+          "routing_count": 17991
+        },
+        {
+          "expert_idx": 248,
+          "routing_count": 17225
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 16648
+        },
+        {
+          "expert_idx": 146,
+          "routing_count": 16386
+        },
+        {
+          "expert_idx": 93,
+          "routing_count": 16284
+        },
+        {
+          "expert_idx": 68,
+          "routing_count": 15946
+        },
+        {
+          "expert_idx": 207,
+          "routing_count": 15877
+        },
+        {
+          "expert_idx": 86,
+          "routing_count": 15847
+        },
+        {
+          "expert_idx": 169,
+          "routing_count": 15819
+        },
+        {
+          "expert_idx": 212,
+          "routing_count": 15746
+        },
+        {
+          "expert_idx": 7,
+          "routing_count": 15722
+        },
+        {
+          "expert_idx": 159,
+          "routing_count": 15693
+        },
+        {
+          "expert_idx": 254,
+          "routing_count": 15505
+        },
+        {
+          "expert_idx": 158,
+          "routing_count": 15482
+        },
+        {
+          "expert_idx": 157,
+          "routing_count": 15386
+        },
+        {
+          "expert_idx": 6,
+          "routing_count": 15370
+        },
+        {
+          "expert_idx": 17,
+          "routing_count": 15358
+        },
+        {
+          "expert_idx": 69,
+          "routing_count": 15288
+        },
+        {
+          "expert_idx": 195,
+          "routing_count": 15274
+        },
+        {
+          "expert_idx": 242,
+          "routing_count": 15075
+        }
+      ],
+      "12": [
+        {
+          "expert_idx": 241,
+          "routing_count": 63173
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 53619
+        },
+        {
+          "expert_idx": 36,
+          "routing_count": 42001
+        },
+        {
+          "expert_idx": 3,
+          "routing_count": 40088
+        },
+        {
+          "expert_idx": 125,
+          "routing_count": 39822
+        },
+        {
+          "expert_idx": 200,
+          "routing_count": 35584
+        },
+        {
+          "expert_idx": 1,
+          "routing_count": 33856
+        },
+        {
+          "expert_idx": 107,
+          "routing_count": 32071
+        },
+        {
+          "expert_idx": 230,
+          "routing_count": 31723
+        },
+        {
+          "expert_idx": 57,
+          "routing_count": 29315
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 29179
+        },
+        {
+          "expert_idx": 112,
+          "routing_count": 28528
+        },
+        {
+          "expert_idx": 84,
+          "routing_count": 28039
+        },
+        {
+          "expert_idx": 172,
+          "routing_count": 27828
+        },
+        {
+          "expert_idx": 97,
+          "routing_count": 25984
+        },
+        {
+          "expert_idx": 205,
+          "routing_count": 25162
+        },
+        {
+          "expert_idx": 66,
+          "routing_count": 24491
+        },
+        {
+          "expert_idx": 7,
+          "routing_count": 24379
+        },
+        {
+          "expert_idx": 132,
+          "routing_count": 23913
+        },
+        {
+          "expert_idx": 67,
+          "routing_count": 21687
+        },
+        {
+          "expert_idx": 95,
+          "routing_count": 21541
+        },
+        {
+          "expert_idx": 160,
+          "routing_count": 21453
+        },
+        {
+          "expert_idx": 27,
+          "routing_count": 21217
+        },
+        {
+          "expert_idx": 231,
+          "routing_count": 20341
+        },
+        {
+          "expert_idx": 140,
+          "routing_count": 20068
+        },
+        {
+          "expert_idx": 33,
+          "routing_count": 20026
+        },
+        {
+          "expert_idx": 133,
+          "routing_count": 20009
+        },
+        {
+          "expert_idx": 71,
+          "routing_count": 19620
+        },
+        {
+          "expert_idx": 151,
+          "routing_count": 19143
+        },
+        {
+          "expert_idx": 12,
+          "routing_count": 17985
+        },
+        {
+          "expert_idx": 63,
+          "routing_count": 17720
+        },
+        {
+          "expert_idx": 173,
+          "routing_count": 17588
+        },
+        {
+          "expert_idx": 194,
+          "routing_count": 17373
+        },
+        {
+          "expert_idx": 46,
+          "routing_count": 17109
+        },
+        {
+          "expert_idx": 134,
+          "routing_count": 16732
+        },
+        {
+          "expert_idx": 26,
+          "routing_count": 16665
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 15906
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 15820
+        },
+        {
+          "expert_idx": 121,
+          "routing_count": 15178
+        },
+        {
+          "expert_idx": 74,
+          "routing_count": 15057
+        }
+      ],
+      "13": [
+        {
+          "expert_idx": 224,
+          "routing_count": 86181
+        },
+        {
+          "expert_idx": 41,
+          "routing_count": 68572
+        },
+        {
+          "expert_idx": 124,
+          "routing_count": 54219
+        },
+        {
+          "expert_idx": 175,
+          "routing_count": 49590
+        },
+        {
+          "expert_idx": 207,
+          "routing_count": 39736
+        },
+        {
+          "expert_idx": 237,
+          "routing_count": 37952
+        },
+        {
+          "expert_idx": 27,
+          "routing_count": 37577
+        },
+        {
+          "expert_idx": 126,
+          "routing_count": 33966
+        },
+        {
+          "expert_idx": 122,
+          "routing_count": 33541
+        },
+        {
+          "expert_idx": 226,
+          "routing_count": 29956
+        },
+        {
+          "expert_idx": 244,
+          "routing_count": 28411
+        },
+        {
+          "expert_idx": 157,
+          "routing_count": 28338
+        },
+        {
+          "expert_idx": 110,
+          "routing_count": 27663
+        },
+        {
+          "expert_idx": 225,
+          "routing_count": 24947
+        },
+        {
+          "expert_idx": 168,
+          "routing_count": 21991
+        },
+        {
+          "expert_idx": 100,
+          "routing_count": 21865
+        },
+        {
+          "expert_idx": 38,
+          "routing_count": 20385
+        },
+        {
+          "expert_idx": 200,
+          "routing_count": 20328
+        },
+        {
+          "expert_idx": 43,
+          "routing_count": 20321
+        },
+        {
+          "expert_idx": 156,
+          "routing_count": 19564
+        },
+        {
+          "expert_idx": 140,
+          "routing_count": 18984
+        },
+        {
+          "expert_idx": 191,
+          "routing_count": 18312
+        },
+        {
+          "expert_idx": 2,
+          "routing_count": 17799
+        },
+        {
+          "expert_idx": 164,
+          "routing_count": 17699
+        },
+        {
+          "expert_idx": 118,
+          "routing_count": 17049
+        },
+        {
+          "expert_idx": 111,
+          "routing_count": 17021
+        },
+        {
+          "expert_idx": 194,
+          "routing_count": 16534
+        },
+        {
+          "expert_idx": 203,
+          "routing_count": 16343
+        },
+        {
+          "expert_idx": 239,
+          "routing_count": 16302
+        },
+        {
+          "expert_idx": 4,
+          "routing_count": 16176
+        },
+        {
+          "expert_idx": 230,
+          "routing_count": 15453
+        },
+        {
+          "expert_idx": 67,
+          "routing_count": 14987
+        },
+        {
+          "expert_idx": 56,
+          "routing_count": 14909
+        },
+        {
+          "expert_idx": 103,
+          "routing_count": 14886
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 14819
+        },
+        {
+          "expert_idx": 147,
+          "routing_count": 14774
+        },
+        {
+          "expert_idx": 46,
+          "routing_count": 14660
+        },
+        {
+          "expert_idx": 30,
+          "routing_count": 14634
+        },
+        {
+          "expert_idx": 198,
+          "routing_count": 14483
+        },
+        {
+          "expert_idx": 144,
+          "routing_count": 14032
+        }
+      ],
+      "14": [
+        {
+          "expert_idx": 105,
+          "routing_count": 77395
+        },
+        {
+          "expert_idx": 168,
+          "routing_count": 61447
+        },
+        {
+          "expert_idx": 247,
+          "routing_count": 47811
+        },
+        {
+          "expert_idx": 250,
+          "routing_count": 42582
+        },
+        {
+          "expert_idx": 16,
+          "routing_count": 38314
+        },
+        {
+          "expert_idx": 152,
+          "routing_count": 38137
+        },
+        {
+          "expert_idx": 27,
+          "routing_count": 35165
+        },
+        {
+          "expert_idx": 69,
+          "routing_count": 33723
+        },
+        {
+          "expert_idx": 60,
+          "routing_count": 32933
+        },
+        {
+          "expert_idx": 188,
+          "routing_count": 30593
+        },
+        {
+          "expert_idx": 235,
+          "routing_count": 30344
+        },
+        {
+          "expert_idx": 141,
+          "routing_count": 28787
+        },
+        {
+          "expert_idx": 70,
+          "routing_count": 28241
+        },
+        {
+          "expert_idx": 175,
+          "routing_count": 25561
+        },
+        {
+          "expert_idx": 199,
+          "routing_count": 25299
+        },
+        {
+          "expert_idx": 172,
+          "routing_count": 24692
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 22709
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 21529
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 21329
+        },
+        {
+          "expert_idx": 162,
+          "routing_count": 21085
+        },
+        {
+          "expert_idx": 66,
+          "routing_count": 21012
+        },
+        {
+          "expert_idx": 38,
+          "routing_count": 20569
+        },
+        {
+          "expert_idx": 42,
+          "routing_count": 20044
+        },
+        {
+          "expert_idx": 178,
+          "routing_count": 19198
+        },
+        {
+          "expert_idx": 1,
+          "routing_count": 18820
+        },
+        {
+          "expert_idx": 135,
+          "routing_count": 18364
+        },
+        {
+          "expert_idx": 160,
+          "routing_count": 18337
+        },
+        {
+          "expert_idx": 14,
+          "routing_count": 18255
+        },
+        {
+          "expert_idx": 124,
+          "routing_count": 18248
+        },
+        {
+          "expert_idx": 192,
+          "routing_count": 17946
+        },
+        {
+          "expert_idx": 144,
+          "routing_count": 17001
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 16942
+        },
+        {
+          "expert_idx": 6,
+          "routing_count": 16332
+        },
+        {
+          "expert_idx": 137,
+          "routing_count": 15835
+        },
+        {
+          "expert_idx": 251,
+          "routing_count": 15788
+        },
+        {
+          "expert_idx": 226,
+          "routing_count": 15369
+        },
+        {
+          "expert_idx": 47,
+          "routing_count": 15159
+        },
+        {
+          "expert_idx": 159,
+          "routing_count": 15127
+        },
+        {
+          "expert_idx": 87,
+          "routing_count": 14827
+        },
+        {
+          "expert_idx": 5,
+          "routing_count": 14494
+        }
+      ],
+      "15": [
+        {
+          "expert_idx": 245,
+          "routing_count": 85201
+        },
+        {
+          "expert_idx": 63,
+          "routing_count": 51628
+        },
+        {
+          "expert_idx": 135,
+          "routing_count": 41368
+        },
+        {
+          "expert_idx": 26,
+          "routing_count": 40568
+        },
+        {
+          "expert_idx": 32,
+          "routing_count": 35252
+        },
+        {
+          "expert_idx": 95,
+          "routing_count": 34953
+        },
+        {
+          "expert_idx": 85,
+          "routing_count": 34030
+        },
+        {
+          "expert_idx": 222,
+          "routing_count": 33421
+        },
+        {
+          "expert_idx": 220,
+          "routing_count": 32803
+        },
+        {
+          "expert_idx": 49,
+          "routing_count": 30204
+        },
+        {
+          "expert_idx": 38,
+          "routing_count": 30128
+        },
+        {
+          "expert_idx": 174,
+          "routing_count": 28498
+        },
+        {
+          "expert_idx": 17,
+          "routing_count": 27432
+        },
+        {
+          "expert_idx": 239,
+          "routing_count": 27037
+        },
+        {
+          "expert_idx": 209,
+          "routing_count": 25882
+        },
+        {
+          "expert_idx": 67,
+          "routing_count": 24789
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 22898
+        },
+        {
+          "expert_idx": 214,
+          "routing_count": 22210
+        },
+        {
+          "expert_idx": 175,
+          "routing_count": 21435
+        },
+        {
+          "expert_idx": 186,
+          "routing_count": 21190
+        },
+        {
+          "expert_idx": 87,
+          "routing_count": 20669
+        },
+        {
+          "expert_idx": 159,
+          "routing_count": 20610
+        },
+        {
+          "expert_idx": 84,
+          "routing_count": 19942
+        },
+        {
+          "expert_idx": 51,
+          "routing_count": 19251
+        },
+        {
+          "expert_idx": 106,
+          "routing_count": 19031
+        },
+        {
+          "expert_idx": 181,
+          "routing_count": 18769
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 18735
+        },
+        {
+          "expert_idx": 188,
+          "routing_count": 18470
+        },
+        {
+          "expert_idx": 210,
+          "routing_count": 18296
+        },
+        {
+          "expert_idx": 37,
+          "routing_count": 17819
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 17660
+        },
+        {
+          "expert_idx": 241,
+          "routing_count": 17199
+        },
+        {
+          "expert_idx": 81,
+          "routing_count": 16860
+        },
+        {
+          "expert_idx": 224,
+          "routing_count": 16757
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 16445
+        },
+        {
+          "expert_idx": 146,
+          "routing_count": 16421
+        },
+        {
+          "expert_idx": 112,
+          "routing_count": 16336
+        },
+        {
+          "expert_idx": 44,
+          "routing_count": 16185
+        },
+        {
+          "expert_idx": 102,
+          "routing_count": 15759
+        },
+        {
+          "expert_idx": 200,
+          "routing_count": 15275
+        }
+      ],
+      "16": [
+        {
+          "expert_idx": 224,
+          "routing_count": 85098
+        },
+        {
+          "expert_idx": 6,
+          "routing_count": 65850
+        },
+        {
+          "expert_idx": 184,
+          "routing_count": 54412
+        },
+        {
+          "expert_idx": 30,
+          "routing_count": 42551
+        },
+        {
+          "expert_idx": 180,
+          "routing_count": 33918
+        },
+        {
+          "expert_idx": 150,
+          "routing_count": 33131
+        },
+        {
+          "expert_idx": 108,
+          "routing_count": 32322
+        },
+        {
+          "expert_idx": 87,
+          "routing_count": 31072
+        },
+        {
+          "expert_idx": 241,
+          "routing_count": 30810
+        },
+        {
+          "expert_idx": 8,
+          "routing_count": 28603
+        },
+        {
+          "expert_idx": 200,
+          "routing_count": 27523
+        },
+        {
+          "expert_idx": 123,
+          "routing_count": 25251
+        },
+        {
+          "expert_idx": 249,
+          "routing_count": 25115
+        },
+        {
+          "expert_idx": 114,
+          "routing_count": 24986
+        },
+        {
+          "expert_idx": 73,
+          "routing_count": 23626
+        },
+        {
+          "expert_idx": 161,
+          "routing_count": 22030
+        },
+        {
+          "expert_idx": 70,
+          "routing_count": 22015
+        },
+        {
+          "expert_idx": 167,
+          "routing_count": 20629
+        },
+        {
+          "expert_idx": 61,
+          "routing_count": 19758
+        },
+        {
+          "expert_idx": 233,
+          "routing_count": 19546
+        },
+        {
+          "expert_idx": 105,
+          "routing_count": 19083
+        },
+        {
+          "expert_idx": 121,
+          "routing_count": 18364
+        },
+        {
+          "expert_idx": 12,
+          "routing_count": 18130
+        },
+        {
+          "expert_idx": 22,
+          "routing_count": 17629
+        },
+        {
+          "expert_idx": 173,
+          "routing_count": 17540
+        },
+        {
+          "expert_idx": 248,
+          "routing_count": 17352
+        },
+        {
+          "expert_idx": 218,
+          "routing_count": 17286
+        },
+        {
+          "expert_idx": 211,
+          "routing_count": 17284
+        },
+        {
+          "expert_idx": 5,
+          "routing_count": 17114
+        },
+        {
+          "expert_idx": 232,
+          "routing_count": 17037
+        },
+        {
+          "expert_idx": 67,
+          "routing_count": 17025
+        },
+        {
+          "expert_idx": 130,
+          "routing_count": 16485
+        },
+        {
+          "expert_idx": 10,
+          "routing_count": 16219
+        },
+        {
+          "expert_idx": 53,
+          "routing_count": 16218
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 15983
+        },
+        {
+          "expert_idx": 196,
+          "routing_count": 15674
+        },
+        {
+          "expert_idx": 234,
+          "routing_count": 15264
+        },
+        {
+          "expert_idx": 2,
+          "routing_count": 14915
+        },
+        {
+          "expert_idx": 133,
+          "routing_count": 14851
+        },
+        {
+          "expert_idx": 132,
+          "routing_count": 14573
+        }
+      ],
+      "17": [
+        {
+          "expert_idx": 220,
+          "routing_count": 102300
+        },
+        {
+          "expert_idx": 255,
+          "routing_count": 55862
+        },
+        {
+          "expert_idx": 232,
+          "routing_count": 47075
+        },
+        {
+          "expert_idx": 247,
+          "routing_count": 33810
+        },
+        {
+          "expert_idx": 237,
+          "routing_count": 33681
+        },
+        {
+          "expert_idx": 180,
+          "routing_count": 32303
+        },
+        {
+          "expert_idx": 32,
+          "routing_count": 32142
+        },
+        {
+          "expert_idx": 130,
+          "routing_count": 31237
+        },
+        {
+          "expert_idx": 191,
+          "routing_count": 30433
+        },
+        {
+          "expert_idx": 147,
+          "routing_count": 30218
+        },
+        {
+          "expert_idx": 90,
+          "routing_count": 29637
+        },
+        {
+          "expert_idx": 73,
+          "routing_count": 29484
+        },
+        {
+          "expert_idx": 202,
+          "routing_count": 25508
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 24767
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 23910
+        },
+        {
+          "expert_idx": 213,
+          "routing_count": 23728
+        },
+        {
+          "expert_idx": 197,
+          "routing_count": 23538
+        },
+        {
+          "expert_idx": 131,
+          "routing_count": 21862
+        },
+        {
+          "expert_idx": 155,
+          "routing_count": 21205
+        },
+        {
+          "expert_idx": 67,
+          "routing_count": 20120
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 19858
+        },
+        {
+          "expert_idx": 201,
+          "routing_count": 19793
+        },
+        {
+          "expert_idx": 206,
+          "routing_count": 19322
+        },
+        {
+          "expert_idx": 23,
+          "routing_count": 18932
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 18469
+        },
+        {
+          "expert_idx": 10,
+          "routing_count": 18409
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 18081
+        },
+        {
+          "expert_idx": 229,
+          "routing_count": 17670
+        },
+        {
+          "expert_idx": 137,
+          "routing_count": 17603
+        },
+        {
+          "expert_idx": 56,
+          "routing_count": 17602
+        },
+        {
+          "expert_idx": 7,
+          "routing_count": 17205
+        },
+        {
+          "expert_idx": 214,
+          "routing_count": 17048
+        },
+        {
+          "expert_idx": 174,
+          "routing_count": 16874
+        },
+        {
+          "expert_idx": 118,
+          "routing_count": 16858
+        },
+        {
+          "expert_idx": 198,
+          "routing_count": 16568
+        },
+        {
+          "expert_idx": 123,
+          "routing_count": 16447
+        },
+        {
+          "expert_idx": 26,
+          "routing_count": 16330
+        },
+        {
+          "expert_idx": 61,
+          "routing_count": 16237
+        },
+        {
+          "expert_idx": 76,
+          "routing_count": 16174
+        },
+        {
+          "expert_idx": 157,
+          "routing_count": 15933
+        }
+      ],
+      "18": [
+        {
+          "expert_idx": 196,
+          "routing_count": 56188
+        },
+        {
+          "expert_idx": 21,
+          "routing_count": 48048
+        },
+        {
+          "expert_idx": 235,
+          "routing_count": 44295
+        },
+        {
+          "expert_idx": 25,
+          "routing_count": 42841
+        },
+        {
+          "expert_idx": 145,
+          "routing_count": 42509
+        },
+        {
+          "expert_idx": 17,
+          "routing_count": 39236
+        },
+        {
+          "expert_idx": 229,
+          "routing_count": 36706
+        },
+        {
+          "expert_idx": 27,
+          "routing_count": 36144
+        },
+        {
+          "expert_idx": 87,
+          "routing_count": 33291
+        },
+        {
+          "expert_idx": 116,
+          "routing_count": 32009
+        },
+        {
+          "expert_idx": 222,
+          "routing_count": 30147
+        },
+        {
+          "expert_idx": 28,
+          "routing_count": 26808
+        },
+        {
+          "expert_idx": 173,
+          "routing_count": 26139
+        },
+        {
+          "expert_idx": 48,
+          "routing_count": 26111
+        },
+        {
+          "expert_idx": 36,
+          "routing_count": 25759
+        },
+        {
+          "expert_idx": 163,
+          "routing_count": 25462
+        },
+        {
+          "expert_idx": 231,
+          "routing_count": 25202
+        },
+        {
+          "expert_idx": 98,
+          "routing_count": 24465
+        },
+        {
+          "expert_idx": 56,
+          "routing_count": 23927
+        },
+        {
+          "expert_idx": 57,
+          "routing_count": 23411
+        },
+        {
+          "expert_idx": 84,
+          "routing_count": 21726
+        },
+        {
+          "expert_idx": 122,
+          "routing_count": 21336
+        },
+        {
+          "expert_idx": 115,
+          "routing_count": 20310
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 19946
+        },
+        {
+          "expert_idx": 172,
+          "routing_count": 19406
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 18418
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 17149
+        },
+        {
+          "expert_idx": 41,
+          "routing_count": 16813
+        },
+        {
+          "expert_idx": 40,
+          "routing_count": 16650
+        },
+        {
+          "expert_idx": 157,
+          "routing_count": 16406
+        },
+        {
+          "expert_idx": 190,
+          "routing_count": 15824
+        },
+        {
+          "expert_idx": 9,
+          "routing_count": 15227
+        },
+        {
+          "expert_idx": 11,
+          "routing_count": 15095
+        },
+        {
+          "expert_idx": 162,
+          "routing_count": 14990
+        },
+        {
+          "expert_idx": 62,
+          "routing_count": 14989
+        },
+        {
+          "expert_idx": 187,
+          "routing_count": 14897
+        },
+        {
+          "expert_idx": 1,
+          "routing_count": 14778
+        },
+        {
+          "expert_idx": 179,
+          "routing_count": 14723
+        },
+        {
+          "expert_idx": 194,
+          "routing_count": 14371
+        },
+        {
+          "expert_idx": 148,
+          "routing_count": 14322
+        }
+      ],
+      "19": [
+        {
+          "expert_idx": 160,
+          "routing_count": 73973
+        },
+        {
+          "expert_idx": 197,
+          "routing_count": 68270
+        },
+        {
+          "expert_idx": 253,
+          "routing_count": 53127
+        },
+        {
+          "expert_idx": 42,
+          "routing_count": 39691
+        },
+        {
+          "expert_idx": 13,
+          "routing_count": 35001
+        },
+        {
+          "expert_idx": 175,
+          "routing_count": 34093
+        },
+        {
+          "expert_idx": 16,
+          "routing_count": 30811
+        },
+        {
+          "expert_idx": 132,
+          "routing_count": 30436
+        },
+        {
+          "expert_idx": 118,
+          "routing_count": 30166
+        },
+        {
+          "expert_idx": 106,
+          "routing_count": 30104
+        },
+        {
+          "expert_idx": 216,
+          "routing_count": 29685
+        },
+        {
+          "expert_idx": 47,
+          "routing_count": 28879
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 28597
+        },
+        {
+          "expert_idx": 177,
+          "routing_count": 26128
+        },
+        {
+          "expert_idx": 179,
+          "routing_count": 25769
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 25032
+        },
+        {
+          "expert_idx": 8,
+          "routing_count": 24293
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 24288
+        },
+        {
+          "expert_idx": 162,
+          "routing_count": 23621
+        },
+        {
+          "expert_idx": 38,
+          "routing_count": 23385
+        },
+        {
+          "expert_idx": 14,
+          "routing_count": 23195
+        },
+        {
+          "expert_idx": 7,
+          "routing_count": 22848
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 22213
+        },
+        {
+          "expert_idx": 68,
+          "routing_count": 21512
+        },
+        {
+          "expert_idx": 57,
+          "routing_count": 21351
+        },
+        {
+          "expert_idx": 10,
+          "routing_count": 21132
+        },
+        {
+          "expert_idx": 208,
+          "routing_count": 20299
+        },
+        {
+          "expert_idx": 40,
+          "routing_count": 19011
+        },
+        {
+          "expert_idx": 181,
+          "routing_count": 17812
+        },
+        {
+          "expert_idx": 123,
+          "routing_count": 17111
+        },
+        {
+          "expert_idx": 46,
+          "routing_count": 16933
+        },
+        {
+          "expert_idx": 53,
+          "routing_count": 16807
+        },
+        {
+          "expert_idx": 58,
+          "routing_count": 16707
+        },
+        {
+          "expert_idx": 206,
+          "routing_count": 16189
+        },
+        {
+          "expert_idx": 91,
+          "routing_count": 16147
+        },
+        {
+          "expert_idx": 224,
+          "routing_count": 15386
+        },
+        {
+          "expert_idx": 74,
+          "routing_count": 15101
+        },
+        {
+          "expert_idx": 130,
+          "routing_count": 14096
+        },
+        {
+          "expert_idx": 247,
+          "routing_count": 14024
+        },
+        {
+          "expert_idx": 241,
+          "routing_count": 13944
+        }
+      ],
+      "20": [
+        {
+          "expert_idx": 150,
+          "routing_count": 137868
+        },
+        {
+          "expert_idx": 228,
+          "routing_count": 47578
+        },
+        {
+          "expert_idx": 9,
+          "routing_count": 42577
+        },
+        {
+          "expert_idx": 28,
+          "routing_count": 41895
+        },
+        {
+          "expert_idx": 211,
+          "routing_count": 34418
+        },
+        {
+          "expert_idx": 156,
+          "routing_count": 33216
+        },
+        {
+          "expert_idx": 129,
+          "routing_count": 32420
+        },
+        {
+          "expert_idx": 236,
+          "routing_count": 30552
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 29654
+        },
+        {
+          "expert_idx": 83,
+          "routing_count": 29401
+        },
+        {
+          "expert_idx": 64,
+          "routing_count": 29307
+        },
+        {
+          "expert_idx": 158,
+          "routing_count": 27916
+        },
+        {
+          "expert_idx": 202,
+          "routing_count": 27651
+        },
+        {
+          "expert_idx": 106,
+          "routing_count": 25014
+        },
+        {
+          "expert_idx": 115,
+          "routing_count": 24305
+        },
+        {
+          "expert_idx": 215,
+          "routing_count": 23500
+        },
+        {
+          "expert_idx": 128,
+          "routing_count": 22555
+        },
+        {
+          "expert_idx": 26,
+          "routing_count": 22484
+        },
+        {
+          "expert_idx": 190,
+          "routing_count": 22444
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 22422
+        },
+        {
+          "expert_idx": 82,
+          "routing_count": 21875
+        },
+        {
+          "expert_idx": 124,
+          "routing_count": 21515
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 20623
+        },
+        {
+          "expert_idx": 118,
+          "routing_count": 19306
+        },
+        {
+          "expert_idx": 250,
+          "routing_count": 18931
+        },
+        {
+          "expert_idx": 134,
+          "routing_count": 18504
+        },
+        {
+          "expert_idx": 199,
+          "routing_count": 18489
+        },
+        {
+          "expert_idx": 36,
+          "routing_count": 17913
+        },
+        {
+          "expert_idx": 172,
+          "routing_count": 17871
+        },
+        {
+          "expert_idx": 104,
+          "routing_count": 17501
+        },
+        {
+          "expert_idx": 43,
+          "routing_count": 17159
+        },
+        {
+          "expert_idx": 218,
+          "routing_count": 16292
+        },
+        {
+          "expert_idx": 68,
+          "routing_count": 15948
+        },
+        {
+          "expert_idx": 96,
+          "routing_count": 15738
+        },
+        {
+          "expert_idx": 103,
+          "routing_count": 15471
+        },
+        {
+          "expert_idx": 47,
+          "routing_count": 15231
+        },
+        {
+          "expert_idx": 33,
+          "routing_count": 14717
+        },
+        {
+          "expert_idx": 220,
+          "routing_count": 14717
+        },
+        {
+          "expert_idx": 112,
+          "routing_count": 14316
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 14260
+        }
+      ],
+      "21": [
+        {
+          "expert_idx": 42,
+          "routing_count": 54241
+        },
+        {
+          "expert_idx": 66,
+          "routing_count": 52786
+        },
+        {
+          "expert_idx": 6,
+          "routing_count": 51275
+        },
+        {
+          "expert_idx": 44,
+          "routing_count": 49300
+        },
+        {
+          "expert_idx": 65,
+          "routing_count": 47472
+        },
+        {
+          "expert_idx": 34,
+          "routing_count": 44697
+        },
+        {
+          "expert_idx": 52,
+          "routing_count": 44466
+        },
+        {
+          "expert_idx": 37,
+          "routing_count": 37933
+        },
+        {
+          "expert_idx": 139,
+          "routing_count": 34006
+        },
+        {
+          "expert_idx": 192,
+          "routing_count": 33451
+        },
+        {
+          "expert_idx": 111,
+          "routing_count": 33334
+        },
+        {
+          "expert_idx": 13,
+          "routing_count": 28200
+        },
+        {
+          "expert_idx": 244,
+          "routing_count": 26861
+        },
+        {
+          "expert_idx": 105,
+          "routing_count": 26384
+        },
+        {
+          "expert_idx": 162,
+          "routing_count": 26022
+        },
+        {
+          "expert_idx": 253,
+          "routing_count": 25204
+        },
+        {
+          "expert_idx": 83,
+          "routing_count": 25139
+        },
+        {
+          "expert_idx": 102,
+          "routing_count": 24171
+        },
+        {
+          "expert_idx": 95,
+          "routing_count": 23956
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 23845
+        },
+        {
+          "expert_idx": 32,
+          "routing_count": 22338
+        },
+        {
+          "expert_idx": 214,
+          "routing_count": 20646
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 20107
+        },
+        {
+          "expert_idx": 128,
+          "routing_count": 19972
+        },
+        {
+          "expert_idx": 195,
+          "routing_count": 19732
+        },
+        {
+          "expert_idx": 252,
+          "routing_count": 18799
+        },
+        {
+          "expert_idx": 43,
+          "routing_count": 17919
+        },
+        {
+          "expert_idx": 193,
+          "routing_count": 17749
+        },
+        {
+          "expert_idx": 196,
+          "routing_count": 17686
+        },
+        {
+          "expert_idx": 73,
+          "routing_count": 17393
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 16915
+        },
+        {
+          "expert_idx": 234,
+          "routing_count": 16304
+        },
+        {
+          "expert_idx": 237,
+          "routing_count": 16072
+        },
+        {
+          "expert_idx": 206,
+          "routing_count": 15798
+        },
+        {
+          "expert_idx": 142,
+          "routing_count": 15613
+        },
+        {
+          "expert_idx": 24,
+          "routing_count": 15493
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 15204
+        },
+        {
+          "expert_idx": 8,
+          "routing_count": 14988
+        },
+        {
+          "expert_idx": 108,
+          "routing_count": 14343
+        },
+        {
+          "expert_idx": 180,
+          "routing_count": 14234
+        }
+      ],
+      "22": [
+        {
+          "expert_idx": 181,
+          "routing_count": 44031
+        },
+        {
+          "expert_idx": 246,
+          "routing_count": 42351
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 39515
+        },
+        {
+          "expert_idx": 28,
+          "routing_count": 34854
+        },
+        {
+          "expert_idx": 85,
+          "routing_count": 30480
+        },
+        {
+          "expert_idx": 79,
+          "routing_count": 30454
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 30421
+        },
+        {
+          "expert_idx": 70,
+          "routing_count": 27928
+        },
+        {
+          "expert_idx": 158,
+          "routing_count": 26946
+        },
+        {
+          "expert_idx": 73,
+          "routing_count": 26271
+        },
+        {
+          "expert_idx": 92,
+          "routing_count": 26102
+        },
+        {
+          "expert_idx": 159,
+          "routing_count": 25598
+        },
+        {
+          "expert_idx": 42,
+          "routing_count": 25305
+        },
+        {
+          "expert_idx": 187,
+          "routing_count": 24559
+        },
+        {
+          "expert_idx": 204,
+          "routing_count": 22916
+        },
+        {
+          "expert_idx": 154,
+          "routing_count": 21991
+        },
+        {
+          "expert_idx": 225,
+          "routing_count": 21981
+        },
+        {
+          "expert_idx": 137,
+          "routing_count": 21969
+        },
+        {
+          "expert_idx": 239,
+          "routing_count": 21899
+        },
+        {
+          "expert_idx": 223,
+          "routing_count": 21809
+        },
+        {
+          "expert_idx": 128,
+          "routing_count": 21566
+        },
+        {
+          "expert_idx": 253,
+          "routing_count": 20233
+        },
+        {
+          "expert_idx": 130,
+          "routing_count": 20150
+        },
+        {
+          "expert_idx": 163,
+          "routing_count": 20101
+        },
+        {
+          "expert_idx": 47,
+          "routing_count": 19936
+        },
+        {
+          "expert_idx": 97,
+          "routing_count": 19605
+        },
+        {
+          "expert_idx": 201,
+          "routing_count": 19258
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 19193
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 19025
+        },
+        {
+          "expert_idx": 254,
+          "routing_count": 18253
+        },
+        {
+          "expert_idx": 59,
+          "routing_count": 17853
+        },
+        {
+          "expert_idx": 164,
+          "routing_count": 17646
+        },
+        {
+          "expert_idx": 68,
+          "routing_count": 17409
+        },
+        {
+          "expert_idx": 194,
+          "routing_count": 17305
+        },
+        {
+          "expert_idx": 102,
+          "routing_count": 16622
+        },
+        {
+          "expert_idx": 75,
+          "routing_count": 16407
+        },
+        {
+          "expert_idx": 125,
+          "routing_count": 16383
+        },
+        {
+          "expert_idx": 40,
+          "routing_count": 16375
+        },
+        {
+          "expert_idx": 127,
+          "routing_count": 16345
+        },
+        {
+          "expert_idx": 198,
+          "routing_count": 16105
+        }
+      ],
+      "23": [
+        {
+          "expert_idx": 115,
+          "routing_count": 74919
+        },
+        {
+          "expert_idx": 110,
+          "routing_count": 37487
+        },
+        {
+          "expert_idx": 131,
+          "routing_count": 36598
+        },
+        {
+          "expert_idx": 240,
+          "routing_count": 35656
+        },
+        {
+          "expert_idx": 71,
+          "routing_count": 31791
+        },
+        {
+          "expert_idx": 95,
+          "routing_count": 26972
+        },
+        {
+          "expert_idx": 250,
+          "routing_count": 26018
+        },
+        {
+          "expert_idx": 109,
+          "routing_count": 25053
+        },
+        {
+          "expert_idx": 37,
+          "routing_count": 23426
+        },
+        {
+          "expert_idx": 154,
+          "routing_count": 23371
+        },
+        {
+          "expert_idx": 56,
+          "routing_count": 23326
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 22207
+        },
+        {
+          "expert_idx": 135,
+          "routing_count": 21291
+        },
+        {
+          "expert_idx": 86,
+          "routing_count": 19753
+        },
+        {
+          "expert_idx": 201,
+          "routing_count": 19517
+        },
+        {
+          "expert_idx": 188,
+          "routing_count": 19201
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 19179
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 19139
+        },
+        {
+          "expert_idx": 142,
+          "routing_count": 18950
+        },
+        {
+          "expert_idx": 62,
+          "routing_count": 17100
+        },
+        {
+          "expert_idx": 242,
+          "routing_count": 16968
+        },
+        {
+          "expert_idx": 15,
+          "routing_count": 16899
+        },
+        {
+          "expert_idx": 146,
+          "routing_count": 16682
+        },
+        {
+          "expert_idx": 246,
+          "routing_count": 16612
+        },
+        {
+          "expert_idx": 159,
+          "routing_count": 16553
+        },
+        {
+          "expert_idx": 64,
+          "routing_count": 16509
+        },
+        {
+          "expert_idx": 9,
+          "routing_count": 16415
+        },
+        {
+          "expert_idx": 6,
+          "routing_count": 16241
+        },
+        {
+          "expert_idx": 114,
+          "routing_count": 16221
+        },
+        {
+          "expert_idx": 254,
+          "routing_count": 16151
+        },
+        {
+          "expert_idx": 157,
+          "routing_count": 16127
+        },
+        {
+          "expert_idx": 208,
+          "routing_count": 16122
+        },
+        {
+          "expert_idx": 174,
+          "routing_count": 15973
+        },
+        {
+          "expert_idx": 123,
+          "routing_count": 15840
+        },
+        {
+          "expert_idx": 238,
+          "routing_count": 15638
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 15588
+        },
+        {
+          "expert_idx": 248,
+          "routing_count": 15174
+        },
+        {
+          "expert_idx": 128,
+          "routing_count": 15061
+        },
+        {
+          "expert_idx": 156,
+          "routing_count": 14901
+        },
+        {
+          "expert_idx": 199,
+          "routing_count": 14851
+        }
+      ],
+      "24": [
+        {
+          "expert_idx": 241,
+          "routing_count": 58066
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 50447
+        },
+        {
+          "expert_idx": 36,
+          "routing_count": 38759
+        },
+        {
+          "expert_idx": 125,
+          "routing_count": 33264
+        },
+        {
+          "expert_idx": 230,
+          "routing_count": 31576
+        },
+        {
+          "expert_idx": 55,
+          "routing_count": 30239
+        },
+        {
+          "expert_idx": 200,
+          "routing_count": 29702
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 28038
+        },
+        {
+          "expert_idx": 1,
+          "routing_count": 26929
+        },
+        {
+          "expert_idx": 7,
+          "routing_count": 26858
+        },
+        {
+          "expert_idx": 71,
+          "routing_count": 26567
+        },
+        {
+          "expert_idx": 172,
+          "routing_count": 26329
+        },
+        {
+          "expert_idx": 112,
+          "routing_count": 24948
+        },
+        {
+          "expert_idx": 3,
+          "routing_count": 24478
+        },
+        {
+          "expert_idx": 97,
+          "routing_count": 23949
+        },
+        {
+          "expert_idx": 140,
+          "routing_count": 23605
+        },
+        {
+          "expert_idx": 234,
+          "routing_count": 23551
+        },
+        {
+          "expert_idx": 205,
+          "routing_count": 22929
+        },
+        {
+          "expert_idx": 132,
+          "routing_count": 22575
+        },
+        {
+          "expert_idx": 107,
+          "routing_count": 21864
+        },
+        {
+          "expert_idx": 33,
+          "routing_count": 21538
+        },
+        {
+          "expert_idx": 57,
+          "routing_count": 21522
+        },
+        {
+          "expert_idx": 66,
+          "routing_count": 21333
+        },
+        {
+          "expert_idx": 160,
+          "routing_count": 21096
+        },
+        {
+          "expert_idx": 84,
+          "routing_count": 20480
+        },
+        {
+          "expert_idx": 63,
+          "routing_count": 18969
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 18915
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 18545
+        },
+        {
+          "expert_idx": 27,
+          "routing_count": 17910
+        },
+        {
+          "expert_idx": 12,
+          "routing_count": 17811
+        },
+        {
+          "expert_idx": 46,
+          "routing_count": 17179
+        },
+        {
+          "expert_idx": 231,
+          "routing_count": 16978
+        },
+        {
+          "expert_idx": 26,
+          "routing_count": 16799
+        },
+        {
+          "expert_idx": 151,
+          "routing_count": 16239
+        },
+        {
+          "expert_idx": 54,
+          "routing_count": 16003
+        },
+        {
+          "expert_idx": 133,
+          "routing_count": 15959
+        },
+        {
+          "expert_idx": 67,
+          "routing_count": 15663
+        },
+        {
+          "expert_idx": 127,
+          "routing_count": 15393
+        },
+        {
+          "expert_idx": 44,
+          "routing_count": 14925
+        },
+        {
+          "expert_idx": 115,
+          "routing_count": 14900
+        }
+      ],
+      "25": [
+        {
+          "expert_idx": 224,
+          "routing_count": 102164
+        },
+        {
+          "expert_idx": 47,
+          "routing_count": 53237
+        },
+        {
+          "expert_idx": 124,
+          "routing_count": 51235
+        },
+        {
+          "expert_idx": 237,
+          "routing_count": 48997
+        },
+        {
+          "expert_idx": 41,
+          "routing_count": 44242
+        },
+        {
+          "expert_idx": 244,
+          "routing_count": 38923
+        },
+        {
+          "expert_idx": 207,
+          "routing_count": 34593
+        },
+        {
+          "expert_idx": 197,
+          "routing_count": 30480
+        },
+        {
+          "expert_idx": 175,
+          "routing_count": 30094
+        },
+        {
+          "expert_idx": 126,
+          "routing_count": 27954
+        },
+        {
+          "expert_idx": 122,
+          "routing_count": 26680
+        },
+        {
+          "expert_idx": 27,
+          "routing_count": 26514
+        },
+        {
+          "expert_idx": 157,
+          "routing_count": 24548
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 23345
+        },
+        {
+          "expert_idx": 168,
+          "routing_count": 23226
+        },
+        {
+          "expert_idx": 91,
+          "routing_count": 22363
+        },
+        {
+          "expert_idx": 226,
+          "routing_count": 20578
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 20001
+        },
+        {
+          "expert_idx": 2,
+          "routing_count": 19984
+        },
+        {
+          "expert_idx": 110,
+          "routing_count": 19697
+        },
+        {
+          "expert_idx": 225,
+          "routing_count": 19650
+        },
+        {
+          "expert_idx": 144,
+          "routing_count": 19579
+        },
+        {
+          "expert_idx": 233,
+          "routing_count": 19422
+        },
+        {
+          "expert_idx": 43,
+          "routing_count": 18318
+        },
+        {
+          "expert_idx": 230,
+          "routing_count": 17697
+        },
+        {
+          "expert_idx": 118,
+          "routing_count": 17666
+        },
+        {
+          "expert_idx": 203,
+          "routing_count": 17633
+        },
+        {
+          "expert_idx": 156,
+          "routing_count": 17470
+        },
+        {
+          "expert_idx": 87,
+          "routing_count": 17162
+        },
+        {
+          "expert_idx": 103,
+          "routing_count": 17141
+        },
+        {
+          "expert_idx": 100,
+          "routing_count": 16603
+        },
+        {
+          "expert_idx": 61,
+          "routing_count": 16333
+        },
+        {
+          "expert_idx": 111,
+          "routing_count": 16050
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 16029
+        },
+        {
+          "expert_idx": 4,
+          "routing_count": 15657
+        },
+        {
+          "expert_idx": 191,
+          "routing_count": 15549
+        },
+        {
+          "expert_idx": 192,
+          "routing_count": 15346
+        },
+        {
+          "expert_idx": 164,
+          "routing_count": 15334
+        },
+        {
+          "expert_idx": 241,
+          "routing_count": 14605
+        },
+        {
+          "expert_idx": 46,
+          "routing_count": 13987
+        }
+      ],
+      "26": [
+        {
+          "expert_idx": 105,
+          "routing_count": 66877
+        },
+        {
+          "expert_idx": 168,
+          "routing_count": 57623
+        },
+        {
+          "expert_idx": 160,
+          "routing_count": 43232
+        },
+        {
+          "expert_idx": 250,
+          "routing_count": 38197
+        },
+        {
+          "expert_idx": 247,
+          "routing_count": 36869
+        },
+        {
+          "expert_idx": 16,
+          "routing_count": 35471
+        },
+        {
+          "expert_idx": 27,
+          "routing_count": 34272
+        },
+        {
+          "expert_idx": 152,
+          "routing_count": 31469
+        },
+        {
+          "expert_idx": 60,
+          "routing_count": 30474
+        },
+        {
+          "expert_idx": 141,
+          "routing_count": 29136
+        },
+        {
+          "expert_idx": 70,
+          "routing_count": 28568
+        },
+        {
+          "expert_idx": 6,
+          "routing_count": 27504
+        },
+        {
+          "expert_idx": 69,
+          "routing_count": 26901
+        },
+        {
+          "expert_idx": 226,
+          "routing_count": 25006
+        },
+        {
+          "expert_idx": 188,
+          "routing_count": 25001
+        },
+        {
+          "expert_idx": 175,
+          "routing_count": 23406
+        },
+        {
+          "expert_idx": 171,
+          "routing_count": 23385
+        },
+        {
+          "expert_idx": 172,
+          "routing_count": 22996
+        },
+        {
+          "expert_idx": 144,
+          "routing_count": 21052
+        },
+        {
+          "expert_idx": 66,
+          "routing_count": 21008
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 20743
+        },
+        {
+          "expert_idx": 142,
+          "routing_count": 20324
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 19888
+        },
+        {
+          "expert_idx": 5,
+          "routing_count": 19660
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 19607
+        },
+        {
+          "expert_idx": 162,
+          "routing_count": 19516
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 19442
+        },
+        {
+          "expert_idx": 199,
+          "routing_count": 19212
+        },
+        {
+          "expert_idx": 87,
+          "routing_count": 17719
+        },
+        {
+          "expert_idx": 178,
+          "routing_count": 16844
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 16707
+        },
+        {
+          "expert_idx": 1,
+          "routing_count": 16383
+        },
+        {
+          "expert_idx": 143,
+          "routing_count": 16217
+        },
+        {
+          "expert_idx": 192,
+          "routing_count": 16200
+        },
+        {
+          "expert_idx": 38,
+          "routing_count": 16104
+        },
+        {
+          "expert_idx": 220,
+          "routing_count": 15683
+        },
+        {
+          "expert_idx": 9,
+          "routing_count": 15268
+        },
+        {
+          "expert_idx": 159,
+          "routing_count": 15268
+        },
+        {
+          "expert_idx": 149,
+          "routing_count": 15239
+        },
+        {
+          "expert_idx": 124,
+          "routing_count": 15132
+        }
+      ],
+      "27": [
+        {
+          "expert_idx": 218,
+          "routing_count": 144410
+        },
+        {
+          "expert_idx": 245,
+          "routing_count": 73259
+        },
+        {
+          "expert_idx": 63,
+          "routing_count": 44880
+        },
+        {
+          "expert_idx": 26,
+          "routing_count": 35116
+        },
+        {
+          "expert_idx": 95,
+          "routing_count": 34162
+        },
+        {
+          "expert_idx": 38,
+          "routing_count": 31920
+        },
+        {
+          "expert_idx": 135,
+          "routing_count": 31902
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 30072
+        },
+        {
+          "expert_idx": 174,
+          "routing_count": 29873
+        },
+        {
+          "expert_idx": 222,
+          "routing_count": 28581
+        },
+        {
+          "expert_idx": 32,
+          "routing_count": 28522
+        },
+        {
+          "expert_idx": 17,
+          "routing_count": 28076
+        },
+        {
+          "expert_idx": 220,
+          "routing_count": 25538
+        },
+        {
+          "expert_idx": 188,
+          "routing_count": 25066
+        },
+        {
+          "expert_idx": 209,
+          "routing_count": 22368
+        },
+        {
+          "expert_idx": 214,
+          "routing_count": 21483
+        },
+        {
+          "expert_idx": 186,
+          "routing_count": 20529
+        },
+        {
+          "expert_idx": 106,
+          "routing_count": 20144
+        },
+        {
+          "expert_idx": 51,
+          "routing_count": 20101
+        },
+        {
+          "expert_idx": 239,
+          "routing_count": 19760
+        },
+        {
+          "expert_idx": 175,
+          "routing_count": 19533
+        },
+        {
+          "expert_idx": 23,
+          "routing_count": 19088
+        },
+        {
+          "expert_idx": 49,
+          "routing_count": 18739
+        },
+        {
+          "expert_idx": 67,
+          "routing_count": 18325
+        },
+        {
+          "expert_idx": 44,
+          "routing_count": 16771
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 16481
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 16457
+        },
+        {
+          "expert_idx": 87,
+          "routing_count": 16127
+        },
+        {
+          "expert_idx": 112,
+          "routing_count": 16034
+        },
+        {
+          "expert_idx": 224,
+          "routing_count": 15630
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 15316
+        },
+        {
+          "expert_idx": 103,
+          "routing_count": 14856
+        },
+        {
+          "expert_idx": 85,
+          "routing_count": 14725
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 14547
+        },
+        {
+          "expert_idx": 168,
+          "routing_count": 14469
+        },
+        {
+          "expert_idx": 84,
+          "routing_count": 13908
+        },
+        {
+          "expert_idx": 2,
+          "routing_count": 13892
+        },
+        {
+          "expert_idx": 210,
+          "routing_count": 13342
+        },
+        {
+          "expert_idx": 35,
+          "routing_count": 13156
+        },
+        {
+          "expert_idx": 9,
+          "routing_count": 12949
+        }
+      ],
+      "28": [
+        {
+          "expert_idx": 224,
+          "routing_count": 68527
+        },
+        {
+          "expert_idx": 130,
+          "routing_count": 68100
+        },
+        {
+          "expert_idx": 6,
+          "routing_count": 62619
+        },
+        {
+          "expert_idx": 184,
+          "routing_count": 45270
+        },
+        {
+          "expert_idx": 105,
+          "routing_count": 36217
+        },
+        {
+          "expert_idx": 30,
+          "routing_count": 32915
+        },
+        {
+          "expert_idx": 241,
+          "routing_count": 31166
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 29809
+        },
+        {
+          "expert_idx": 200,
+          "routing_count": 29797
+        },
+        {
+          "expert_idx": 87,
+          "routing_count": 29761
+        },
+        {
+          "expert_idx": 218,
+          "routing_count": 29104
+        },
+        {
+          "expert_idx": 114,
+          "routing_count": 27837
+        },
+        {
+          "expert_idx": 12,
+          "routing_count": 27518
+        },
+        {
+          "expert_idx": 70,
+          "routing_count": 25012
+        },
+        {
+          "expert_idx": 220,
+          "routing_count": 23571
+        },
+        {
+          "expert_idx": 123,
+          "routing_count": 22592
+        },
+        {
+          "expert_idx": 8,
+          "routing_count": 21944
+        },
+        {
+          "expert_idx": 61,
+          "routing_count": 21898
+        },
+        {
+          "expert_idx": 248,
+          "routing_count": 21519
+        },
+        {
+          "expert_idx": 73,
+          "routing_count": 21338
+        },
+        {
+          "expert_idx": 232,
+          "routing_count": 20010
+        },
+        {
+          "expert_idx": 108,
+          "routing_count": 20009
+        },
+        {
+          "expert_idx": 234,
+          "routing_count": 19067
+        },
+        {
+          "expert_idx": 194,
+          "routing_count": 19048
+        },
+        {
+          "expert_idx": 53,
+          "routing_count": 18115
+        },
+        {
+          "expert_idx": 173,
+          "routing_count": 17946
+        },
+        {
+          "expert_idx": 10,
+          "routing_count": 17754
+        },
+        {
+          "expert_idx": 190,
+          "routing_count": 16853
+        },
+        {
+          "expert_idx": 74,
+          "routing_count": 16820
+        },
+        {
+          "expert_idx": 23,
+          "routing_count": 16403
+        },
+        {
+          "expert_idx": 249,
+          "routing_count": 16376
+        },
+        {
+          "expert_idx": 22,
+          "routing_count": 16100
+        },
+        {
+          "expert_idx": 113,
+          "routing_count": 15950
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 15844
+        },
+        {
+          "expert_idx": 121,
+          "routing_count": 15769
+        },
+        {
+          "expert_idx": 39,
+          "routing_count": 15757
+        },
+        {
+          "expert_idx": 56,
+          "routing_count": 15584
+        },
+        {
+          "expert_idx": 150,
+          "routing_count": 15398
+        },
+        {
+          "expert_idx": 211,
+          "routing_count": 14970
+        },
+        {
+          "expert_idx": 58,
+          "routing_count": 14709
+        }
+      ],
+      "29": [
+        {
+          "expert_idx": 220,
+          "routing_count": 86249
+        },
+        {
+          "expert_idx": 247,
+          "routing_count": 43218
+        },
+        {
+          "expert_idx": 232,
+          "routing_count": 40808
+        },
+        {
+          "expert_idx": 73,
+          "routing_count": 38748
+        },
+        {
+          "expert_idx": 180,
+          "routing_count": 36574
+        },
+        {
+          "expert_idx": 37,
+          "routing_count": 35846
+        },
+        {
+          "expert_idx": 32,
+          "routing_count": 35259
+        },
+        {
+          "expert_idx": 198,
+          "routing_count": 30464
+        },
+        {
+          "expert_idx": 90,
+          "routing_count": 30392
+        },
+        {
+          "expert_idx": 173,
+          "routing_count": 27267
+        },
+        {
+          "expert_idx": 147,
+          "routing_count": 27210
+        },
+        {
+          "expert_idx": 237,
+          "routing_count": 27012
+        },
+        {
+          "expert_idx": 99,
+          "routing_count": 26680
+        },
+        {
+          "expert_idx": 155,
+          "routing_count": 24021
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 23585
+        },
+        {
+          "expert_idx": 244,
+          "routing_count": 21184
+        },
+        {
+          "expert_idx": 10,
+          "routing_count": 20511
+        },
+        {
+          "expert_idx": 202,
+          "routing_count": 19738
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 19472
+        },
+        {
+          "expert_idx": 235,
+          "routing_count": 19167
+        },
+        {
+          "expert_idx": 126,
+          "routing_count": 18936
+        },
+        {
+          "expert_idx": 255,
+          "routing_count": 18641
+        },
+        {
+          "expert_idx": 214,
+          "routing_count": 18604
+        },
+        {
+          "expert_idx": 130,
+          "routing_count": 18105
+        },
+        {
+          "expert_idx": 26,
+          "routing_count": 18039
+        },
+        {
+          "expert_idx": 191,
+          "routing_count": 17495
+        },
+        {
+          "expert_idx": 9,
+          "routing_count": 17123
+        },
+        {
+          "expert_idx": 213,
+          "routing_count": 16758
+        },
+        {
+          "expert_idx": 45,
+          "routing_count": 16739
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 16653
+        },
+        {
+          "expert_idx": 88,
+          "routing_count": 16318
+        },
+        {
+          "expert_idx": 62,
+          "routing_count": 16180
+        },
+        {
+          "expert_idx": 150,
+          "routing_count": 15841
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 15808
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 15759
+        },
+        {
+          "expert_idx": 206,
+          "routing_count": 15555
+        },
+        {
+          "expert_idx": 79,
+          "routing_count": 15310
+        },
+        {
+          "expert_idx": 34,
+          "routing_count": 15292
+        },
+        {
+          "expert_idx": 162,
+          "routing_count": 15289
+        },
+        {
+          "expert_idx": 169,
+          "routing_count": 15101
+        }
+      ],
+      "30": [
+        {
+          "expert_idx": 196,
+          "routing_count": 49740
+        },
+        {
+          "expert_idx": 235,
+          "routing_count": 45612
+        },
+        {
+          "expert_idx": 25,
+          "routing_count": 37382
+        },
+        {
+          "expert_idx": 27,
+          "routing_count": 37327
+        },
+        {
+          "expert_idx": 209,
+          "routing_count": 37298
+        },
+        {
+          "expert_idx": 87,
+          "routing_count": 33474
+        },
+        {
+          "expert_idx": 116,
+          "routing_count": 31046
+        },
+        {
+          "expert_idx": 21,
+          "routing_count": 31001
+        },
+        {
+          "expert_idx": 48,
+          "routing_count": 30778
+        },
+        {
+          "expert_idx": 145,
+          "routing_count": 30099
+        },
+        {
+          "expert_idx": 122,
+          "routing_count": 28618
+        },
+        {
+          "expert_idx": 222,
+          "routing_count": 26729
+        },
+        {
+          "expert_idx": 17,
+          "routing_count": 26632
+        },
+        {
+          "expert_idx": 229,
+          "routing_count": 24716
+        },
+        {
+          "expert_idx": 98,
+          "routing_count": 24672
+        },
+        {
+          "expert_idx": 36,
+          "routing_count": 23082
+        },
+        {
+          "expert_idx": 84,
+          "routing_count": 22830
+        },
+        {
+          "expert_idx": 231,
+          "routing_count": 22379
+        },
+        {
+          "expert_idx": 99,
+          "routing_count": 22175
+        },
+        {
+          "expert_idx": 173,
+          "routing_count": 21494
+        },
+        {
+          "expert_idx": 28,
+          "routing_count": 21490
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 20781
+        },
+        {
+          "expert_idx": 172,
+          "routing_count": 20703
+        },
+        {
+          "expert_idx": 19,
+          "routing_count": 20472
+        },
+        {
+          "expert_idx": 233,
+          "routing_count": 19752
+        },
+        {
+          "expert_idx": 55,
+          "routing_count": 19726
+        },
+        {
+          "expert_idx": 88,
+          "routing_count": 18847
+        },
+        {
+          "expert_idx": 127,
+          "routing_count": 18679
+        },
+        {
+          "expert_idx": 163,
+          "routing_count": 18504
+        },
+        {
+          "expert_idx": 234,
+          "routing_count": 18452
+        },
+        {
+          "expert_idx": 6,
+          "routing_count": 17982
+        },
+        {
+          "expert_idx": 115,
+          "routing_count": 17972
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 17822
+        },
+        {
+          "expert_idx": 1,
+          "routing_count": 17787
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 17273
+        },
+        {
+          "expert_idx": 8,
+          "routing_count": 17024
+        },
+        {
+          "expert_idx": 165,
+          "routing_count": 16286
+        },
+        {
+          "expert_idx": 129,
+          "routing_count": 16056
+        },
+        {
+          "expert_idx": 180,
+          "routing_count": 15783
+        },
+        {
+          "expert_idx": 56,
+          "routing_count": 15578
+        }
+      ],
+      "31": [
+        {
+          "expert_idx": 197,
+          "routing_count": 52619
+        },
+        {
+          "expert_idx": 253,
+          "routing_count": 50656
+        },
+        {
+          "expert_idx": 190,
+          "routing_count": 38119
+        },
+        {
+          "expert_idx": 13,
+          "routing_count": 36471
+        },
+        {
+          "expert_idx": 160,
+          "routing_count": 34815
+        },
+        {
+          "expert_idx": 47,
+          "routing_count": 33835
+        },
+        {
+          "expert_idx": 16,
+          "routing_count": 30840
+        },
+        {
+          "expert_idx": 216,
+          "routing_count": 29710
+        },
+        {
+          "expert_idx": 179,
+          "routing_count": 28821
+        },
+        {
+          "expert_idx": 38,
+          "routing_count": 28744
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 28476
+        },
+        {
+          "expert_idx": 177,
+          "routing_count": 27264
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 26853
+        },
+        {
+          "expert_idx": 118,
+          "routing_count": 26813
+        },
+        {
+          "expert_idx": 247,
+          "routing_count": 26706
+        },
+        {
+          "expert_idx": 132,
+          "routing_count": 26684
+        },
+        {
+          "expert_idx": 37,
+          "routing_count": 25558
+        },
+        {
+          "expert_idx": 154,
+          "routing_count": 25407
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 25387
+        },
+        {
+          "expert_idx": 224,
+          "routing_count": 24928
+        },
+        {
+          "expert_idx": 175,
+          "routing_count": 24773
+        },
+        {
+          "expert_idx": 55,
+          "routing_count": 24023
+        },
+        {
+          "expert_idx": 42,
+          "routing_count": 23546
+        },
+        {
+          "expert_idx": 106,
+          "routing_count": 23449
+        },
+        {
+          "expert_idx": 162,
+          "routing_count": 22947
+        },
+        {
+          "expert_idx": 14,
+          "routing_count": 22079
+        },
+        {
+          "expert_idx": 60,
+          "routing_count": 21908
+        },
+        {
+          "expert_idx": 208,
+          "routing_count": 21179
+        },
+        {
+          "expert_idx": 57,
+          "routing_count": 20623
+        },
+        {
+          "expert_idx": 99,
+          "routing_count": 19447
+        },
+        {
+          "expert_idx": 123,
+          "routing_count": 19438
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 19019
+        },
+        {
+          "expert_idx": 8,
+          "routing_count": 18961
+        },
+        {
+          "expert_idx": 10,
+          "routing_count": 18903
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 18379
+        },
+        {
+          "expert_idx": 7,
+          "routing_count": 18309
+        },
+        {
+          "expert_idx": 40,
+          "routing_count": 17795
+        },
+        {
+          "expert_idx": 58,
+          "routing_count": 17505
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 17067
+        },
+        {
+          "expert_idx": 91,
+          "routing_count": 15963
+        }
+      ],
+      "32": [
+        {
+          "expert_idx": 66,
+          "routing_count": 108338
+        },
+        {
+          "expert_idx": 117,
+          "routing_count": 94408
+        },
+        {
+          "expert_idx": 103,
+          "routing_count": 45047
+        },
+        {
+          "expert_idx": 55,
+          "routing_count": 35319
+        },
+        {
+          "expert_idx": 212,
+          "routing_count": 34314
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 33826
+        },
+        {
+          "expert_idx": 171,
+          "routing_count": 32505
+        },
+        {
+          "expert_idx": 26,
+          "routing_count": 30551
+        },
+        {
+          "expert_idx": 13,
+          "routing_count": 30219
+        },
+        {
+          "expert_idx": 25,
+          "routing_count": 28082
+        },
+        {
+          "expert_idx": 28,
+          "routing_count": 25407
+        },
+        {
+          "expert_idx": 78,
+          "routing_count": 24175
+        },
+        {
+          "expert_idx": 92,
+          "routing_count": 22837
+        },
+        {
+          "expert_idx": 17,
+          "routing_count": 22690
+        },
+        {
+          "expert_idx": 135,
+          "routing_count": 22647
+        },
+        {
+          "expert_idx": 176,
+          "routing_count": 22539
+        },
+        {
+          "expert_idx": 252,
+          "routing_count": 22327
+        },
+        {
+          "expert_idx": 224,
+          "routing_count": 21357
+        },
+        {
+          "expert_idx": 144,
+          "routing_count": 21308
+        },
+        {
+          "expert_idx": 86,
+          "routing_count": 21069
+        },
+        {
+          "expert_idx": 142,
+          "routing_count": 20027
+        },
+        {
+          "expert_idx": 209,
+          "routing_count": 19816
+        },
+        {
+          "expert_idx": 179,
+          "routing_count": 19695
+        },
+        {
+          "expert_idx": 218,
+          "routing_count": 19036
+        },
+        {
+          "expert_idx": 222,
+          "routing_count": 18728
+        },
+        {
+          "expert_idx": 62,
+          "routing_count": 18068
+        },
+        {
+          "expert_idx": 146,
+          "routing_count": 18055
+        },
+        {
+          "expert_idx": 131,
+          "routing_count": 17800
+        },
+        {
+          "expert_idx": 7,
+          "routing_count": 16964
+        },
+        {
+          "expert_idx": 45,
+          "routing_count": 16911
+        },
+        {
+          "expert_idx": 230,
+          "routing_count": 16804
+        },
+        {
+          "expert_idx": 14,
+          "routing_count": 16671
+        },
+        {
+          "expert_idx": 197,
+          "routing_count": 16620
+        },
+        {
+          "expert_idx": 166,
+          "routing_count": 15756
+        },
+        {
+          "expert_idx": 8,
+          "routing_count": 15546
+        },
+        {
+          "expert_idx": 89,
+          "routing_count": 15286
+        },
+        {
+          "expert_idx": 246,
+          "routing_count": 14983
+        },
+        {
+          "expert_idx": 123,
+          "routing_count": 14953
+        },
+        {
+          "expert_idx": 174,
+          "routing_count": 14820
+        },
+        {
+          "expert_idx": 120,
+          "routing_count": 14746
+        }
+      ],
+      "33": [
+        {
+          "expert_idx": 29,
+          "routing_count": 53359
+        },
+        {
+          "expert_idx": 47,
+          "routing_count": 35304
+        },
+        {
+          "expert_idx": 10,
+          "routing_count": 33150
+        },
+        {
+          "expert_idx": 212,
+          "routing_count": 28514
+        },
+        {
+          "expert_idx": 197,
+          "routing_count": 27341
+        },
+        {
+          "expert_idx": 250,
+          "routing_count": 27264
+        },
+        {
+          "expert_idx": 124,
+          "routing_count": 27254
+        },
+        {
+          "expert_idx": 98,
+          "routing_count": 27053
+        },
+        {
+          "expert_idx": 104,
+          "routing_count": 26668
+        },
+        {
+          "expert_idx": 68,
+          "routing_count": 26146
+        },
+        {
+          "expert_idx": 142,
+          "routing_count": 25450
+        },
+        {
+          "expert_idx": 214,
+          "routing_count": 22963
+        },
+        {
+          "expert_idx": 237,
+          "routing_count": 22654
+        },
+        {
+          "expert_idx": 23,
+          "routing_count": 22554
+        },
+        {
+          "expert_idx": 84,
+          "routing_count": 22328
+        },
+        {
+          "expert_idx": 90,
+          "routing_count": 22320
+        },
+        {
+          "expert_idx": 28,
+          "routing_count": 21870
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 21816
+        },
+        {
+          "expert_idx": 25,
+          "routing_count": 21458
+        },
+        {
+          "expert_idx": 117,
+          "routing_count": 21449
+        },
+        {
+          "expert_idx": 156,
+          "routing_count": 20961
+        },
+        {
+          "expert_idx": 36,
+          "routing_count": 20414
+        },
+        {
+          "expert_idx": 225,
+          "routing_count": 20389
+        },
+        {
+          "expert_idx": 132,
+          "routing_count": 20274
+        },
+        {
+          "expert_idx": 12,
+          "routing_count": 20021
+        },
+        {
+          "expert_idx": 152,
+          "routing_count": 19833
+        },
+        {
+          "expert_idx": 151,
+          "routing_count": 19761
+        },
+        {
+          "expert_idx": 139,
+          "routing_count": 19169
+        },
+        {
+          "expert_idx": 97,
+          "routing_count": 18406
+        },
+        {
+          "expert_idx": 181,
+          "routing_count": 18069
+        },
+        {
+          "expert_idx": 107,
+          "routing_count": 17475
+        },
+        {
+          "expert_idx": 176,
+          "routing_count": 17154
+        },
+        {
+          "expert_idx": 235,
+          "routing_count": 17030
+        },
+        {
+          "expert_idx": 199,
+          "routing_count": 16984
+        },
+        {
+          "expert_idx": 129,
+          "routing_count": 16358
+        },
+        {
+          "expert_idx": 240,
+          "routing_count": 16352
+        },
+        {
+          "expert_idx": 201,
+          "routing_count": 15818
+        },
+        {
+          "expert_idx": 121,
+          "routing_count": 15643
+        },
+        {
+          "expert_idx": 59,
+          "routing_count": 15620
+        },
+        {
+          "expert_idx": 179,
+          "routing_count": 15337
+        }
+      ],
+      "34": [
+        {
+          "expert_idx": 202,
+          "routing_count": 96643
+        },
+        {
+          "expert_idx": 102,
+          "routing_count": 40773
+        },
+        {
+          "expert_idx": 48,
+          "routing_count": 40497
+        },
+        {
+          "expert_idx": 173,
+          "routing_count": 38447
+        },
+        {
+          "expert_idx": 47,
+          "routing_count": 36903
+        },
+        {
+          "expert_idx": 239,
+          "routing_count": 36785
+        },
+        {
+          "expert_idx": 61,
+          "routing_count": 31900
+        },
+        {
+          "expert_idx": 163,
+          "routing_count": 29424
+        },
+        {
+          "expert_idx": 114,
+          "routing_count": 28514
+        },
+        {
+          "expert_idx": 91,
+          "routing_count": 28505
+        },
+        {
+          "expert_idx": 170,
+          "routing_count": 27420
+        },
+        {
+          "expert_idx": 44,
+          "routing_count": 26785
+        },
+        {
+          "expert_idx": 187,
+          "routing_count": 26082
+        },
+        {
+          "expert_idx": 103,
+          "routing_count": 25999
+        },
+        {
+          "expert_idx": 153,
+          "routing_count": 23594
+        },
+        {
+          "expert_idx": 58,
+          "routing_count": 23296
+        },
+        {
+          "expert_idx": 238,
+          "routing_count": 22756
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 22719
+        },
+        {
+          "expert_idx": 225,
+          "routing_count": 22691
+        },
+        {
+          "expert_idx": 215,
+          "routing_count": 21307
+        },
+        {
+          "expert_idx": 28,
+          "routing_count": 21272
+        },
+        {
+          "expert_idx": 159,
+          "routing_count": 20676
+        },
+        {
+          "expert_idx": 175,
+          "routing_count": 19994
+        },
+        {
+          "expert_idx": 249,
+          "routing_count": 19707
+        },
+        {
+          "expert_idx": 214,
+          "routing_count": 19604
+        },
+        {
+          "expert_idx": 183,
+          "routing_count": 18942
+        },
+        {
+          "expert_idx": 166,
+          "routing_count": 18862
+        },
+        {
+          "expert_idx": 40,
+          "routing_count": 18826
+        },
+        {
+          "expert_idx": 240,
+          "routing_count": 18787
+        },
+        {
+          "expert_idx": 56,
+          "routing_count": 18646
+        },
+        {
+          "expert_idx": 49,
+          "routing_count": 18635
+        },
+        {
+          "expert_idx": 90,
+          "routing_count": 18289
+        },
+        {
+          "expert_idx": 255,
+          "routing_count": 18131
+        },
+        {
+          "expert_idx": 72,
+          "routing_count": 18058
+        },
+        {
+          "expert_idx": 217,
+          "routing_count": 17945
+        },
+        {
+          "expert_idx": 212,
+          "routing_count": 17943
+        },
+        {
+          "expert_idx": 12,
+          "routing_count": 17611
+        },
+        {
+          "expert_idx": 120,
+          "routing_count": 17215
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 17206
+        },
+        {
+          "expert_idx": 15,
+          "routing_count": 16788
+        }
+      ],
+      "35": [
+        {
+          "expert_idx": 126,
+          "routing_count": 47855
+        },
+        {
+          "expert_idx": 3,
+          "routing_count": 43255
+        },
+        {
+          "expert_idx": 34,
+          "routing_count": 41847
+        },
+        {
+          "expert_idx": 255,
+          "routing_count": 40286
+        },
+        {
+          "expert_idx": 159,
+          "routing_count": 40086
+        },
+        {
+          "expert_idx": 9,
+          "routing_count": 36451
+        },
+        {
+          "expert_idx": 223,
+          "routing_count": 31824
+        },
+        {
+          "expert_idx": 71,
+          "routing_count": 30606
+        },
+        {
+          "expert_idx": 72,
+          "routing_count": 28375
+        },
+        {
+          "expert_idx": 201,
+          "routing_count": 27126
+        },
+        {
+          "expert_idx": 206,
+          "routing_count": 26136
+        },
+        {
+          "expert_idx": 148,
+          "routing_count": 25055
+        },
+        {
+          "expert_idx": 184,
+          "routing_count": 24715
+        },
+        {
+          "expert_idx": 190,
+          "routing_count": 24683
+        },
+        {
+          "expert_idx": 131,
+          "routing_count": 24501
+        },
+        {
+          "expert_idx": 30,
+          "routing_count": 24329
+        },
+        {
+          "expert_idx": 145,
+          "routing_count": 23503
+        },
+        {
+          "expert_idx": 165,
+          "routing_count": 23427
+        },
+        {
+          "expert_idx": 252,
+          "routing_count": 22925
+        },
+        {
+          "expert_idx": 85,
+          "routing_count": 21716
+        },
+        {
+          "expert_idx": 63,
+          "routing_count": 21374
+        },
+        {
+          "expert_idx": 40,
+          "routing_count": 20517
+        },
+        {
+          "expert_idx": 115,
+          "routing_count": 20012
+        },
+        {
+          "expert_idx": 60,
+          "routing_count": 19892
+        },
+        {
+          "expert_idx": 11,
+          "routing_count": 19806
+        },
+        {
+          "expert_idx": 49,
+          "routing_count": 19571
+        },
+        {
+          "expert_idx": 7,
+          "routing_count": 19498
+        },
+        {
+          "expert_idx": 213,
+          "routing_count": 19301
+        },
+        {
+          "expert_idx": 214,
+          "routing_count": 19223
+        },
+        {
+          "expert_idx": 185,
+          "routing_count": 18525
+        },
+        {
+          "expert_idx": 59,
+          "routing_count": 18514
+        },
+        {
+          "expert_idx": 218,
+          "routing_count": 18227
+        },
+        {
+          "expert_idx": 114,
+          "routing_count": 18195
+        },
+        {
+          "expert_idx": 224,
+          "routing_count": 17476
+        },
+        {
+          "expert_idx": 94,
+          "routing_count": 17426
+        },
+        {
+          "expert_idx": 52,
+          "routing_count": 17201
+        },
+        {
+          "expert_idx": 27,
+          "routing_count": 16776
+        },
+        {
+          "expert_idx": 117,
+          "routing_count": 16669
+        },
+        {
+          "expert_idx": 99,
+          "routing_count": 16075
+        },
+        {
+          "expert_idx": 2,
+          "routing_count": 15928
+        }
+      ],
+      "36": [
+        {
+          "expert_idx": 1,
+          "routing_count": 41937
+        },
+        {
+          "expert_idx": 84,
+          "routing_count": 40657
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 36661
+        },
+        {
+          "expert_idx": 18,
+          "routing_count": 35425
+        },
+        {
+          "expert_idx": 15,
+          "routing_count": 35381
+        },
+        {
+          "expert_idx": 25,
+          "routing_count": 35232
+        },
+        {
+          "expert_idx": 2,
+          "routing_count": 32992
+        },
+        {
+          "expert_idx": 202,
+          "routing_count": 32833
+        },
+        {
+          "expert_idx": 204,
+          "routing_count": 32699
+        },
+        {
+          "expert_idx": 39,
+          "routing_count": 31051
+        },
+        {
+          "expert_idx": 160,
+          "routing_count": 30951
+        },
+        {
+          "expert_idx": 58,
+          "routing_count": 29167
+        },
+        {
+          "expert_idx": 192,
+          "routing_count": 27317
+        },
+        {
+          "expert_idx": 0,
+          "routing_count": 27210
+        },
+        {
+          "expert_idx": 145,
+          "routing_count": 27158
+        },
+        {
+          "expert_idx": 63,
+          "routing_count": 27011
+        },
+        {
+          "expert_idx": 227,
+          "routing_count": 26911
+        },
+        {
+          "expert_idx": 244,
+          "routing_count": 26606
+        },
+        {
+          "expert_idx": 195,
+          "routing_count": 26245
+        },
+        {
+          "expert_idx": 116,
+          "routing_count": 24055
+        },
+        {
+          "expert_idx": 211,
+          "routing_count": 23898
+        },
+        {
+          "expert_idx": 210,
+          "routing_count": 23292
+        },
+        {
+          "expert_idx": 24,
+          "routing_count": 23134
+        },
+        {
+          "expert_idx": 253,
+          "routing_count": 22991
+        },
+        {
+          "expert_idx": 147,
+          "routing_count": 22987
+        },
+        {
+          "expert_idx": 199,
+          "routing_count": 22051
+        },
+        {
+          "expert_idx": 246,
+          "routing_count": 20724
+        },
+        {
+          "expert_idx": 32,
+          "routing_count": 20694
+        },
+        {
+          "expert_idx": 251,
+          "routing_count": 18662
+        },
+        {
+          "expert_idx": 234,
+          "routing_count": 18585
+        },
+        {
+          "expert_idx": 255,
+          "routing_count": 18303
+        },
+        {
+          "expert_idx": 16,
+          "routing_count": 18222
+        },
+        {
+          "expert_idx": 181,
+          "routing_count": 17954
+        },
+        {
+          "expert_idx": 152,
+          "routing_count": 17761
+        },
+        {
+          "expert_idx": 193,
+          "routing_count": 17461
+        },
+        {
+          "expert_idx": 79,
+          "routing_count": 17263
+        },
+        {
+          "expert_idx": 49,
+          "routing_count": 16844
+        },
+        {
+          "expert_idx": 29,
+          "routing_count": 16729
+        },
+        {
+          "expert_idx": 196,
+          "routing_count": 16721
+        },
+        {
+          "expert_idx": 127,
+          "routing_count": 16491
+        }
+      ],
+      "37": [
+        {
+          "expert_idx": 55,
+          "routing_count": 67296
+        },
+        {
+          "expert_idx": 3,
+          "routing_count": 54991
+        },
+        {
+          "expert_idx": 59,
+          "routing_count": 51414
+        },
+        {
+          "expert_idx": 87,
+          "routing_count": 41143
+        },
+        {
+          "expert_idx": 102,
+          "routing_count": 40917
+        },
+        {
+          "expert_idx": 221,
+          "routing_count": 35868
+        },
+        {
+          "expert_idx": 97,
+          "routing_count": 35370
+        },
+        {
+          "expert_idx": 14,
+          "routing_count": 33246
+        },
+        {
+          "expert_idx": 139,
+          "routing_count": 31802
+        },
+        {
+          "expert_idx": 174,
+          "routing_count": 31773
+        },
+        {
+          "expert_idx": 27,
+          "routing_count": 31624
+        },
+        {
+          "expert_idx": 84,
+          "routing_count": 30366
+        },
+        {
+          "expert_idx": 159,
+          "routing_count": 30281
+        },
+        {
+          "expert_idx": 101,
+          "routing_count": 29857
+        },
+        {
+          "expert_idx": 37,
+          "routing_count": 28288
+        },
+        {
+          "expert_idx": 220,
+          "routing_count": 27009
+        },
+        {
+          "expert_idx": 161,
+          "routing_count": 26649
+        },
+        {
+          "expert_idx": 233,
+          "routing_count": 25775
+        },
+        {
+          "expert_idx": 112,
+          "routing_count": 24867
+        },
+        {
+          "expert_idx": 60,
+          "routing_count": 24814
+        },
+        {
+          "expert_idx": 78,
+          "routing_count": 23490
+        },
+        {
+          "expert_idx": 50,
+          "routing_count": 22741
+        },
+        {
+          "expert_idx": 95,
+          "routing_count": 22041
+        },
+        {
+          "expert_idx": 165,
+          "routing_count": 21880
+        },
+        {
+          "expert_idx": 111,
+          "routing_count": 21820
+        },
+        {
+          "expert_idx": 164,
+          "routing_count": 21644
+        },
+        {
+          "expert_idx": 248,
+          "routing_count": 21478
+        },
+        {
+          "expert_idx": 184,
+          "routing_count": 21388
+        },
+        {
+          "expert_idx": 196,
+          "routing_count": 21141
+        },
+        {
+          "expert_idx": 17,
+          "routing_count": 20677
+        },
+        {
+          "expert_idx": 193,
+          "routing_count": 20418
+        },
+        {
+          "expert_idx": 56,
+          "routing_count": 19986
+        },
+        {
+          "expert_idx": 83,
+          "routing_count": 19371
+        },
+        {
+          "expert_idx": 67,
+          "routing_count": 19255
+        },
+        {
+          "expert_idx": 15,
+          "routing_count": 18584
+        },
+        {
+          "expert_idx": 90,
+          "routing_count": 18504
+        },
+        {
+          "expert_idx": 109,
+          "routing_count": 18223
+        },
+        {
+          "expert_idx": 93,
+          "routing_count": 18102
+        },
+        {
+          "expert_idx": 4,
+          "routing_count": 17349
+        },
+        {
+          "expert_idx": 162,
+          "routing_count": 17212
+        }
+      ],
+      "38": [
+        {
+          "expert_idx": 33,
+          "routing_count": 64734
+        },
+        {
+          "expert_idx": 209,
+          "routing_count": 61976
+        },
+        {
+          "expert_idx": 157,
+          "routing_count": 52336
+        },
+        {
+          "expert_idx": 4,
+          "routing_count": 46563
+        },
+        {
+          "expert_idx": 168,
+          "routing_count": 46419
+        },
+        {
+          "expert_idx": 228,
+          "routing_count": 44412
+        },
+        {
+          "expert_idx": 244,
+          "routing_count": 43133
+        },
+        {
+          "expert_idx": 173,
+          "routing_count": 39866
+        },
+        {
+          "expert_idx": 97,
+          "routing_count": 38357
+        },
+        {
+          "expert_idx": 95,
+          "routing_count": 36634
+        },
+        {
+          "expert_idx": 75,
+          "routing_count": 35866
+        },
+        {
+          "expert_idx": 242,
+          "routing_count": 34029
+        },
+        {
+          "expert_idx": 30,
+          "routing_count": 32510
+        },
+        {
+          "expert_idx": 215,
+          "routing_count": 31520
+        },
+        {
+          "expert_idx": 234,
+          "routing_count": 31443
+        },
+        {
+          "expert_idx": 9,
+          "routing_count": 28648
+        },
+        {
+          "expert_idx": 44,
+          "routing_count": 28158
+        },
+        {
+          "expert_idx": 210,
+          "routing_count": 27292
+        },
+        {
+          "expert_idx": 232,
+          "routing_count": 25902
+        },
+        {
+          "expert_idx": 80,
+          "routing_count": 25415
+        },
+        {
+          "expert_idx": 201,
+          "routing_count": 24624
+        },
+        {
+          "expert_idx": 5,
+          "routing_count": 23941
+        },
+        {
+          "expert_idx": 86,
+          "routing_count": 23738
+        },
+        {
+          "expert_idx": 160,
+          "routing_count": 23585
+        },
+        {
+          "expert_idx": 39,
+          "routing_count": 23579
+        },
+        {
+          "expert_idx": 136,
+          "routing_count": 22781
+        },
+        {
+          "expert_idx": 59,
+          "routing_count": 22571
+        },
+        {
+          "expert_idx": 146,
+          "routing_count": 21304
+        },
+        {
+          "expert_idx": 64,
+          "routing_count": 21224
+        },
+        {
+          "expert_idx": 254,
+          "routing_count": 21108
+        },
+        {
+          "expert_idx": 99,
+          "routing_count": 20347
+        },
+        {
+          "expert_idx": 20,
+          "routing_count": 20247
+        },
+        {
+          "expert_idx": 241,
+          "routing_count": 20068
+        },
+        {
+          "expert_idx": 71,
+          "routing_count": 19437
+        },
+        {
+          "expert_idx": 131,
+          "routing_count": 18056
+        },
+        {
+          "expert_idx": 15,
+          "routing_count": 17867
+        },
+        {
+          "expert_idx": 195,
+          "routing_count": 17785
+        },
+        {
+          "expert_idx": 162,
+          "routing_count": 16739
+        },
+        {
+          "expert_idx": 14,
+          "routing_count": 16650
+        },
+        {
+          "expert_idx": 93,
+          "routing_count": 16584
+        }
+      ],
+      "39": [
+        {
+          "expert_idx": 35,
+          "routing_count": 147375
+        },
+        {
+          "expert_idx": 52,
+          "routing_count": 50223
+        },
+        {
+          "expert_idx": 239,
+          "routing_count": 48599
+        },
+        {
+          "expert_idx": 213,
+          "routing_count": 45184
+        },
+        {
+          "expert_idx": 181,
+          "routing_count": 42520
+        },
+        {
+          "expert_idx": 62,
+          "routing_count": 40052
+        },
+        {
+          "expert_idx": 61,
+          "routing_count": 38195
+        },
+        {
+          "expert_idx": 154,
+          "routing_count": 37956
+        },
+        {
+          "expert_idx": 182,
+          "routing_count": 36895
+        },
+        {
+          "expert_idx": 183,
+          "routing_count": 36318
+        },
+        {
+          "expert_idx": 31,
+          "routing_count": 35430
+        },
+        {
+          "expert_idx": 92,
+          "routing_count": 35111
+        },
+        {
+          "expert_idx": 14,
+          "routing_count": 34682
+        },
+        {
+          "expert_idx": 23,
+          "routing_count": 33659
+        },
+        {
+          "expert_idx": 125,
+          "routing_count": 31744
+        },
+        {
+          "expert_idx": 145,
+          "routing_count": 31133
+        },
+        {
+          "expert_idx": 16,
+          "routing_count": 29924
+        },
+        {
+          "expert_idx": 72,
+          "routing_count": 29862
+        },
+        {
+          "expert_idx": 13,
+          "routing_count": 28342
+        },
+        {
+          "expert_idx": 186,
+          "routing_count": 28254
+        },
+        {
+          "expert_idx": 250,
+          "routing_count": 27845
+        },
+        {
+          "expert_idx": 158,
+          "routing_count": 27522
+        },
+        {
+          "expert_idx": 254,
+          "routing_count": 26776
+        },
+        {
+          "expert_idx": 219,
+          "routing_count": 26667
+        },
+        {
+          "expert_idx": 244,
+          "routing_count": 26127
+        },
+        {
+          "expert_idx": 177,
+          "routing_count": 25543
+        },
+        {
+          "expert_idx": 146,
+          "routing_count": 23718
+        },
+        {
+          "expert_idx": 1,
+          "routing_count": 23447
+        },
+        {
+          "expert_idx": 215,
+          "routing_count": 23398
+        },
+        {
+          "expert_idx": 129,
+          "routing_count": 21888
+        },
+        {
+          "expert_idx": 85,
+          "routing_count": 21088
+        },
+        {
+          "expert_idx": 246,
+          "routing_count": 21008
+        },
+        {
+          "expert_idx": 77,
+          "routing_count": 20135
+        },
+        {
+          "expert_idx": 220,
+          "routing_count": 19665
+        },
+        {
+          "expert_idx": 197,
+          "routing_count": 19343
+        },
+        {
+          "expert_idx": 36,
+          "routing_count": 19110
+        },
+        {
+          "expert_idx": 69,
+          "routing_count": 18563
+        },
+        {
+          "expert_idx": 240,
+          "routing_count": 17750
+        },
+        {
+          "expert_idx": 17,
+          "routing_count": 17700
+        },
+        {
+          "expert_idx": 55,
+          "routing_count": 17108
+        }
+      ]
+    },
+    "runtime_seconds_pre_eval": 11.236,
+    "runtime_seconds": 13.756
+  },
+  "results": {
+    "mxmoe_perturbation_perchannel": {
+      "description": "Match MxMoE's realized W1/W2 projection budget, but spread it across experts by per-projection perturbation and rank channels by activation_kurtosis.",
+      "mode": "per_channel",
+      "ppl": 6.59972,
+      "nll": 1.887027,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "w1_pair_fraction": 0.178906,
+      "w2_channel_fraction": 0.392188,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 192.9,
+      "budget_source": "mxmoe_projection_perturbation",
+      "channel_metric": "activation_kurtosis",
+      "target_w1_pairs": 937984,
+      "target_w2_channels": 8224768,
+      "realized_w1_pairs": 937984,
+      "realized_w2_channels": 8224768
+    },
+    "perturbation_proportional_25pct": {
+      "description": "Allocate a 25% W1 and 25% W2 channel budget across experts in proportion to combined output perturbation, then rank channels by activation_kurtosis.",
+      "mode": "per_channel",
+      "ppl": 6.590387,
+      "nll": 1.885612,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.25,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 192.8,
+      "budget_source": "combined_perturbation_global_25pct",
+      "channel_metric": "activation_kurtosis",
+      "target_w1_pairs": 1310720,
+      "target_w2_channels": 5242880,
+      "realized_w1_pairs": 1310720,
+      "realized_w2_channels": 5242880
+    },
+    "perturbation_proportional_w1_4_w2_16": {
+      "description": "Allocate W1=4% and W2=16% channel budgets across experts in proportion to combined output perturbation, then rank channels by activation_kurtosis.",
+      "mode": "per_channel",
+      "ppl": 6.606149,
+      "nll": 1.888001,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576979456,
+      "fp8_fraction": 0.08,
+      "w1_pair_fraction": 0.04,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 193.5,
+      "budget_source": "combined_perturbation_w1_4_w2_16",
+      "channel_metric": "activation_kurtosis",
+      "target_w1_pairs": 209715,
+      "target_w2_channels": 3355443,
+      "realized_w1_pairs": 209715,
+      "realized_w2_channels": 3355443
+    },
+    "mxmoe_block_plus_channel_topup": {
+      "description": "Start from MxMoE per-block assignment, then top up every FP4 projection with the top 5% activation_kurtosis channels promoted to FP8.",
+      "mode": "per_channel",
+      "ppl": 6.578639,
+      "nll": 1.883828,
+      "memory_gb": 28.222,
+      "fp8_weights": 9273524224,
+      "fp8_fraction": 0.287888,
+      "w1_pair_fraction": 0.220602,
+      "w2_channel_fraction": 0.422459,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 191.5,
+      "budget_source": "mxmoe_per_block_plus_top5pct",
+      "channel_metric": "activation_kurtosis",
+      "mxmoe_promoted_w1_projections": 1832,
+      "mxmoe_promoted_w2_projections": 4016,
+      "topup_fraction": 0.05
+    },
+    "output_perturbation_per_channel_9experts": {
+      "description": "Keep the routing-aware W1=4% / W2=16% plan, but replace activation_kurtosis with actual W2 per-channel output perturbation for the hottest experts and fall back elsewhere.",
+      "mode": "per_channel",
+      "ppl": 6.612314,
+      "nll": 1.888934,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576998400,
+      "fp8_fraction": 0.080001,
+      "w1_pair_fraction": 0.040001,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 193.5,
+      "budget_source": "routing_aware_w1_4_w2_16",
+      "channel_metric": "w2_output_perturbation_hot_experts",
+      "hot_expert_count_total": 1600,
+      "w2_metric_fallback": "activation_kurtosis"
+    }
+  }
+}

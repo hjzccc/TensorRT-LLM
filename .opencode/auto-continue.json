@@ -1,0 +1,6 @@
+{
+  "enabled": true,
+  "message": "continue test11",
+  "cooldown_ms": 2000,
+  "max_consecutive": 10
+}

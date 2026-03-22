@@ -1,0 +1,103 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "nsamples": 4,
+    "seqlen": 2048,
+    "dtype": "float16",
+    "experiment": "metric_driven_three_tier",
+    "purpose": "Test activation-aware metrics (owq_exact, awre, ra_wanda) vs simple weight absmax",
+    "expected_improvement": "0.002-0.005 PPL over baseline (7.2353)"
+  },
+  "results": {
+    "owq_exact_bf16_5_nvfp4_95": {
+      "config": {
+        "bf16_fraction": 0.05,
+        "fp8_fraction": 0.0,
+        "nvfp4_fraction": 0.95,
+        "metric": "owq_exact"
+      },
+      "status": "pending_evaluation",
+      "note": "Requires docker evaluation with exact TRT-LLM kernels"
+    },
+    "owq_exact_bf16_10_nvfp4_90": {
+      "config": {
+        "bf16_fraction": 0.1,
+        "fp8_fraction": 0.0,
+        "nvfp4_fraction": 0.9,
+        "metric": "owq_exact"
+      },
+      "status": "pending_evaluation",
+      "note": "Requires docker evaluation with exact TRT-LLM kernels"
+    },
+    "owq_exact_bf16_10_fp8_20_nvfp4_70": {
+      "config": {
+        "bf16_fraction": 0.1,
+        "fp8_fraction": 0.2,
+        "nvfp4_fraction": 0.7,
+        "metric": "owq_exact"
+      },
+      "status": "pending_evaluation",
+      "note": "Requires docker evaluation with exact TRT-LLM kernels"
+    },
+    "awre_bf16_5_nvfp4_95": {
+      "config": {
+        "bf16_fraction": 0.05,
+        "fp8_fraction": 0.0,
+        "nvfp4_fraction": 0.95,
+        "metric": "awre"
+      },
+      "status": "pending_evaluation",
+      "note": "Requires docker evaluation with exact TRT-LLM kernels"
+    },
+    "awre_bf16_10_nvfp4_90": {
+      "config": {
+        "bf16_fraction": 0.1,
+        "fp8_fraction": 0.0,
+        "nvfp4_fraction": 0.9,
+        "metric": "awre"
+      },
+      "status": "pending_evaluation",
+      "note": "Requires docker evaluation with exact TRT-LLM kernels"
+    },
+    "awre_bf16_10_fp8_20_nvfp4_70": {
+      "config": {
+        "bf16_fraction": 0.1,
+        "fp8_fraction": 0.2,
+        "nvfp4_fraction": 0.7,
+        "metric": "awre"
+      },
+      "status": "pending_evaluation",
+      "note": "Requires docker evaluation with exact TRT-LLM kernels"
+    },
+    "ra_wanda_bf16_5_nvfp4_95": {
+      "config": {
+        "bf16_fraction": 0.05,
+        "fp8_fraction": 0.0,
+        "nvfp4_fraction": 0.95,
+        "metric": "ra_wanda"
+      },
+      "status": "pending_evaluation",
+      "note": "Requires docker evaluation with exact TRT-LLM kernels"
+    },
+    "ra_wanda_bf16_10_nvfp4_90": {
+      "config": {
+        "bf16_fraction": 0.1,
+        "fp8_fraction": 0.0,
+        "nvfp4_fraction": 0.9,
+        "metric": "ra_wanda"
+      },
+      "status": "pending_evaluation",
+      "note": "Requires docker evaluation with exact TRT-LLM kernels"
+    },
+    "ra_wanda_bf16_10_fp8_20_nvfp4_70": {
+      "config": {
+        "bf16_fraction": 0.1,
+        "fp8_fraction": 0.2,
+        "nvfp4_fraction": 0.7,
+        "metric": "ra_wanda"
+      },
+      "status": "pending_evaluation",
+      "note": "Requires docker evaluation with exact TRT-LLM kernels"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "approach": "MaCa Calibration + Topup Fraction Sweep",
+    "hypothesis": "Optimal topup fraction with MaCa calibration may differ from 8%",
+    "topup_fractions_tested": [
+      0.04,
+      0.06,
+      0.1,
+      0.12,
+      0.15
+    ],
+    "references": {
+      "maca_uniform_4k_8pct": {
+        "ppl": 6.567582,
+        "mem_gb": 27.934
+      },
+      "joint_w1w2_with_topup_8pct": {
+        "ppl": 6.572458,
+        "mem_gb": 27.934
+      }
+    }
+  },
+  "results": {
+    "maca_topup_04pct": {
+      "ppl": 6.5742,
+      "memory_gb": 27.77,
+      "topup_fraction": 0.04,
+      "elapsed_s": 828.1
+    },
+    "maca_topup_06pct": {
+      "ppl": 6.5768,
+      "memory_gb": 27.855,
+      "topup_fraction": 0.06,
+      "elapsed_s": 845.7
+    }
+  }
+}

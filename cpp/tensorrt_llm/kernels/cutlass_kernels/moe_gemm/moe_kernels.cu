@@ -2989,7 +2989,8 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enable>::
         && !getForceUnfusedSwiglu() && gemm1_config_.has_value()
         && moe_gemm_runner_.isTmaWarpSpecialized(*gemm1_config_) && (gemm1_config_->tile_config_sm120
             == cutlass_extensions::CutlassTileConfigSM120::CtaShape128x128x128B
-            || gemm1_config_->tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape64x128x64B);
+            || gemm1_config_->tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape64x128x64B
+            || gemm1_config_->tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape32x128x64B);
     size_t const fused_swiglu_output_size = prepare_single_tile_swiglu_fusion_workspace ? fc1_result_size : 0;
     size_t const fp4_act_scale_fc1_size = prepare_single_tile_swiglu_fusion_workspace ? fc1_fp4_act_scale_size : 0;
     size_t const fp4_act_scale_fc2_size = prepare_single_tile_swiglu_fusion_workspace ? fc2_fp4_act_scale_size : 0;
@@ -4031,7 +4032,8 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, Enab
         && !use_deepseek_fp8_block_scale && !usePrequantScaleKernel(quant_params) && !getForceUnfusedSwiglu()
         && moe_gemm_runner_.isTmaWarpSpecialized(*gemm1_config_) && (gemm1_config_->tile_config_sm120
             == cutlass_extensions::CutlassTileConfigSM120::CtaShape128x128x128B
-            || gemm1_config_->tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape64x128x64B);
+            || gemm1_config_->tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape64x128x64B
+            || gemm1_config_->tile_config_sm120 == cutlass_extensions::CutlassTileConfigSM120::CtaShape32x128x64B);
     int const num_experts_per_node = full_num_experts / parallelism_config.ep_size;
 
     configureWsPtrs(workspace_ptr, num_rows, hidden_size, inter_size, num_experts_per_node, experts_per_token,

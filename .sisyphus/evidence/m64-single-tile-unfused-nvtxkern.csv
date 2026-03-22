@@ -1,0 +1,29 @@
+Generating SQLite file .sisyphus/evidence/m64-single-tile-unfused.sqlite from .sisyphus/evidence/m64-single-tile-unfused.nsys-rep
+Processing [.sisyphus/evidence/m64-single-tile-unfused.sqlite] with [/usr/local/cuda-13.1/NsightSystems-cli-2025.5.2/target-linux-x64/reports/nvtx_kern_sum.py](base)... 
+NVTX Range,Style,PID,TID,NVTX Inst,Kern Inst,Total Time (ns),Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Kernel Name
+,,643989,643989,0,20,2325557,116277.9,117197.5,77791,150493,32415.5,device_kernel
+,,643989,643989,0,36,1604452,44568.1,832.0,672,538775,146923.8,vectorized_elementwise_kernel
+,,643989,643989,0,7,1498694,214099.1,29503.0,3168,1099629,399723.7,CatArrayBatchedCopy_vectorized
+,,643989,643989,0,258,1216012,4713.2,4336.0,2688,6304,1005.5,quantize_with_block_size
+,,643989,643989,0,4,876305,219076.3,281723.0,3808,309051,144091.2,distribution_elementwise_grid_stride_kernel
+,,643989,643989,0,259,424955,1640.8,1696.0,1504,1792,89.4,block_scale_interleave_kernel
+,,643989,643989,0,10,187582,18758.2,18831.5,18144,19200,336.8,expandInputRowsKernel
+,,643989,643989,0,10,131423,13142.3,13184.0,11712,14336,706.1,doActivationKernel
+,,643989,643989,0,32,49919,1560.0,1247.5,1184,5184,886.4,reduce_kernel
+,,643989,643989,0,10,48000,4800.0,5056.0,1824,5568,1073.8,computeStridesTmaWarpSpecializedKernel
+,,643989,643989,0,10,23899,2389.9,2352.0,2272,2592,110.8,blockExpertPrefixSumKernel
+,,643989,643989,0,28,18272,652.6,640.0,608,768,34.1,elementwise_kernel_with_index
+,,643989,643989,0,7,13984,1997.7,1536.0,1088,5344,1496.1,elementwise_kernel
+,,643989,643989,0,10,12384,1238.4,1248.0,992,1504,162.5,mergeExpertPrefixSumKernel
+,,643989,643989,0,10,10880,1088.0,1056.0,1024,1216,70.8,globalExpertPrefixSumKernel
+,,643989,643989,0,1,2752,2752.0,2752.0,2752,2752,0.0,unrolled_elementwise_kernel
+,,643989,643989,0,1,2144,2144.0,2144.0,2144,2144,0.0,kernelHistogram1D
+,,643989,643989,0,1,1632,1632.0,1632.0,1632,1632,0.0,block_scale_interleave_reverse_kernel
+:single_tile_swiglu_unfused_tactic_1,PushPop,643989,643989,1,10,1164586,116458.6,116541.5,83837,147869,32335.5,device_kernel
+:single_tile_swiglu_unfused_tactic_1,PushPop,643989,643989,1,5,93822,18764.4,18815.0,18592,18880,112.2,expandInputRowsKernel
+:single_tile_swiglu_unfused_tactic_1,PushPop,643989,643989,1,5,66623,13324.6,13152.0,12895,14144,527.8,doActivationKernel
+:single_tile_swiglu_unfused_tactic_1,PushPop,643989,643989,1,5,24639,4927.8,4896.0,4704,5152,178.3,computeStridesTmaWarpSpecializedKernel
+:single_tile_swiglu_unfused_tactic_1,PushPop,643989,643989,1,5,11710,2342.0,2304.0,2272,2464,76.4,blockExpertPrefixSumKernel
+:single_tile_swiglu_unfused_tactic_1,PushPop,643989,643989,1,5,6143,1228.6,1247.0,960,1472,181.8,mergeExpertPrefixSumKernel
+:single_tile_swiglu_unfused_tactic_1,PushPop,643989,643989,1,5,5440,1088.0,1056.0,1024,1248,90.5,globalExpertPrefixSumKernel
+

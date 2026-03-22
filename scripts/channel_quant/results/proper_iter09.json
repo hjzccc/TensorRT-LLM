@@ -1,0 +1,526 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/MC-MoE/eval_ppl_utils.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      },
+      "mxmoe_perturbation_perchannel": {
+        "ppl": 6.59972,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_25pct": {
+        "ppl": 6.590387,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_w1_4_w2_16": {
+        "ppl": 6.606149,
+        "memory_gb": 24.874
+      },
+      "mxmoe_block_plus_channel_topup": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "output_perturbation_per_channel_9experts": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "topup_01pct": {
+        "ppl": 6.5769,
+        "memory_gb": 20.251
+      },
+      "topup_02pct": {
+        "ppl": 6.5788,
+        "memory_gb": 20.37
+      },
+      "topup_03pct": {
+        "ppl": 6.5791,
+        "memory_gb": 20.488
+      },
+      "topup_05pct": {
+        "ppl": 6.5763,
+        "memory_gb": 20.743
+      },
+      "topup_08pct": {
+        "ppl": 6.5798,
+        "memory_gb": 21.1
+      },
+      "topup_10pct": {
+        "ppl": 6.5791,
+        "memory_gb": 21.337
+      },
+      "topup_15pct": {
+        "ppl": 6.5872,
+        "memory_gb": 21.948
+      },
+      "topup_20pct": {
+        "ppl": 6.5939,
+        "memory_gb": 22.542
+      },
+      "perchannel_hessian_25pct": {
+        "ppl": 6.614806,
+        "memory_gb": 27.612
+      },
+      "perchannel_hessian_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_30pct": {
+        "ppl": 6.627915,
+        "memory_gb": 28.417
+      },
+      "perchannel_akurt_40pct": {
+        "ppl": 6.614058,
+        "memory_gb": 30.028
+      },
+      "mxmoe_topup_hessian_5pct": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "perturbation_proportional_30pct": {
+        "ppl": 6.5893,
+        "memory_gb": 28.417
+      },
+      "perturbation_proportional_40pct": {
+        "ppl": 6.596071,
+        "memory_gb": 30.028
+      },
+      "mxmoe_block_35pct": {
+        "ppl": 6.57889,
+        "memory_gb": 29.222
+      },
+      "mxmoe_layer_adaptive": {
+        "ppl": 6.583283,
+        "memory_gb": 27.813
+      },
+      "global_channel_ranking": {
+        "ppl": 6.612899,
+        "memory_gb": 25.281
+      },
+      "mxmoe_block_15pct": {
+        "ppl": 6.584293,
+        "memory_gb": 26.001
+      },
+      "mxmoe_block_20pct": {
+        "ppl": 6.58199,
+        "memory_gb": 26.806
+      },
+      "mxmoe_block_10pct": {
+        "ppl": 6.58375,
+        "memory_gb": 25.196
+      },
+      "perchannel_akurt_w1_0_w2_25": {
+        "ppl": 6.618204,
+        "memory_gb": 24.927
+      },
+      "perchannel_akurt_w1_0_w2_40": {
+        "ppl": 6.615269,
+        "memory_gb": 25.733
+      },
+      "mxmoe_topup_w2_only_5pct": {
+        "ppl": 6.583489,
+        "memory_gb": 27.774
+      },
+      "mxmoe_topup_perturbation_channel": {
+        "ppl": 6.580924,
+        "memory_gb": 28.222
+      },
+      "mxmoe_topup_perturbation_10pct": {
+        "ppl": 6.578362,
+        "memory_gb": 28.817
+      },
+      "mxmoe_topup_perturbation_15pct": {
+        "ppl": 6.582766,
+        "memory_gb": 29.427
+      },
+      "pure_perturbation_perchannel_25pct": {
+        "ppl": 6.613174,
+        "memory_gb": 27.612
+      },
+      "mxmoe_block_w2_heavy": {
+        "ppl": 6.598593,
+        "memory_gb": 27.612
+      },
+      "joint_w1_w2_optimization": {
+        "ppl": 6.576243,
+        "memory_gb": 28.953
+      },
+      "mxmoe_topup_combined_5pct": {
+        "ppl": 6.581458,
+        "memory_gb": 28.222
+      },
+      "perturbation_per_channel_w1_4_w2_16": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "scalebits_topup_5pct": {
+        "ppl": 6.578943,
+        "memory_gb": 28.222
+      },
+      "scalebits_perchannel_w1_4_w2_16": {
+        "ppl": 6.604948,
+        "memory_gb": 24.874
+      },
+      "dynamic_oracle_25pct": {
+        "ppl": 6.600562,
+        "memory_gb": 27.612
+      },
+      "dynamic_oracle_10pct": {
+        "ppl": 6.593817,
+        "memory_gb": 25.221
+      },
+      "cascade_aware_25pct": {
+        "ppl": 6.628183,
+        "memory_gb": 27.601
+      },
+      "cascade_aware_reverse": {
+        "ppl": 6.581219,
+        "memory_gb": 27.601
+      },
+      "mxmoe_topup_8pct_at_20pct_budget": {
+        "ppl": 6.580448,
+        "memory_gb": 27.838
+      },
+      "joint_w1w2_with_topup": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_topup_1pct": {
+        "ppl": 6.578734,
+        "memory_gb": 29.058
+      },
+      "joint_topup_3pct": {
+        "ppl": 6.574401,
+        "memory_gb": 29.269
+      },
+      "joint_topup_5pct": {
+        "ppl": 6.573759,
+        "memory_gb": 29.496
+      },
+      "joint_topup_10pct": {
+        "ppl": 6.581485,
+        "memory_gb": 30.024
+      },
+      "joint_topup_15pct": {
+        "ppl": 6.590167,
+        "memory_gb": 30.567
+      },
+      "joint_cascade_reverse_topup_5pct": {
+        "ppl": 6.574862,
+        "memory_gb": 29.486
+      },
+      "joint_cascade_reverse_topup_10pct": {
+        "ppl": 6.580087,
+        "memory_gb": 30.015
+      },
+      "mxmoe_cascade_reverse_topup_5pct": {
+        "ppl": 6.581586,
+        "memory_gb": 28.212
+      }
+    },
+    "experiment": "Iteration 9 reproduction of the Iteration 7 joint winner plus targeted joint/MxMoE W2-focused follow-up sweeps under proper GPTQ-standard evaluation",
+    "hessian_metric": {
+      "requested_metric": "hessian_diag",
+      "effective_metric": "activation_kurtosis",
+      "fallback_used": true,
+      "source": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+      "fallback_reason": "proper_iter01 cache only stores routing counts, activation_kurtosis scores, and projection perturbation summaries; it does not retain E[x^2] or raw moments needed to reconstruct hessian_diag without recalibration"
+    },
+    "iter07_joint_topup_fraction": 0.08,
+    "runtime_seconds_pre_eval": 16.056,
+    "requested_plan_order": [
+      "replicate_iter07_joint",
+      "joint_w1w2_topup_w2_only_5pct",
+      "joint_w1w2_topup_w2_only_3pct",
+      "joint_w1w2_at_30pct_base",
+      "joint_w1w2_at_40pct_base",
+      "mxmoe_topup_w1_0_w2_10",
+      "ensemble_metric_topup_5pct",
+      "adaptive_topup_per_expert"
+    ],
+    "runtime_seconds": 1646.359,
+    "cache_version_expectation": {
+      "seqlen": 2048,
+      "calibration_samples": 128
+    }
+  },
+  "results": {
+    "replicate_iter07_joint": {
+      "description": "Exact reproduction of Iteration 7 `joint_w1w2_with_topup` by importing and reusing the original builder with the same 8% medium-tier W1/W2 topup.",
+      "mode": "per_channel",
+      "ppl": 6.572458,
+      "nll": 1.882888,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697686016,
+      "fp8_fraction": 0.270012,
+      "w1_pair_fraction": 0.270012,
+      "w2_channel_fraction": 0.270012,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 201.8,
+      "budget_source": "global_perturbation_percentile_buckets_with_medium_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "medium_tier_w1_fraction": 0.08,
+      "medium_tier_w2_fraction": 0.08,
+      "medium_tier_w1_pairs": 41,
+      "medium_tier_w2_channels": 164,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false,
+      "reproduction_source": "proper_iter07.build_joint_with_topup_masks",
+      "reproduction_target": "joint_w1w2_with_topup"
+    },
+    "joint_w1w2_topup_w2_only_5pct": {
+      "description": "Start from the Iteration 5 joint three-tier perturbation buckets, keep the existing W1/W2 block promotions, and spend the extra topup budget only on W2 channels at 5% with no W1 topup.",
+      "mode": "per_channel",
+      "ppl": 6.579621,
+      "nll": 1.883977,
+      "memory_gb": 29.087,
+      "fp8_weights": 11003808768,
+      "fp8_fraction": 0.341603,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.52481,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 203.5,
+      "budget_source": "joint_percentile_buckets_plus_w2_only_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "mxmoe_promoted_w1_projections": 2560,
+      "mxmoe_promoted_w2_projections": 5119,
+      "w1_topup_fraction": 0.0,
+      "w2_topup_fraction": 0.05,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false
+    },
+    "joint_w1w2_topup_w2_only_3pct": {
+      "description": "Start from the Iteration 5 joint three-tier perturbation buckets, keep the existing W1/W2 block promotions, and spend the extra topup budget only on W2 channels at 3% with no W1 topup.",
+      "mode": "per_channel",
+      "ppl": 6.582795,
+      "nll": 1.884459,
+      "memory_gb": 29.033,
+      "fp8_weights": 10896308736,
+      "fp8_fraction": 0.338266,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.514798,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 202.8,
+      "budget_source": "joint_percentile_buckets_plus_w2_only_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "mxmoe_promoted_w1_projections": 2560,
+      "mxmoe_promoted_w2_projections": 5119,
+      "w1_topup_fraction": 0.0,
+      "w2_topup_fraction": 0.03,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false
+    },
+    "joint_w1w2_at_30pct_base": {
+      "description": "Lower the joint three-tier medium threshold to the global 30th percentile so more experts keep W2 in FP8, then add 5% activation_kurtosis W1/W2 topups on the remaining FP4 paths.",
+      "mode": "per_channel",
+      "ppl": 6.582143,
+      "nll": 1.88436,
+      "memory_gb": 30.516,
+      "fp8_weights": 13861230592,
+      "fp8_fraction": 0.430309,
+      "w1_pair_fraction": 0.288086,
+      "w2_channel_fraction": 0.714756,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 203.9,
+      "budget_source": "joint_percentile_buckets_custom_base_plus_channel_topup",
+      "joint_precision_threshold_medium_quantile": 0.3,
+      "joint_precision_threshold_high_quantile": 0.75,
+      "joint_precision_threshold_medium": 1.301852822303772,
+      "joint_precision_threshold_high": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 4606,
+      "joint_precision_low_experts": 3074,
+      "mxmoe_promoted_w1_projections": 2560,
+      "mxmoe_promoted_w2_projections": 7166,
+      "w1_topup_fraction": 0.05,
+      "w2_topup_fraction": 0.05,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false
+    },
+    "joint_w1w2_at_40pct_base": {
+      "description": "Lower the joint three-tier medium threshold to the global 40th percentile so more experts keep W2 in FP8, then add 5% activation_kurtosis W1/W2 topups on the remaining FP4 paths.",
+      "mode": "per_channel",
+      "ppl": 6.577684,
+      "nll": 1.883683,
+      "memory_gb": 30.006,
+      "fp8_weights": 12840966144,
+      "fp8_fraction": 0.398636,
+      "w1_pair_fraction": 0.288086,
+      "w2_channel_fraction": 0.619736,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 203.4,
+      "budget_source": "joint_percentile_buckets_custom_base_plus_channel_topup",
+      "joint_precision_threshold_medium_quantile": 0.4,
+      "joint_precision_threshold_high_quantile": 0.75,
+      "joint_precision_threshold_medium": 1.695959448814392,
+      "joint_precision_threshold_high": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 3582,
+      "joint_precision_low_experts": 4098,
+      "mxmoe_promoted_w1_projections": 2560,
+      "mxmoe_promoted_w2_projections": 6142,
+      "w1_topup_fraction": 0.05,
+      "w2_topup_fraction": 0.05,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false
+    },
+    "mxmoe_topup_w1_0_w2_10": {
+      "description": "Take the 25% MxMoE per-block assignment and use a 10% topup budget only on W2 channels, leaving all non-promoted W1 pairs in FP4.",
+      "mode": "per_channel",
+      "ppl": 6.584496,
+      "nll": 1.884718,
+      "memory_gb": 27.938,
+      "fp8_weights": 8706334720,
+      "fp8_fraction": 0.27028,
+      "w1_pair_fraction": 0.178906,
+      "w2_channel_fraction": 0.453028,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 205.4,
+      "budget_source": "mxmoe_per_block_plus_w2_only_topup",
+      "w1_topup_fraction": 0.0,
+      "w2_topup_fraction": 0.1,
+      "mxmoe_promoted_w1_projections": 1832,
+      "mxmoe_promoted_w2_projections": 4016,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false
+    },
+    "ensemble_metric_topup_5pct": {
+      "description": "Start from the 25% MxMoE per-block assignment, top up W1 with activation_kurtosis, and rank W2 topups by min(activation_kurtosis_rank, hessian_diag_rank) so channels must score well under both metrics to reach FP8.",
+      "mode": "per_channel",
+      "ppl": 6.578666,
+      "nll": 1.883832,
+      "memory_gb": 28.222,
+      "fp8_weights": 9273524224,
+      "fp8_fraction": 0.287888,
+      "w1_pair_fraction": 0.220602,
+      "w2_channel_fraction": 0.422459,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 204.2,
+      "budget_source": "mxmoe_per_block_plus_ensemble_w2_topup",
+      "w1_topup_fraction": 0.05,
+      "w2_topup_fraction": 0.05,
+      "mxmoe_promoted_w1_projections": 1832,
+      "mxmoe_promoted_w2_projections": 4016,
+      "channel_metric_requested": "activation_kurtosis+hessian_diag_rank_ensemble",
+      "channel_metric_effective": "activation_kurtosis+activation_kurtosis_rank_ensemble_fallback",
+      "channel_metric_fallback_used": true,
+      "hessian_metric_source": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+      "hessian_metric_effective": "activation_kurtosis",
+      "ensemble_rank_aggregation": "min(rank_activation_kurtosis_desc, rank_hessian_diag_desc)"
+    },
+    "adaptive_topup_per_expert": {
+      "description": "Take the 25% MxMoE per-block assignment, then apply 10% W1/W2 topups to globally hot experts by routing count and only 1% topups to the colder experts.",
+      "mode": "per_channel",
+      "ppl": 6.5804,
+      "nll": 1.884096,
+      "memory_gb": 27.863,
+      "fp8_weights": 8555486720,
+      "fp8_fraction": 0.265597,
+      "w1_pair_fraction": 0.197892,
+      "w2_channel_fraction": 0.401008,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 204.9,
+      "budget_source": "mxmoe_per_block_plus_adaptive_topup",
+      "mxmoe_base_fraction": 0.25,
+      "hot_topup_fraction": 0.1,
+      "cold_topup_fraction": 0.01,
+      "hot_routing_threshold": 10626.0,
+      "hot_experts": 2560,
+      "cold_experts": 7680,
+      "mxmoe_promoted_w1_projections": 1832,
+      "mxmoe_promoted_w2_projections": 4016,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false
+    }
+  }
+}

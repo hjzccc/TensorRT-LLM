@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "calibration": {
+      "split": "train",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 128,
+      "preview": "= Valkyria Chronicles III =\n\nSenj\u014d no Valkyria 3 : Unrecorded Chronicles ( Japanese : \u6226\u5834\u306e\u30f4\u30a1\u30eb\u30ad\u30e5\u30ea\u30a23 , lit . Valkyria of the Battlefield 3 ) , commonly referred to as Valkyria Chronicles III outside Japan , is a tactical role @-@ playing video game developed by Sega and Media.Vision for the PlayStation Portable . Released in January 2011 in Japan , it is the third game in the Valkyria series . Employing the same fusion of tactical and real @-@ time gameplay as its predecessors , the story runs parallel to the first"
+    },
+    "evaluation": {
+      "split": "test",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 512,
+      "preview": "= Robert Boulter =\n\nRobert Boulter is an English film , television and theatre actor . He had a guest @-@ starring role on the television series The Bill in 2000 . This was followed by a starring role in the play Herons written by Simon Stephens , which was performed in 2001 at the Royal Court Theatre . He had a guest role in the television series Judge John Deed in 2002 . In 2004 Boulter landed a role as \" Craig \" in the episode \" Teddy 's Story \" of the television series The Long Firm ; he starred alongside"
+    },
+    "calibration_tokens": 128,
+    "eval_tokens": 512,
+    "mini_batch_tokens": 32,
+    "target_fp8_fraction": 0.25,
+    "quantization": "real FP8 matmul via torch._scaled_mm; FP4 weights dequantized from NVFP4 then executed through FP8 matmul",
+    "notes": {
+      "mxmoe": "Actual per-projection MoE output perturbation over active experts only.",
+      "mc_moe": "Importance = actnum^1 * weight_norm^1.5 * quant_loss^2.",
+      "dynamo": "2-means significance clustering converted to budgeted high-cluster membership.",
+      "dynaexq": "EMA alpha=0.9 over 4x32-token mini-batches with 10% mean-score hysteresis."
+    },
+    "runtime_seconds": 743.748
+  },
+  "results": {
+    "bf16": {
+      "description": "No expert quantization.",
+      "ppl": 5.342061,
+      "nll": 1.675612,
+      "memory_gb": 71.904,
+      "time_s": 36.2,
+      "fp8_weights": 0
+    },
+    "uniform_fp4": {
+      "description": "All MoE expert weights in NVFP4, evaluated through real FP8 matmul.",
+      "ppl": 5.39679,
+      "nll": 1.685804,
+      "memory_gb": 23.585,
+      "time_s": 40.3,
+      "fp8_weights": 0
+    },
+    "uniform_fp8": {
+      "description": "All MoE expert weights in FP8.",
+      "ppl": 5.323351,
+      "nll": 1.672103,
+      "memory_gb": 39.691,
+      "time_s": 37.7,
+      "fp8_weights": 32212254720
+    },
+    "random_25pct": {
+      "description": "Random 25% W1/W2 channel-pair promotion at fixed budget.",
+      "ppl": 5.418445,
+      "nll": 1.689809,
+      "memory_gb": 27.612,
+      "time_s": 41.1,
+      "fp8_weights": 8053063680
+    },
+    "routing_per_expert": {
+      "description": "Top 25% routed experts fully promoted to FP8.",
+      "ppl": 5.380203,
+      "nll": 1.682726,
+      "memory_gb": 27.612,
+      "time_s": 40.0,
+      "fp8_weights": 8053063680
+    },
+    "perchannel_uniform_budget": {
+      "description": "Uniform 25% per-expert W1/W2 channel promotion by gate-aware score.",
+      "ppl": 5.370504,
+      "nll": 1.680922,
+      "memory_gb": 27.612,
+      "time_s": 41.3,
+      "fp8_weights": 8053063680
+    },
+    "two_level": {
+      "description": "Routing-aware expert budgeting plus per-channel gate-aware ranking.",
+      "ppl": 5.37682,
+      "nll": 1.682097,
+      "memory_gb": 27.612,
+      "time_s": 40.6,
+      "fp8_weights": 8053063680
+    },
+    "mxmoe_per_block": {
+      "description": "MxMoE greedy knapsack over actual per-projection output perturbation.",
+      "ppl": 5.33737,
+      "nll": 1.674733,
+      "memory_gb": 27.612,
+      "time_s": 39.6,
+      "fp8_weights": 8053063680
+    },
+    "mc_moe_per_expert": {
+      "description": "MC-MoE per-expert importance with alpha=1, beta=1.5, gamma=2.",
+      "ppl": 5.375782,
+      "nll": 1.681904,
+      "memory_gb": 27.612,
+      "time_s": 39.6,
+      "fp8_weights": 8053063680
+    },
+    "dynamo_fcm": {
+      "description": "DynaMo expert significance clustered with 2-means and budgeted via high-cluster membership.",
+      "ppl": 5.412481,
+      "nll": 1.688708,
+      "memory_gb": 27.612,
+      "time_s": 40.0,
+      "fp8_weights": 8053063680
+    },
+    "dynaexq_ema": {
+      "description": "DynaExq EMA hotness with 4 mini-batch updates and hysteresis.",
+      "ppl": 5.37569,
+      "nll": 1.681887,
+      "memory_gb": 27.612,
+      "time_s": 39.9,
+      "fp8_weights": 8053063680
+    }
+  }
+}

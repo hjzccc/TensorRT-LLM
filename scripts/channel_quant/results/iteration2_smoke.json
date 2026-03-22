@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "calibration": {
+      "split": "train",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 8,
+      "max_eval_tokens": 8,
+      "preview": "= Valkyria Chronicles III =\n\n"
+    },
+    "evaluation": {
+      "split": "test",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 9,
+      "max_eval_tokens": 9,
+      "preview": "= Robert Boulter =\n\nRobert Boulter"
+    },
+    "eval_chunk_tokens": 8,
+    "metric": "gate_aware_act_qerror",
+    "note": "W1 uses pair-wise gate_up_proj assignment because SwiGLU gate/up rows are coupled.",
+    "runtime_seconds": 697.276
+  },
+  "per_projection": {
+    "uniform_25_25": {
+      "avg_nll": 3.414295196533203,
+      "ppl": 30.395519009162978,
+      "memory_gb": 27.612
+    },
+    "w2_heavy_50_0": {
+      "avg_nll": 3.4905920028686523,
+      "ppl": 32.80536282766222,
+      "memory_gb": 26.27
+    },
+    "w2_heavy_40_10": {
+      "avg_nll": 3.3975670337677,
+      "ppl": 29.891287015541327,
+      "memory_gb": 26.806
+    },
+    "w1_heavy_0_50": {
+      "avg_nll": 3.388272285461426,
+      "ppl": 29.614742224239784,
+      "memory_gb": 28.954
+    }
+  },
+  "budget_sweep": [
+    {
+      "fp8_pct": 0,
+      "avg_nll": 3.4106528759002686,
+      "ppl": 30.28501015963064,
+      "memory_gb": 23.585
+    },
+    {
+      "fp8_pct": 10,
+      "avg_nll": 3.4447646141052246,
+      "ppl": 31.335906548093085,
+      "memory_gb": 25.196
+    },
+    {
+      "fp8_pct": 20,
+      "avg_nll": 3.411898136138916,
+      "ppl": 30.3227463694339,
+      "memory_gb": 26.806
+    },
+    {
+      "fp8_pct": 30,
+      "avg_nll": 3.414952278137207,
+      "ppl": 30.415497908712897,
+      "memory_gb": 28.417
+    },
+    {
+      "fp8_pct": 40,
+      "avg_nll": 3.4623444080352783,
+      "ppl": 31.8916559954496,
+      "memory_gb": 30.028
+    },
+    {
+      "fp8_pct": 50,
+      "avg_nll": 3.443005084991455,
+      "ppl": 31.280818586863585,
+      "memory_gb": 31.638
+    },
+    {
+      "fp8_pct": 60,
+      "avg_nll": 3.454146385192871,
+      "ppl": 31.631276229042562,
+      "memory_gb": 33.249
+    },
+    {
+      "fp8_pct": 70,
+      "avg_nll": 3.437772035598755,
+      "ppl": 31.11755208158255,
+      "memory_gb": 34.86
+    },
+    {
+      "fp8_pct": 80,
+      "avg_nll": 3.518411159515381,
+      "ppl": 33.7307930165247,
+      "memory_gb": 36.47
+    },
+    {
+      "fp8_pct": 90,
+      "avg_nll": 3.4593958854675293,
+      "ppl": 31.797761221479224,
+      "memory_gb": 38.081
+    },
+    {
+      "fp8_pct": 100,
+      "avg_nll": 3.5103254318237305,
+      "ppl": 33.459154686106594,
+      "memory_gb": 39.691
+    }
+  ],
+  "hierarchy_comparison": {
+    "expert_only": {
+      "avg_nll": 3.406341552734375,
+      "ppl": 30.154722751121156,
+      "memory_gb": 27.612
+    },
+    "channel_only": {
+      "avg_nll": 3.419093132019043,
+      "ppl": 30.541705163861224,
+      "memory_gb": 27.612
+    },
+    "two_level": {
+      "avg_nll": 3.414295196533203,
+      "ppl": 30.395519009162978,
+      "memory_gb": 27.612
+    },
+    "aggressive_two_level": {
+      "avg_nll": 3.4468822479248047,
+      "ppl": 31.40233483413498,
+      "memory_gb": 27.628
+    }
+  }
+}

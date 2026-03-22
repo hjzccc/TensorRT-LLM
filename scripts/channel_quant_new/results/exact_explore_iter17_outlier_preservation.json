@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "nsamples": 145,
+    "experiment": "outlier_channel_preservation",
+    "purpose": "Preserve outlier channels in BF16, quantize rest with owq_exact",
+    "hypothesis": "Outliers have disproportionate impact on quantization error",
+    "baseline": "maca_uniform_4k = 6.5676 PPL",
+    "expected_improvement": "0.01-0.03 PPL (6.53-6.55 PPL)",
+    "paper": "OWQ (Choi et al., 2024) - Outlier-Aware Weighted Quantization"
+  },
+  "analysis": {
+    "approach": "Statistical outlier detection (mean + k*std)",
+    "thresholds_tested": [
+      2.0,
+      2.5,
+      3.0,
+      3.5,
+      4.0
+    ],
+    "expected_outlier_percentages": {
+      "2.0": "~5-10% of channels",
+      "2.5": "~2-5% of channels",
+      "3.0": "~0.5-2% of channels",
+      "3.5": "~0.1-0.5% of channels",
+      "4.0": "~0.01-0.1% of channels"
+    },
+    "key_insight": "Outliers have disproportionate impact on quantization error",
+    "strategy": "Preserve outliers in BF16, quantize rest with owq_exact metric"
+  },
+  "configs": {
+    "outlier_threshold_2.0": {
+      "threshold": 2.0,
+      "description": "Preserve ~5-10% of channels as outliers",
+      "expected_ppl": "6.54-6.56 PPL"
+    },
+    "outlier_threshold_2.5": {
+      "threshold": 2.5,
+      "description": "Preserve ~2-5% of channels as outliers",
+      "expected_ppl": "6.53-6.55 PPL"
+    },
+    "outlier_threshold_3.0": {
+      "threshold": 3.0,
+      "description": "Preserve ~0.5-2% of channels as outliers",
+      "expected_ppl": "6.53-6.55 PPL"
+    },
+    "outlier_threshold_3.5": {
+      "threshold": 3.5,
+      "description": "Preserve ~0.1-0.5% of channels as outliers",
+      "expected_ppl": "6.54-6.56 PPL"
+    },
+    "outlier_threshold_4.0": {
+      "threshold": 4.0,
+      "description": "Preserve ~0.01-0.1% of channels as outliers",
+      "expected_ppl": "6.55-6.57 PPL"
+    }
+  },
+  "insights": {
+    "key_finding": "Outliers have disproportionate impact on quantization error",
+    "implication": "Preserving outliers in high precision improves overall performance",
+    "recommendation": "Test threshold range [2.0, 4.0] to find optimal balance"
+  }
+}

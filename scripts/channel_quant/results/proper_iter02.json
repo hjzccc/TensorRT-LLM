@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "seqlen": 2048,
+    "experiment": "MxMoE block + channel topup sweep"
+  },
+  "results": {
+    "topup_01pct": {
+      "ppl": 6.5769,
+      "nll": 1.883563,
+      "memory_gb": 20.251,
+      "fp8_fraction": 0.2573,
+      "topup_pct": 0.01,
+      "time_s": 192.9
+    },
+    "topup_02pct": {
+      "ppl": 6.5788,
+      "nll": 1.883859,
+      "memory_gb": 20.37,
+      "fp8_fraction": 0.2647,
+      "topup_pct": 0.02,
+      "time_s": 193.0
+    },
+    "topup_03pct": {
+      "ppl": 6.5791,
+      "nll": 1.8839,
+      "memory_gb": 20.488,
+      "fp8_fraction": 0.2721,
+      "topup_pct": 0.03,
+      "time_s": 191.6
+    },
+    "topup_05pct": {
+      "ppl": 6.5763,
+      "nll": 1.883475,
+      "memory_gb": 20.743,
+      "fp8_fraction": 0.2879,
+      "topup_pct": 0.05,
+      "time_s": 192.8
+    },
+    "topup_08pct": {
+      "ppl": 6.5798,
+      "nll": 1.884001,
+      "memory_gb": 21.1,
+      "fp8_fraction": 0.3101,
+      "topup_pct": 0.08,
+      "time_s": 188.4
+    },
+    "topup_10pct": {
+      "ppl": 6.5791,
+      "nll": 1.883891,
+      "memory_gb": 21.337,
+      "fp8_fraction": 0.3248,
+      "topup_pct": 0.1,
+      "time_s": 181.3
+    },
+    "topup_15pct": {
+      "ppl": 6.5872,
+      "nll": 1.885129,
+      "memory_gb": 21.948,
+      "fp8_fraction": 0.3627,
+      "topup_pct": 0.15,
+      "time_s": 179.4
+    },
+    "topup_20pct": {
+      "ppl": 6.5939,
+      "nll": 1.886149,
+      "memory_gb": 22.542,
+      "fp8_fraction": 0.3996,
+      "topup_pct": 0.2,
+      "time_s": 180.1
+    }
+  }
+}

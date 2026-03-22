@@ -1,0 +1,706 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/proper_eval.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "metric_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter12b_novel_metrics_metric_cache.pt",
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      },
+      "mxmoe_perturbation_perchannel": {
+        "ppl": 6.59972,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_25pct": {
+        "ppl": 6.590387,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_w1_4_w2_16": {
+        "ppl": 6.606149,
+        "memory_gb": 24.874
+      },
+      "mxmoe_block_plus_channel_topup": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "output_perturbation_per_channel_9experts": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "topup_01pct": {
+        "ppl": 6.5769,
+        "memory_gb": 20.251
+      },
+      "topup_02pct": {
+        "ppl": 6.5788,
+        "memory_gb": 20.37
+      },
+      "topup_03pct": {
+        "ppl": 6.5791,
+        "memory_gb": 20.488
+      },
+      "topup_05pct": {
+        "ppl": 6.5763,
+        "memory_gb": 20.743
+      },
+      "topup_08pct": {
+        "ppl": 6.5798,
+        "memory_gb": 21.1
+      },
+      "topup_10pct": {
+        "ppl": 6.5791,
+        "memory_gb": 21.337
+      },
+      "topup_15pct": {
+        "ppl": 6.5872,
+        "memory_gb": 21.948
+      },
+      "topup_20pct": {
+        "ppl": 6.5939,
+        "memory_gb": 22.542
+      },
+      "perchannel_hessian_25pct": {
+        "ppl": 6.614806,
+        "memory_gb": 27.612
+      },
+      "perchannel_hessian_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_30pct": {
+        "ppl": 6.627915,
+        "memory_gb": 28.417
+      },
+      "perchannel_akurt_40pct": {
+        "ppl": 6.614058,
+        "memory_gb": 30.028
+      },
+      "mxmoe_topup_hessian_5pct": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "perturbation_proportional_30pct": {
+        "ppl": 6.5893,
+        "memory_gb": 28.417
+      },
+      "perturbation_proportional_40pct": {
+        "ppl": 6.596071,
+        "memory_gb": 30.028
+      },
+      "mxmoe_block_35pct": {
+        "ppl": 6.57889,
+        "memory_gb": 29.222
+      },
+      "mxmoe_layer_adaptive": {
+        "ppl": 6.583283,
+        "memory_gb": 27.813
+      },
+      "global_channel_ranking": {
+        "ppl": 6.612899,
+        "memory_gb": 25.281
+      },
+      "mxmoe_block_15pct": {
+        "ppl": 6.584293,
+        "memory_gb": 26.001
+      },
+      "mxmoe_block_20pct": {
+        "ppl": 6.58199,
+        "memory_gb": 26.806
+      },
+      "mxmoe_block_10pct": {
+        "ppl": 6.58375,
+        "memory_gb": 25.196
+      },
+      "perchannel_akurt_w1_0_w2_25": {
+        "ppl": 6.618204,
+        "memory_gb": 24.927
+      },
+      "perchannel_akurt_w1_0_w2_40": {
+        "ppl": 6.615269,
+        "memory_gb": 25.733
+      },
+      "mxmoe_topup_w2_only_5pct": {
+        "ppl": 6.583489,
+        "memory_gb": 27.774
+      },
+      "mxmoe_topup_perturbation_channel": {
+        "ppl": 6.580924,
+        "memory_gb": 28.222
+      },
+      "mxmoe_topup_perturbation_10pct": {
+        "ppl": 6.578362,
+        "memory_gb": 28.817
+      },
+      "mxmoe_topup_perturbation_15pct": {
+        "ppl": 6.582766,
+        "memory_gb": 29.427
+      },
+      "pure_perturbation_perchannel_25pct": {
+        "ppl": 6.613174,
+        "memory_gb": 27.612
+      },
+      "mxmoe_block_w2_heavy": {
+        "ppl": 6.598593,
+        "memory_gb": 27.612
+      },
+      "joint_w1_w2_optimization": {
+        "ppl": 6.576243,
+        "memory_gb": 28.953
+      },
+      "mxmoe_topup_combined_5pct": {
+        "ppl": 6.581458,
+        "memory_gb": 28.222
+      },
+      "perturbation_per_channel_w1_4_w2_16": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "scalebits_topup_5pct": {
+        "ppl": 6.578943,
+        "memory_gb": 28.222
+      },
+      "scalebits_perchannel_w1_4_w2_16": {
+        "ppl": 6.604948,
+        "memory_gb": 24.874
+      },
+      "dynamic_oracle_25pct": {
+        "ppl": 6.600562,
+        "memory_gb": 27.612
+      },
+      "dynamic_oracle_10pct": {
+        "ppl": 6.593817,
+        "memory_gb": 25.221
+      },
+      "cascade_aware_25pct": {
+        "ppl": 6.628183,
+        "memory_gb": 27.601
+      },
+      "cascade_aware_reverse": {
+        "ppl": 6.581219,
+        "memory_gb": 27.601
+      },
+      "mxmoe_topup_8pct_at_20pct_budget": {
+        "ppl": 6.580448,
+        "memory_gb": 27.838
+      },
+      "joint_w1w2_with_topup": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_topup_1pct": {
+        "ppl": 6.578734,
+        "memory_gb": 29.058
+      },
+      "joint_topup_3pct": {
+        "ppl": 6.574401,
+        "memory_gb": 29.269
+      },
+      "joint_topup_5pct": {
+        "ppl": 6.573759,
+        "memory_gb": 29.496
+      },
+      "joint_topup_10pct": {
+        "ppl": 6.581485,
+        "memory_gb": 30.024
+      },
+      "joint_topup_15pct": {
+        "ppl": 6.590167,
+        "memory_gb": 30.567
+      },
+      "joint_cascade_reverse_topup_5pct": {
+        "ppl": 6.574862,
+        "memory_gb": 29.486
+      },
+      "joint_cascade_reverse_topup_10pct": {
+        "ppl": 6.580087,
+        "memory_gb": 30.015
+      },
+      "mxmoe_cascade_reverse_topup_5pct": {
+        "ppl": 6.581586,
+        "memory_gb": 28.212
+      },
+      "replicate_iter07_joint": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_w1w2_topup_w2_only_5pct": {
+        "ppl": 6.579621,
+        "memory_gb": 29.087
+      },
+      "joint_w1w2_topup_w2_only_3pct": {
+        "ppl": 6.582795,
+        "memory_gb": 29.033
+      },
+      "joint_w1w2_at_30pct_base": {
+        "ppl": 6.582143,
+        "memory_gb": 30.516
+      },
+      "joint_w1w2_at_40pct_base": {
+        "ppl": 6.577684,
+        "memory_gb": 30.006
+      },
+      "mxmoe_topup_w1_0_w2_10": {
+        "ppl": 6.584496,
+        "memory_gb": 27.938
+      },
+      "ensemble_metric_topup_5pct": {
+        "ppl": 6.578666,
+        "memory_gb": 28.222
+      },
+      "adaptive_topup_per_expert": {
+        "ppl": 6.5804,
+        "memory_gb": 27.863
+      },
+      "perchannel_real_hessian_25pct": {
+        "ppl": 6.603661,
+        "memory_gb": 27.612
+      },
+      "perchannel_real_hessian_w1_4_w2_16": {
+        "ppl": 6.603787,
+        "memory_gb": 24.874
+      },
+      "perchannel_real_hessian_w1_0_w2_25": {
+        "ppl": 6.615687,
+        "memory_gb": 24.927
+      },
+      "perchannel_output_perturbation_25pct": {
+        "ppl": 6.599597,
+        "memory_gb": 27.612
+      },
+      "perchannel_output_perturbation_w1_4_w2_16": {
+        "ppl": 6.603022,
+        "memory_gb": 24.874
+      },
+      "perchannel_output_perturbation_w1_0_w2_25": {
+        "ppl": 6.61138,
+        "memory_gb": 24.927
+      },
+      "micromix_threshold": {
+        "ppl": 6.618633,
+        "memory_gb": 28.946
+      },
+      "micromix_threshold_routing": {
+        "ppl": 6.618053,
+        "memory_gb": 26.266
+      },
+      "router_affinity_weighted_25pct": {
+        "ppl": 6.589607,
+        "memory_gb": 27.612
+      },
+      "router_affinity_weighted_w1_4_w2_16": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "cross_expert_outlier_agreement_5pct": {
+        "ppl": 6.62236,
+        "memory_gb": 23.589
+      },
+      "cross_expert_outlier_10pct": {
+        "ppl": 6.622091,
+        "memory_gb": 23.619
+      },
+      "hessian_normalized_25pct": {
+        "ppl": 6.616846,
+        "memory_gb": 27.612
+      },
+      "hessian_normalized_w1_4_w2_16": {
+        "ppl": 6.609929,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_10pct": {
+        "ppl": 6.605976,
+        "memory_gb": 24.23
+      },
+      "ra_perchannel_15pct": {
+        "ppl": 6.591708,
+        "memory_gb": 24.552
+      },
+      "ra_perchannel_20pct": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_30pct": {
+        "ppl": 6.592682,
+        "memory_gb": 25.518
+      },
+      "ra_perchannel_40pct": {
+        "ppl": 6.593389,
+        "memory_gb": 26.162
+      },
+      "ra_plus_mxmoe_topup_5pct": {
+        "ppl": 6.582004,
+        "memory_gb": 27.828
+      },
+      "ra_plus_mxmoe_topup_3pct": {
+        "ppl": 6.583331,
+        "memory_gb": 27.741
+      },
+      "ra_joint_w1w2": {
+        "ppl": 6.576245,
+        "memory_gb": 28.283
+      }
+    },
+    "experiment": "Iteration 12b fast novel per-channel metrics from literature plus a router-affinity x WANDA combination",
+    "novel_metric_protocol": {
+      "initial_plans": [
+        "wanda_w1_4_w2_16",
+        "rqe_w1_4_w2_16",
+        "awre_w1_4_w2_16",
+        "col_condition_w1_4_w2_16",
+        "baq_score_w1_4_w2_16",
+        "owq_exact_w1_4_w2_16",
+        "ra_wanda_w1_4_w2_16",
+        "entropy_w1_4_w2_16"
+      ],
+      "initial_budget": {
+        "w1_fraction": 0.04,
+        "w2_fraction": 0.16
+      },
+      "followup_policy": "top 3 metrics by PPL from the initial sweep are re-evaluated at a 25% uniform per-expert W1/W2 budget",
+      "uniform_followup_fraction": 0.25
+    },
+    "metric_cache_metadata": {
+      "metric_names": [
+        "wanda",
+        "rqe",
+        "awre",
+        "col_condition",
+        "baq_score",
+        "owq_exact",
+        "ra_wanda",
+        "entropy"
+      ],
+      "runtime_seconds": 438.037,
+      "calibration_chunks": 128,
+      "entropy_bins": 32,
+      "w1_pair_reduction": "sum(gate_row_score, up_row_score)",
+      "metric_descriptions": {
+        "wanda": "WANDA importance = sum_k |w_jk| * E[|x_k|] per output channel.",
+        "rqe": "Relative quantization error = ||w_j - q(w_j)||_2 / ||w_j||_2 per output channel.",
+        "awre": "Activation-weighted relative error = sum_k E[x_k^2] * delta_jk^2 / (||w_j||_2^2 + eps).",
+        "col_condition": "Approximate per-channel condition proxy = ||w_j||_2^2 / ||W||_F^2.",
+        "baq_score": "BAQ-style score = range(w_j)^2 * mean(E[x^2]) / 12 per output channel.",
+        "owq_exact": "OWQ-style exact channel score = sum_k E[x_k^2] * delta_jk^2.",
+        "ra_wanda": "Router-affinity times WANDA = sum_t p_{t,e} * sum_k |w_jk| * |x_tk|.",
+        "entropy": "Row entropy over 32-bin weight histogram; higher entropy rows are treated as harder to quantize."
+      },
+      "per_layer_stats": {
+        "0": {
+          "active_experts": 256,
+          "max_routing_count": 32486,
+          "min_active_routing_count": 867
+        },
+        "1": {
+          "active_experts": 256,
+          "max_routing_count": 36946,
+          "min_active_routing_count": 119
+        },
+        "2": {
+          "active_experts": 256,
+          "max_routing_count": 27729,
+          "min_active_routing_count": 2854
+        },
+        "3": {
+          "active_experts": 256,
+          "max_routing_count": 56163,
+          "min_active_routing_count": 768
+        },
+        "4": {
+          "active_experts": 256,
+          "max_routing_count": 73143,
+          "min_active_routing_count": 557
+        },
+        "5": {
+          "active_experts": 256,
+          "max_routing_count": 34353,
+          "min_active_routing_count": 841
+        },
+        "6": {
+          "active_experts": 256,
+          "max_routing_count": 47584,
+          "min_active_routing_count": 147
+        },
+        "7": {
+          "active_experts": 256,
+          "max_routing_count": 60715,
+          "min_active_routing_count": 280
+        },
+        "8": {
+          "active_experts": 256,
+          "max_routing_count": 150864,
+          "min_active_routing_count": 95
+        },
+        "9": {
+          "active_experts": 256,
+          "max_routing_count": 48837,
+          "min_active_routing_count": 51
+        },
+        "10": {
+          "active_experts": 256,
+          "max_routing_count": 43051,
+          "min_active_routing_count": 172
+        },
+        "11": {
+          "active_experts": 256,
+          "max_routing_count": 67278,
+          "min_active_routing_count": 236
+        },
+        "12": {
+          "active_experts": 256,
+          "max_routing_count": 63173,
+          "min_active_routing_count": 18
+        },
+        "13": {
+          "active_experts": 256,
+          "max_routing_count": 86181,
+          "min_active_routing_count": 54
+        },
+        "14": {
+          "active_experts": 256,
+          "max_routing_count": 77395,
+          "min_active_routing_count": 1
+        },
+        "15": {
+          "active_experts": 256,
+          "max_routing_count": 85201,
+          "min_active_routing_count": 50
+        },
+        "16": {
+          "active_experts": 256,
+          "max_routing_count": 85098,
+          "min_active_routing_count": 2
+        },
+        "17": {
+          "active_experts": 256,
+          "max_routing_count": 102300,
+          "min_active_routing_count": 20
+        },
+        "18": {
+          "active_experts": 256,
+          "max_routing_count": 56188,
+          "min_active_routing_count": 19
+        },
+        "19": {
+          "active_experts": 256,
+          "max_routing_count": 73973,
+          "min_active_routing_count": 98
+        },
+        "20": {
+          "active_experts": 256,
+          "max_routing_count": 137868,
+          "min_active_routing_count": 6
+        },
+        "21": {
+          "active_experts": 256,
+          "max_routing_count": 54241,
+          "min_active_routing_count": 4
+        },
+        "22": {
+          "active_experts": 256,
+          "max_routing_count": 44031,
+          "min_active_routing_count": 2
+        },
+        "23": {
+          "active_experts": 256,
+          "max_routing_count": 74919,
+          "min_active_routing_count": 35
+        },
+        "24": {
+          "active_experts": 256,
+          "max_routing_count": 58066,
+          "min_active_routing_count": 1
+        },
+        "25": {
+          "active_experts": 256,
+          "max_routing_count": 102164,
+          "min_active_routing_count": 9
+        },
+        "26": {
+          "active_experts": 256,
+          "max_routing_count": 66877,
+          "min_active_routing_count": 47
+        },
+        "27": {
+          "active_experts": 256,
+          "max_routing_count": 144410,
+          "min_active_routing_count": 16
+        },
+        "28": {
+          "active_experts": 256,
+          "max_routing_count": 68527,
+          "min_active_routing_count": 20
+        },
+        "29": {
+          "active_experts": 256,
+          "max_routing_count": 86249,
+          "min_active_routing_count": 1
+        },
+        "30": {
+          "active_experts": 256,
+          "max_routing_count": 49740,
+          "min_active_routing_count": 87
+        },
+        "31": {
+          "active_experts": 256,
+          "max_routing_count": 52619,
+          "min_active_routing_count": 41
+        },
+        "32": {
+          "active_experts": 256,
+          "max_routing_count": 108338,
+          "min_active_routing_count": 1
+        },
+        "33": {
+          "active_experts": 256,
+          "max_routing_count": 53359,
+          "min_active_routing_count": 11
+        },
+        "34": {
+          "active_experts": 254,
+          "max_routing_count": 96643,
+          "min_active_routing_count": 9
+        },
+        "35": {
+          "active_experts": 256,
+          "max_routing_count": 47855,
+          "min_active_routing_count": 3
+        },
+        "36": {
+          "active_experts": 256,
+          "max_routing_count": 41937,
+          "min_active_routing_count": 2
+        },
+        "37": {
+          "active_experts": 256,
+          "max_routing_count": 67296,
+          "min_active_routing_count": 3
+        },
+        "38": {
+          "active_experts": 256,
+          "max_routing_count": 64734,
+          "min_active_routing_count": 2
+        },
+        "39": {
+          "active_experts": 255,
+          "max_routing_count": 147375,
+          "min_active_routing_count": 13
+        }
+      }
+    }
+  },
+  "results": {
+    "wanda_w1_4_w2_16": {
+      "description": "Global sort-and-split plan using the wanda metric with W1=4% and W2=16% FP8 budget.",
+      "mode": "per_channel",
+      "ppl": 6.610881,
+      "nll": 1.888717,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576979456,
+      "fp8_fraction": 0.08,
+      "w1_pair_fraction": 0.04,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 312.4,
+      "budget_source": "wanda_global_sort_split",
+      "w1_fraction_target": 0.04,
+      "w2_fraction_target": 0.16,
+      "global_w1_selected": 209715,
+      "global_w2_selected": 3355443,
+      "global_w1_total": 5242880,
+      "global_w2_total": 20971520,
+      "channel_metric_requested": "wanda",
+      "channel_metric_effective": "wanda",
+      "channel_metric_fallback_used": false,
+      "metric_description": "WANDA importance = sum_k |w_jk| * E[|x_k|] per output channel.",
+      "plan_stage": "initial_20pct_sort_split"
+    },
+    "rqe_w1_4_w2_16": {
+      "description": "Global sort-and-split plan using the rqe metric with W1=4% and W2=16% FP8 budget.",
+      "mode": "per_channel",
+      "ppl": 6.628687,
+      "nll": 1.891407,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576979456,
+      "fp8_fraction": 0.08,
+      "w1_pair_fraction": 0.04,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 306.7,
+      "budget_source": "rqe_global_sort_split",
+      "w1_fraction_target": 0.04,
+      "w2_fraction_target": 0.16,
+      "global_w1_selected": 209715,
+      "global_w2_selected": 3355443,
+      "global_w1_total": 5242880,
+      "global_w2_total": 20971520,
+      "channel_metric_requested": "rqe",
+      "channel_metric_effective": "rqe",
+      "channel_metric_fallback_used": false,
+      "metric_description": "Relative quantization error = ||w_j - q(w_j)||_2 / ||w_j||_2 per output channel.",
+      "plan_stage": "initial_20pct_sort_split"
+    }
+  }
+}

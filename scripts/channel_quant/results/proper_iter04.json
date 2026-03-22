@@ -1,0 +1,367 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/MC-MoE/eval_ppl_utils.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      },
+      "mxmoe_perturbation_perchannel": {
+        "ppl": 6.59972,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_25pct": {
+        "ppl": 6.590387,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_w1_4_w2_16": {
+        "ppl": 6.606149,
+        "memory_gb": 24.874
+      },
+      "mxmoe_block_plus_channel_topup": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "output_perturbation_per_channel_9experts": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "topup_01pct": {
+        "ppl": 6.5769,
+        "memory_gb": 20.251
+      },
+      "topup_02pct": {
+        "ppl": 6.5788,
+        "memory_gb": 20.37
+      },
+      "topup_03pct": {
+        "ppl": 6.5791,
+        "memory_gb": 20.488
+      },
+      "topup_05pct": {
+        "ppl": 6.5763,
+        "memory_gb": 20.743
+      },
+      "topup_08pct": {
+        "ppl": 6.5798,
+        "memory_gb": 21.1
+      },
+      "topup_10pct": {
+        "ppl": 6.5791,
+        "memory_gb": 21.337
+      },
+      "topup_15pct": {
+        "ppl": 6.5872,
+        "memory_gb": 21.948
+      },
+      "topup_20pct": {
+        "ppl": 6.5939,
+        "memory_gb": 22.542
+      },
+      "perchannel_hessian_25pct": {
+        "ppl": 6.614806,
+        "memory_gb": 27.612
+      },
+      "perchannel_hessian_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_30pct": {
+        "ppl": 6.627915,
+        "memory_gb": 28.417
+      },
+      "perchannel_akurt_40pct": {
+        "ppl": 6.614058,
+        "memory_gb": 30.028
+      },
+      "mxmoe_topup_hessian_5pct": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "perturbation_proportional_30pct": {
+        "ppl": 6.5893,
+        "memory_gb": 28.417
+      },
+      "perturbation_proportional_40pct": {
+        "ppl": 6.596071,
+        "memory_gb": 30.028
+      },
+      "mxmoe_block_35pct": {
+        "ppl": 6.57889,
+        "memory_gb": 29.222
+      }
+    },
+    "experiment": "Iteration 4 fundamentally different budget/ranking variants using cached proper_eval calibration",
+    "requested_plan_order": [
+      "mxmoe_layer_adaptive",
+      "global_channel_ranking",
+      "mxmoe_block_15pct",
+      "mxmoe_block_20pct",
+      "mxmoe_block_10pct",
+      "perchannel_akurt_w1_0_w2_25",
+      "perchannel_akurt_w1_0_w2_40",
+      "mxmoe_topup_w2_only_5pct"
+    ],
+    "runtime_seconds_pre_eval": 12.741,
+    "runtime_seconds": 1786.507,
+    "cache_version_expectation": {
+      "seqlen": 2048,
+      "calibration_samples": 128
+    }
+  },
+  "results": {
+    "mxmoe_layer_adaptive": {
+      "description": "MxMoE per-block knapsack with layer-group budgets: 15% for layers 0-9, 25% for 10-29, and 40% for 30+.",
+      "mode": "per_block",
+      "ppl": 6.583283,
+      "nll": 1.884534,
+      "memory_gb": 27.813,
+      "fp8_weights": 8455716864,
+      "fp8_fraction": 0.2625,
+      "w1_pair_fraction": 0.0,
+      "w2_channel_fraction": 0.0,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 437.6,
+      "budget_source": "mxmoe_layer_group_knapsack",
+      "channel_metric_requested": "output_perturbation",
+      "channel_metric_effective": "output_perturbation",
+      "channel_metric_fallback_used": false,
+      "layer_group_budgets": {
+        "layers_0_9": {
+          "start_layer": 0,
+          "end_layer_exclusive": 10,
+          "fraction_target": 0.15,
+          "target_fp8_weights": 1207959552,
+          "realized_fp8_weights": 1207959552
+        },
+        "layers_10_29": {
+          "start_layer": 10,
+          "end_layer_exclusive": 30,
+          "fraction_target": 0.25,
+          "target_fp8_weights": 4026531840,
+          "realized_fp8_weights": 4026531840
+        },
+        "layers_30_39": {
+          "start_layer": 30,
+          "end_layer_exclusive": 40,
+          "fraction_target": 0.4,
+          "target_fp8_weights": 3221225472,
+          "realized_fp8_weights": 3221225472
+        }
+      },
+      "mxmoe_promoted_w1_projections": 1845,
+      "mxmoe_promoted_w2_projections": 4374
+    },
+    "global_channel_ranking": {
+      "description": "Global activation_kurtosis ranking across all W1 pairs and W2 channels; top 25% channel units promoted regardless of layer or expert.",
+      "mode": "per_channel",
+      "ppl": 6.612899,
+      "nll": 1.889022,
+      "memory_gb": 25.281,
+      "fp8_weights": 3392318976,
+      "fp8_fraction": 0.105311,
+      "w1_pair_fraction": 0.001962,
+      "w2_channel_fraction": 0.312009,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 191.9,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false,
+      "budget_source": "global_flat_channel_ranking",
+      "global_channel_fraction_target": 0.25,
+      "global_channels_total": 26214400,
+      "global_channels_selected": 6553600
+    },
+    "mxmoe_block_15pct": {
+      "description": "MxMoE greedy knapsack over per-projection output perturbation at a 15% FP8 budget.",
+      "mode": "per_block",
+      "ppl": 6.584293,
+      "nll": 1.884687,
+      "memory_gb": 26.001,
+      "fp8_weights": 4831838208,
+      "fp8_fraction": 0.15,
+      "w1_pair_fraction": 0.0,
+      "w2_channel_fraction": 0.0,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 191.1,
+      "budget_source": "mxmoe_projection_perturbation",
+      "channel_metric_requested": "output_perturbation",
+      "channel_metric_effective": "output_perturbation",
+      "channel_metric_fallback_used": false,
+      "mxmoe_fraction_target": 0.15,
+      "mxmoe_promoted_w1_projections": 995,
+      "mxmoe_promoted_w2_projections": 2618
+    },
+    "mxmoe_block_20pct": {
+      "description": "MxMoE greedy knapsack over per-projection output perturbation at a 20% FP8 budget.",
+      "mode": "per_block",
+      "ppl": 6.58199,
+      "nll": 1.884337,
+      "memory_gb": 26.806,
+      "fp8_weights": 6442450944,
+      "fp8_fraction": 0.2,
+      "w1_pair_fraction": 0.0,
+      "w2_channel_fraction": 0.0,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 188.7,
+      "budget_source": "mxmoe_projection_perturbation",
+      "channel_metric_requested": "output_perturbation",
+      "channel_metric_effective": "output_perturbation",
+      "channel_metric_fallback_used": false,
+      "mxmoe_fraction_target": 0.2,
+      "mxmoe_promoted_w1_projections": 1392,
+      "mxmoe_promoted_w2_projections": 3360
+    },
+    "mxmoe_block_10pct": {
+      "description": "MxMoE greedy knapsack over per-projection output perturbation at a 10% FP8 budget.",
+      "mode": "per_block",
+      "ppl": 6.58375,
+      "nll": 1.884604,
+      "memory_gb": 25.196,
+      "fp8_weights": 3221225472,
+      "fp8_fraction": 0.1,
+      "w1_pair_fraction": 0.0,
+      "w2_channel_fraction": 0.0,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 191.4,
+      "budget_source": "mxmoe_projection_perturbation",
+      "channel_metric_requested": "output_perturbation",
+      "channel_metric_effective": "output_perturbation",
+      "channel_metric_fallback_used": false,
+      "mxmoe_fraction_target": 0.1,
+      "mxmoe_promoted_w1_projections": 630,
+      "mxmoe_promoted_w2_projections": 1812
+    },
+    "perchannel_akurt_w1_0_w2_25": {
+      "description": "Routing-aware activation_kurtosis masks with W1=0% and W2=25% FP8.",
+      "mode": "per_channel",
+      "ppl": 6.618204,
+      "nll": 1.889824,
+      "memory_gb": 24.927,
+      "fp8_weights": 2684354560,
+      "fp8_fraction": 0.083333,
+      "w1_pair_fraction": 0.0,
+      "w2_channel_fraction": 0.25,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 191.3,
+      "budget_source": "routing_aware_two_level",
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false,
+      "w1_fraction_target": 0.0,
+      "w2_fraction_target": 0.25
+    },
+    "perchannel_akurt_w1_0_w2_40": {
+      "description": "Routing-aware activation_kurtosis masks with W1=0% and W2=40% FP8.",
+      "mode": "per_channel",
+      "ppl": 6.615269,
+      "nll": 1.88938,
+      "memory_gb": 25.733,
+      "fp8_weights": 4294963200,
+      "fp8_fraction": 0.133333,
+      "w1_pair_fraction": 0.0,
+      "w2_channel_fraction": 0.4,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 192.4,
+      "budget_source": "routing_aware_two_level",
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false,
+      "w1_fraction_target": 0.0,
+      "w2_fraction_target": 0.4
+    },
+    "mxmoe_topup_w2_only_5pct": {
+      "description": "Start from the 25% MxMoE per-block assignment, keep W1 fixed at block precision, and top up only W2 channels by 5% activation_kurtosis.",
+      "mode": "per_channel",
+      "ppl": 6.583489,
+      "nll": 1.884565,
+      "memory_gb": 27.774,
+      "fp8_weights": 8378105856,
+      "fp8_fraction": 0.260091,
+      "w1_pair_fraction": 0.178906,
+      "w2_channel_fraction": 0.422459,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 189.2,
+      "channel_metric_requested": "activation_kurtosis",
+      "channel_metric_effective": "activation_kurtosis",
+      "channel_metric_fallback_used": false,
+      "budget_source": "mxmoe_per_block_plus_w2_only_topup",
+      "mxmoe_base_fraction": 0.25,
+      "topup_fraction": 0.05,
+      "w1_topup_fraction": 0.0,
+      "w2_topup_fraction": 0.05,
+      "mxmoe_promoted_w1_projections": 1832,
+      "mxmoe_promoted_w2_projections": 4016
+    }
+  }
+}

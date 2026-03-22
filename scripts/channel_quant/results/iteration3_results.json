@@ -1,0 +1,111 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "calibration": {
+      "split": "train",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 128,
+      "max_eval_tokens": 128,
+      "preview": "= Valkyria Chronicles III =\n\nSenj\u014d no Valkyria 3 : Unrecorded Chronicles ( Japanese : \u6226\u5834\u306e\u30f4\u30a1\u30eb\u30ad\u30e5\u30ea\u30a23 , lit . Valkyria of the Battlefield 3 ) , commonly referred to as Valkyria Chronicles III outside Japan , is a tactical role @-@ playing video game developed by Sega and Media.Vision for the PlayStation Portable . Released in January 2011 in Japan , it is the third game in the Valkyria series . Employing the same fusion of tactical and real @-@ time gameplay as its predecessors , the story runs parallel to the first"
+    },
+    "evaluation": {
+      "split": "test",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 512,
+      "max_eval_tokens": 512,
+      "preview": "= Robert Boulter =\n\nRobert Boulter is an English film , television and theatre actor . He had a guest @-@ starring role on the television series The Bill in 2000 . This was followed by a starring role in the play Herons written by Simon Stephens , which was performed in 2001 at the Royal Court Theatre . He had a guest role in the television series Judge John Deed in 2002 . In 2004 Boulter landed a role as \" Craig \" in the episode \" Teddy 's Story \" of the television series The Long Firm ; he starred alongside"
+    },
+    "target_fp8_fraction": 0.25,
+    "metric": "gate_aware_act_qerror",
+    "fgmp_block_proxy": "weight_variance_per_16_block",
+    "fgmp_samples_per_layer": 65536,
+    "random_seeds": [
+      0,
+      1,
+      2
+    ],
+    "note": "W1 uses pair-wise gate_up_proj assignment when channel-level masks are used.",
+    "runtime_seconds": 827.409
+  },
+  "related_work": {
+    "random_baseline": {
+      "avg_nll": 1.6819896075901297,
+      "ppl": 5.376270589660941,
+      "memory_gb": 27.612,
+      "seed_results": [
+        {
+          "seed": 0,
+          "avg_nll": 1.68110013614662,
+          "ppl": 5.371462061348512,
+          "memory_gb": 27.612
+        },
+        {
+          "seed": 1,
+          "avg_nll": 1.6785123940783238,
+          "ppl": 5.357580072254311,
+          "memory_gb": 27.612
+        },
+        {
+          "seed": 2,
+          "avg_nll": 1.6863562925454456,
+          "ppl": 5.399769635380002,
+          "memory_gb": 27.612
+        }
+      ]
+    },
+    "dynaexq_per_expert": {
+      "avg_nll": 1.6815492439643278,
+      "ppl": 5.373874968740015,
+      "memory_gb": 27.612
+    },
+    "ours_two_level": {
+      "avg_nll": 1.6757510683541195,
+      "ppl": 5.342806455352808,
+      "memory_gb": 27.612
+    },
+    "mxmoe_per_block": {
+      "avg_nll": 1.68152036498904,
+      "ppl": 5.373719778978464,
+      "memory_gb": 27.612
+    },
+    "fgmp_per_16block": {
+      "avg_nll": 1.6789244224413966,
+      "ppl": 5.359788002035124,
+      "memory_gb": 27.627
+    },
+    "scalebits_submodular": {
+      "avg_nll": 1.6816949564416814,
+      "ppl": 5.374658066426865,
+      "memory_gb": 27.612
+    }
+  },
+  "alternative_strategies": {
+    "threshold_median": {
+      "avg_nll": 1.6771162298094269,
+      "ppl": 5.35010522965796,
+      "memory_gb": 30.793
+    },
+    "threshold_p75": {
+      "avg_nll": 1.680659799893075,
+      "ppl": 5.36909733254448,
+      "memory_gb": 25.402
+    },
+    "threshold_p90": {
+      "avg_nll": 1.6796390809658222,
+      "ppl": 5.363619789266511,
+      "memory_gb": 24.29
+    },
+    "kmeans_2cluster": {
+      "avg_nll": 1.6841608745477905,
+      "ppl": 5.387927887488816,
+      "memory_gb": 25.255
+    },
+    "sensitivity_gap": {
+      "avg_nll": 1.6858941244285868,
+      "ppl": 5.397274610621005,
+      "memory_gb": 24.423
+    }
+  }
+}

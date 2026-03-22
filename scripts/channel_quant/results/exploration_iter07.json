@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "eval_tokens": 512,
+    "calib_tokens": 128,
+    "note": "Iteration 7: push outlier approach with per-projection split"
+  },
+  "results": {
+    "outlier_w1_2_w2_8": {
+      "ppl": 5.3543,
+      "nll": 1.677893,
+      "memory_gb": 16.706,
+      "fp8_frac": 0.0372,
+      "time_s": 42.2
+    },
+    "outlier_w1_3_w2_7": {
+      "ppl": 5.4008,
+      "nll": 1.686543,
+      "memory_gb": 16.77,
+      "fp8_frac": 0.0412,
+      "time_s": 41.2
+    },
+    "outlier_w1_1_w2_9": {
+      "ppl": 5.4249,
+      "nll": 1.691007,
+      "memory_gb": 16.64,
+      "fp8_frac": 0.0331,
+      "time_s": 41.7
+    },
+    "outlier_5pct_uniform": {
+      "ppl": 5.338,
+      "nll": 1.674858,
+      "memory_gb": 16.893,
+      "fp8_frac": 0.0488,
+      "time_s": 41.1
+    },
+    "outlier_w1_2_w2_10": {
+      "ppl": 5.4056,
+      "nll": 1.687427,
+      "memory_gb": 16.784,
+      "fp8_frac": 0.0421,
+      "time_s": 40.7
+    },
+    "outlier_w2_only_10": {
+      "ppl": 5.4034,
+      "nll": 1.687032,
+      "memory_gb": 16.575,
+      "fp8_frac": 0.0291,
+      "time_s": 40.6
+    },
+    "outlier_w2_only_15": {
+      "ppl": 5.3781,
+      "nll": 1.682335,
+      "memory_gb": 16.749,
+      "fp8_frac": 0.0399,
+      "time_s": 40.7
+    },
+    "outlier_w1_5_w2_10": {
+      "ppl": 5.3653,
+      "nll": 1.679944,
+      "memory_gb": 17.102,
+      "fp8_frac": 0.0618,
+      "time_s": 41.1
+    },
+    "outlier_w1_10_w2_10": {
+      "ppl": 5.3514,
+      "nll": 1.677367,
+      "memory_gb": 17.511,
+      "fp8_frac": 0.0872,
+      "time_s": 41.0
+    },
+    "outlier_w1_3_w2_12": {
+      "ppl": 5.3949,
+      "nll": 1.685447,
+      "memory_gb": 16.964,
+      "fp8_frac": 0.0533,
+      "time_s": 41.1
+    }
+  }
+}

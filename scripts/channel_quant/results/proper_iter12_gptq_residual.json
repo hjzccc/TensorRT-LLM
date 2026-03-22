@@ -1,0 +1,852 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/proper_eval.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+    "metric_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter12_gptq_residual_metric_cache.pt",
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      },
+      "mxmoe_perturbation_perchannel": {
+        "ppl": 6.59972,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_25pct": {
+        "ppl": 6.590387,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_w1_4_w2_16": {
+        "ppl": 6.606149,
+        "memory_gb": 24.874
+      },
+      "mxmoe_block_plus_channel_topup": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "output_perturbation_per_channel_9experts": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "topup_01pct": {
+        "ppl": 6.5769,
+        "memory_gb": 20.251
+      },
+      "topup_02pct": {
+        "ppl": 6.5788,
+        "memory_gb": 20.37
+      },
+      "topup_03pct": {
+        "ppl": 6.5791,
+        "memory_gb": 20.488
+      },
+      "topup_05pct": {
+        "ppl": 6.5763,
+        "memory_gb": 20.743
+      },
+      "topup_08pct": {
+        "ppl": 6.5798,
+        "memory_gb": 21.1
+      },
+      "topup_10pct": {
+        "ppl": 6.5791,
+        "memory_gb": 21.337
+      },
+      "topup_15pct": {
+        "ppl": 6.5872,
+        "memory_gb": 21.948
+      },
+      "topup_20pct": {
+        "ppl": 6.5939,
+        "memory_gb": 22.542
+      },
+      "perchannel_hessian_25pct": {
+        "ppl": 6.614806,
+        "memory_gb": 27.612
+      },
+      "perchannel_hessian_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_30pct": {
+        "ppl": 6.627915,
+        "memory_gb": 28.417
+      },
+      "perchannel_akurt_40pct": {
+        "ppl": 6.614058,
+        "memory_gb": 30.028
+      },
+      "mxmoe_topup_hessian_5pct": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "perturbation_proportional_30pct": {
+        "ppl": 6.5893,
+        "memory_gb": 28.417
+      },
+      "perturbation_proportional_40pct": {
+        "ppl": 6.596071,
+        "memory_gb": 30.028
+      },
+      "mxmoe_block_35pct": {
+        "ppl": 6.57889,
+        "memory_gb": 29.222
+      },
+      "mxmoe_layer_adaptive": {
+        "ppl": 6.583283,
+        "memory_gb": 27.813
+      },
+      "global_channel_ranking": {
+        "ppl": 6.612899,
+        "memory_gb": 25.281
+      },
+      "mxmoe_block_15pct": {
+        "ppl": 6.584293,
+        "memory_gb": 26.001
+      },
+      "mxmoe_block_20pct": {
+        "ppl": 6.58199,
+        "memory_gb": 26.806
+      },
+      "mxmoe_block_10pct": {
+        "ppl": 6.58375,
+        "memory_gb": 25.196
+      },
+      "perchannel_akurt_w1_0_w2_25": {
+        "ppl": 6.618204,
+        "memory_gb": 24.927
+      },
+      "perchannel_akurt_w1_0_w2_40": {
+        "ppl": 6.615269,
+        "memory_gb": 25.733
+      },
+      "mxmoe_topup_w2_only_5pct": {
+        "ppl": 6.583489,
+        "memory_gb": 27.774
+      },
+      "mxmoe_topup_perturbation_channel": {
+        "ppl": 6.580924,
+        "memory_gb": 28.222
+      },
+      "mxmoe_topup_perturbation_10pct": {
+        "ppl": 6.578362,
+        "memory_gb": 28.817
+      },
+      "mxmoe_topup_perturbation_15pct": {
+        "ppl": 6.582766,
+        "memory_gb": 29.427
+      },
+      "pure_perturbation_perchannel_25pct": {
+        "ppl": 6.613174,
+        "memory_gb": 27.612
+      },
+      "mxmoe_block_w2_heavy": {
+        "ppl": 6.598593,
+        "memory_gb": 27.612
+      },
+      "joint_w1_w2_optimization": {
+        "ppl": 6.576243,
+        "memory_gb": 28.953
+      },
+      "mxmoe_topup_combined_5pct": {
+        "ppl": 6.581458,
+        "memory_gb": 28.222
+      },
+      "perturbation_per_channel_w1_4_w2_16": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "scalebits_topup_5pct": {
+        "ppl": 6.578943,
+        "memory_gb": 28.222
+      },
+      "scalebits_perchannel_w1_4_w2_16": {
+        "ppl": 6.604948,
+        "memory_gb": 24.874
+      },
+      "dynamic_oracle_25pct": {
+        "ppl": 6.600562,
+        "memory_gb": 27.612
+      },
+      "dynamic_oracle_10pct": {
+        "ppl": 6.593817,
+        "memory_gb": 25.221
+      },
+      "cascade_aware_25pct": {
+        "ppl": 6.628183,
+        "memory_gb": 27.601
+      },
+      "cascade_aware_reverse": {
+        "ppl": 6.581219,
+        "memory_gb": 27.601
+      },
+      "mxmoe_topup_8pct_at_20pct_budget": {
+        "ppl": 6.580448,
+        "memory_gb": 27.838
+      },
+      "joint_w1w2_with_topup": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_topup_1pct": {
+        "ppl": 6.578734,
+        "memory_gb": 29.058
+      },
+      "joint_topup_3pct": {
+        "ppl": 6.574401,
+        "memory_gb": 29.269
+      },
+      "joint_topup_5pct": {
+        "ppl": 6.573759,
+        "memory_gb": 29.496
+      },
+      "joint_topup_10pct": {
+        "ppl": 6.581485,
+        "memory_gb": 30.024
+      },
+      "joint_topup_15pct": {
+        "ppl": 6.590167,
+        "memory_gb": 30.567
+      },
+      "joint_cascade_reverse_topup_5pct": {
+        "ppl": 6.574862,
+        "memory_gb": 29.486
+      },
+      "joint_cascade_reverse_topup_10pct": {
+        "ppl": 6.580087,
+        "memory_gb": 30.015
+      },
+      "mxmoe_cascade_reverse_topup_5pct": {
+        "ppl": 6.581586,
+        "memory_gb": 28.212
+      },
+      "replicate_iter07_joint": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_w1w2_topup_w2_only_5pct": {
+        "ppl": 6.579621,
+        "memory_gb": 29.087
+      },
+      "joint_w1w2_topup_w2_only_3pct": {
+        "ppl": 6.582795,
+        "memory_gb": 29.033
+      },
+      "joint_w1w2_at_30pct_base": {
+        "ppl": 6.582143,
+        "memory_gb": 30.516
+      },
+      "joint_w1w2_at_40pct_base": {
+        "ppl": 6.577684,
+        "memory_gb": 30.006
+      },
+      "mxmoe_topup_w1_0_w2_10": {
+        "ppl": 6.584496,
+        "memory_gb": 27.938
+      },
+      "ensemble_metric_topup_5pct": {
+        "ppl": 6.578666,
+        "memory_gb": 28.222
+      },
+      "adaptive_topup_per_expert": {
+        "ppl": 6.5804,
+        "memory_gb": 27.863
+      },
+      "perchannel_real_hessian_25pct": {
+        "ppl": 6.603661,
+        "memory_gb": 27.612
+      },
+      "perchannel_real_hessian_w1_4_w2_16": {
+        "ppl": 6.603787,
+        "memory_gb": 24.874
+      },
+      "perchannel_real_hessian_w1_0_w2_25": {
+        "ppl": 6.615687,
+        "memory_gb": 24.927
+      },
+      "perchannel_output_perturbation_25pct": {
+        "ppl": 6.599597,
+        "memory_gb": 27.612
+      },
+      "perchannel_output_perturbation_w1_4_w2_16": {
+        "ppl": 6.603022,
+        "memory_gb": 24.874
+      },
+      "perchannel_output_perturbation_w1_0_w2_25": {
+        "ppl": 6.61138,
+        "memory_gb": 24.927
+      },
+      "micromix_threshold": {
+        "ppl": 6.618633,
+        "memory_gb": 28.946
+      },
+      "micromix_threshold_routing": {
+        "ppl": 6.618053,
+        "memory_gb": 26.266
+      },
+      "router_affinity_weighted_25pct": {
+        "ppl": 6.589607,
+        "memory_gb": 27.612
+      },
+      "router_affinity_weighted_w1_4_w2_16": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "cross_expert_outlier_agreement_5pct": {
+        "ppl": 6.62236,
+        "memory_gb": 23.589
+      },
+      "cross_expert_outlier_10pct": {
+        "ppl": 6.622091,
+        "memory_gb": 23.619
+      },
+      "hessian_normalized_25pct": {
+        "ppl": 6.616846,
+        "memory_gb": 27.612
+      },
+      "hessian_normalized_w1_4_w2_16": {
+        "ppl": 6.609929,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_10pct": {
+        "ppl": 6.605976,
+        "memory_gb": 24.23
+      },
+      "ra_perchannel_15pct": {
+        "ppl": 6.591708,
+        "memory_gb": 24.552
+      },
+      "ra_perchannel_20pct": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_30pct": {
+        "ppl": 6.592682,
+        "memory_gb": 25.518
+      },
+      "ra_perchannel_40pct": {
+        "ppl": 6.593389,
+        "memory_gb": 26.162
+      },
+      "ra_plus_mxmoe_topup_5pct": {
+        "ppl": 6.582004,
+        "memory_gb": 27.828
+      },
+      "ra_plus_mxmoe_topup_3pct": {
+        "ppl": 6.583331,
+        "memory_gb": 27.741
+      },
+      "ra_joint_w1w2": {
+        "ppl": 6.576245,
+        "memory_gb": 28.283
+      }
+    },
+    "experiment": "Iteration 12 GPTQ-residual per-channel ranking with exact routed Hessians and GPTQ-style error compensation at FP4",
+    "gptq_metric": {
+      "blocksize": 128,
+      "damp_percent": 0.01,
+      "score_definition": "per-output-channel sum of squared GPTQ residual errors after blockwise FP4 compensation"
+    },
+    "metric_cache_metadata": {
+      "metric_name": "iter12_gptq_residual_perchannel_artifacts",
+      "runtime_seconds": 5729.677,
+      "calibration_chunks": 128,
+      "blocksize": 128,
+      "damp_percent": 0.01,
+      "gptq_quant_mode": "fp4",
+      "per_layer_stats": {
+        "0": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 54257,
+          "w1_mean_damp": 0.0065310891321860255,
+          "w2_mean_damp": 0.0041667456442519325
+        },
+        "1": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 2153,
+          "w1_mean_damp": 0.006361880120821298,
+          "w2_mean_damp": 0.00023014293435608124
+        },
+        "2": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 952,
+          "w1_mean_damp": 0.006751429110299796,
+          "w2_mean_damp": 0.00012170845247510443
+        },
+        "3": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 370,
+          "w1_mean_damp": 0.00832498210016638,
+          "w2_mean_damp": 9.037220822847303e-05
+        },
+        "4": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 181,
+          "w1_mean_damp": 0.009382935997564346,
+          "w2_mean_damp": 9.991757654006506e-05
+        },
+        "5": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 18,
+          "w1_mean_damp": 0.009847167576663197,
+          "w2_mean_damp": 9.974586000225826e-05
+        },
+        "6": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 2,
+          "w1_mean_damp": 0.009785797845106572,
+          "w2_mean_damp": 0.00010006619687828788
+        },
+        "7": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 2,
+          "w1_mean_damp": 0.011915897412691265,
+          "w2_mean_damp": 0.00013035231856520113
+        },
+        "8": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 24,
+          "w1_mean_damp": 0.013473498141393066,
+          "w2_mean_damp": 0.00015755023401652578
+        },
+        "9": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 29,
+          "w1_mean_damp": 0.01358895368175581,
+          "w2_mean_damp": 0.0001675734544187435
+        },
+        "10": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 1,
+          "w1_mean_damp": 0.013006127043627204,
+          "w2_mean_damp": 0.00016921408991038333
+        },
+        "11": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 212,
+          "w1_mean_damp": 0.014295901579316705,
+          "w2_mean_damp": 0.000228654862366966
+        },
+        "12": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 0,
+          "w1_mean_damp": 0.01469176379032433,
+          "w2_mean_damp": 0.00019796956827121902
+        },
+        "13": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 34,
+          "w1_mean_damp": 0.015857058046385646,
+          "w2_mean_damp": 0.0002498165809811326
+        },
+        "14": {
+          "active_experts": 256,
+          "w1_dead_columns": 2,
+          "w2_dead_columns": 30,
+          "w1_mean_damp": 0.014439415005035698,
+          "w2_mean_damp": 0.0002153489791271568
+        },
+        "15": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 9,
+          "w1_mean_damp": 0.015840036827139557,
+          "w2_mean_damp": 0.0002457858449270134
+        },
+        "16": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 7,
+          "w1_mean_damp": 0.015223821699619293,
+          "w2_mean_damp": 0.00025359650393511405
+        },
+        "17": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 35,
+          "w1_mean_damp": 0.015099991532042624,
+          "w2_mean_damp": 0.00022496416971989674
+        },
+        "18": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 9,
+          "w1_mean_damp": 0.016258284407667817,
+          "w2_mean_damp": 0.0002683073956904991
+        },
+        "19": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 0,
+          "w1_mean_damp": 0.018025368354283273,
+          "w2_mean_damp": 0.0003076488662918564
+        },
+        "20": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 24,
+          "w1_mean_damp": 0.019605805040337147,
+          "w2_mean_damp": 0.00030398285569390284
+        },
+        "21": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 29,
+          "w1_mean_damp": 0.019039396806620063,
+          "w2_mean_damp": 0.000299158058296598
+        },
+        "22": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 1,
+          "w1_mean_damp": 0.017608443056233228,
+          "w2_mean_damp": 0.00028179147564515004
+        },
+        "23": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 212,
+          "w1_mean_damp": 0.018459988567046823,
+          "w2_mean_damp": 0.00033511652163724647
+        },
+        "24": {
+          "active_experts": 256,
+          "w1_dead_columns": 3,
+          "w2_dead_columns": 0,
+          "w1_mean_damp": 0.01840985208749771,
+          "w2_mean_damp": 0.0002804242679485469
+        },
+        "25": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 34,
+          "w1_mean_damp": 0.019647912941873073,
+          "w2_mean_damp": 0.0003557276113861008
+        },
+        "26": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 30,
+          "w1_mean_damp": 0.018142033107578753,
+          "w2_mean_damp": 0.0003113423470858834
+        },
+        "27": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 9,
+          "w1_mean_damp": 0.02027430414222181,
+          "w2_mean_damp": 0.0004117126655910397
+        },
+        "28": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 7,
+          "w1_mean_damp": 0.019425403671339155,
+          "w2_mean_damp": 0.0004370579079113668
+        },
+        "29": {
+          "active_experts": 256,
+          "w1_dead_columns": 1,
+          "w2_dead_columns": 35,
+          "w1_mean_damp": 0.02006358006969094,
+          "w2_mean_damp": 0.0004605499150056858
+        },
+        "30": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 9,
+          "w1_mean_damp": 0.022039053379558027,
+          "w2_mean_damp": 0.0005721442676440347
+        },
+        "31": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 0,
+          "w1_mean_damp": 0.025623403619974852,
+          "w2_mean_damp": 0.0007845961438579252
+        },
+        "32": {
+          "active_experts": 256,
+          "w1_dead_columns": 1,
+          "w2_dead_columns": 16,
+          "w1_mean_damp": 0.029286965718492868,
+          "w2_mean_damp": 0.0012973560856335098
+        },
+        "33": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 3,
+          "w1_mean_damp": 0.0321135139465332,
+          "w2_mean_damp": 0.0015805256880412344
+        },
+        "34": {
+          "active_experts": 254,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 0,
+          "w1_mean_damp": 0.03286692922509561,
+          "w2_mean_damp": 0.0016975054360456824
+        },
+        "35": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 0,
+          "w1_mean_damp": 0.036904293298721316,
+          "w2_mean_damp": 0.0019990880183468106
+        },
+        "36": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 2,
+          "w1_mean_damp": 0.040267649702727795,
+          "w2_mean_damp": 0.0022787133474776056
+        },
+        "37": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 98,
+          "w1_mean_damp": 0.04182882081717253,
+          "w2_mean_damp": 0.0032141009553743063
+        },
+        "38": {
+          "active_experts": 256,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 5,
+          "w1_mean_damp": 0.04251135248690844,
+          "w2_mean_damp": 0.0035502950864611193
+        },
+        "39": {
+          "active_experts": 255,
+          "w1_dead_columns": 0,
+          "w2_dead_columns": 254,
+          "w1_mean_damp": 0.03277873311323278,
+          "w2_mean_damp": 0.004956858280827018
+        }
+      }
+    },
+    "completed_at_seconds": 1805.296
+  },
+  "results": {
+    "gptq_residual_perchannel_20pct": {
+      "description": "Global GPTQ-residual per-channel split at 20% total FP8 budget with W1:W2 = 1:4.",
+      "mode": "per_channel",
+      "ppl": 6.606762,
+      "nll": 1.888094,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576979456,
+      "fp8_fraction": 0.08,
+      "w1_pair_fraction": 0.04,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 253.4,
+      "budget_source": "gptq_residual_global_topk",
+      "w1_fraction_target": 0.04,
+      "w2_fraction_target": 0.16,
+      "global_w1_selected": 209715,
+      "global_w2_selected": 3355443,
+      "global_w1_total": 5242880,
+      "global_w2_total": 20971520,
+      "channel_metric_requested": "gptq_residual",
+      "channel_metric_effective": "gptq_residual",
+      "channel_metric_fallback_used": false
+    },
+    "gptq_residual_perchannel_25pct": {
+      "description": "Global GPTQ-residual per-channel split at 25% total FP8 budget with W1:W2 = 1:4.",
+      "mode": "per_channel",
+      "ppl": 6.601963,
+      "nll": 1.887367,
+      "memory_gb": 25.196,
+      "fp8_weights": 3221225472,
+      "fp8_fraction": 0.1,
+      "w1_pair_fraction": 0.05,
+      "w2_channel_fraction": 0.2,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 387.1,
+      "budget_source": "gptq_residual_global_topk",
+      "w1_fraction_target": 0.05,
+      "w2_fraction_target": 0.2,
+      "global_w1_selected": 262144,
+      "global_w2_selected": 4194304,
+      "global_w1_total": 5242880,
+      "global_w2_total": 20971520,
+      "channel_metric_requested": "gptq_residual",
+      "channel_metric_effective": "gptq_residual",
+      "channel_metric_fallback_used": false
+    },
+    "gptq_residual_perchannel_w1_4_w2_16": {
+      "description": "Global GPTQ-residual per-channel plan with explicit W1=4% and W2=16% budgets.",
+      "mode": "per_channel",
+      "ppl": 6.606762,
+      "nll": 1.888094,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576979456,
+      "fp8_fraction": 0.08,
+      "w1_pair_fraction": 0.04,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 457.3,
+      "budget_source": "gptq_residual_global_topk",
+      "w1_fraction_target": 0.04,
+      "w2_fraction_target": 0.16,
+      "global_w1_selected": 209715,
+      "global_w2_selected": 3355443,
+      "global_w1_total": 5242880,
+      "global_w2_total": 20971520,
+      "channel_metric_requested": "gptq_residual",
+      "channel_metric_effective": "gptq_residual",
+      "channel_metric_fallback_used": false
+    },
+    "gptq_residual_plus_mxmoe_topup_5pct": {
+      "description": "MxMoE per-block base plan with a 5% GPTQ-residual per-channel topup on both projections.",
+      "mode": "per_channel",
+      "ppl": 6.573739,
+      "nll": 1.883083,
+      "memory_gb": 28.222,
+      "fp8_weights": 9273524224,
+      "fp8_fraction": 0.287888,
+      "w1_pair_fraction": 0.220602,
+      "w2_channel_fraction": 0.422459,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 446.8,
+      "budget_source": "mxmoe_per_block_plus_gptq_residual_topup",
+      "mxmoe_base_fraction": 0.25,
+      "topup_fraction": 0.05,
+      "w1_topup_fraction": 0.05,
+      "w2_topup_fraction": 0.05,
+      "mxmoe_promoted_w1_projections": 1832,
+      "mxmoe_promoted_w2_projections": 4016,
+      "channel_metric_requested": "gptq_residual",
+      "channel_metric_effective": "gptq_residual",
+      "channel_metric_fallback_used": false
+    },
+    "gptq_residual_plus_router_affinity_25pct": {
+      "description": "Global per-channel plan with GPTQ residual scores reweighted by router affinity under a 25% total budget and 1:4 W1:W2 split.",
+      "mode": "per_channel",
+      "ppl": 6.593733,
+      "nll": 1.88612,
+      "memory_gb": 25.196,
+      "fp8_weights": 3221225472,
+      "fp8_fraction": 0.1,
+      "w1_pair_fraction": 0.05,
+      "w2_channel_fraction": 0.2,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 439.8,
+      "budget_source": "gptq_residual_times_router_affinity_global_topk",
+      "w1_fraction_target": 0.05,
+      "w2_fraction_target": 0.2,
+      "global_w1_selected": 262144,
+      "global_w2_selected": 4194304,
+      "global_w1_total": 5242880,
+      "global_w2_total": 20971520,
+      "channel_metric_requested": "gptq_residual_times_router_affinity",
+      "channel_metric_effective": "gptq_residual_times_router_affinity",
+      "channel_metric_fallback_used": false
+    },
+    "gptq_residual_joint_w1w2": {
+      "description": "Joint 3-tier precision plan with MxMoE high-tier projection promotions and GPTQ-residual W2 channel ranking for medium-tier experts.",
+      "mode": "per_channel",
+      "ppl": 6.578532,
+      "nll": 1.883812,
+      "memory_gb": 28.283,
+      "fp8_weights": 9394716672,
+      "fp8_fraction": 0.29165,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.374951,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 437.9,
+      "budget_source": "global_perturbation_percentile_buckets_with_gptq_residual_medium_channels",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "mxmoe_promoted_w1_projections": 2560,
+      "mxmoe_promoted_w2_projections": 5119,
+      "medium_tier_w2_fraction": 0.5,
+      "medium_tier_w2_channels": 1024,
+      "channel_metric_requested": "gptq_residual",
+      "channel_metric_effective": "gptq_residual",
+      "channel_metric_fallback_used": false
+    }
+  }
+}

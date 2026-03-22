@@ -521,89 +521,14 @@ struct Sm90SwiGLUNvf4StoreNode {
       sync_fn();
     }
 
-    template <class VTensor, class SyncFn>
-    CUTLASS_DEVICE void
-    reduce_m32_fp4(__nv_bfloat16* scratch, int epi_m, int epi_n, VTensor visit_results, SyncFn const& sync_fn) {
-      if (thread_idx_ < 128) {
-        int group = thread_idx_ / 64;
-        int warp_in_group = (thread_idx_ % 64) / 32;
-        int lane = thread_idx_ % 32;
-        int row0 = warp_in_group * 16 + lane / 4;
-        int row1 = row0 + 8;
-        int col_base = (lane % 4) * 2 + group * 8;
-        int frag_base = group * 2 + warp_in_group;
-
-        auto frag0 = visit_results(frag_base);
-        auto frag1 = visit_results(frag_base + 4);
-
-        auto store_pair = [&](int row_local, int n_local, auto const& frag, int gate_idx, int up_idx) {
-          int m_cta = epi_m * kEpiTileM + row_local;
-          if (m_cta >= residue_m_ || (n_local + 1) >= kEpiTileN) {
-            return;
-          }
-
-          float gate = cutlass::NumericConverter<float, ElementOutput>{}(frag[gate_idx]);
-          float up = cutlass::NumericConverter<float, ElementOutput>{}(frag[up_idx]);
-          float silu_up = up / (1.0f + expf(-up));
-          float result = silu_up * gate;
-
-          scratch[row_local * kHalfN + n_local / 2] = __float2bfloat16(result);
-        };
-
-        store_pair(row0, col_base, frag0, 0, 1);
-        store_pair(row1, col_base, frag0, 2, 3);
-        store_pair(row0, col_base + 16, frag1, 0, 1);
-        store_pair(row1, col_base + 16, frag1, 2, 3);
-      }
-
-      sync_fn();
-
-      constexpr int kActiveQuantThreads = kEpiTileM * kPackedFp4WordsPerRow;
-      if (thread_idx_ < kActiveQuantThreads) {
-        int row = thread_idx_ / kPackedFp4WordsPerRow;
-        int packed_col = thread_idx_ % kPackedFp4WordsPerRow;
-
-        int m_cta = epi_m * kEpiTileM + row;
-
-        __nv_bfloat16 vals[8];
-        int col_start = packed_col * 8;
-        CUTLASS_PRAGMA_UNROLL
-        for (int i = 0; i < 8; i++) {
-          vals[i] = scratch[row * kHalfN + col_start + i];
-        }
-
-        int half_n_base = (tile_n_ * CTA_N_ + epi_n * kEpiTileN) / 2;
-        int half_n_global = half_n_base + col_start;
-
-        bool m_in_bounds = (m_cta < residue_m_);
-        bool n_in_bounds = (half_n_global + 8 <= inter_size_);
-        bool in_bounds = m_in_bounds && n_in_bounds;
-
-        uint8_t* sf_out = (in_bounds && packed_col == 0) ? fc2_act_sf_flat_ : nullptr;
-
-        auto quant = swiglu_detail::quantize_bf16x8_to_fp4_result(vals, global_sf_scale_);
-        if (in_bounds) {
-          shared_storage_ptr_->packed_fp4[row * kPackedFp4WordsPerRow + packed_col] = quant.packed;
-        }
-        if (sf_out) {
-          shared_storage_ptr_->sf_bytes[row] = quant.sf_byte;
-        }
-      }
-      sync_fn();
-    }
-
-    // ─── reduce() ─────────────────────────────────────────────────────────────
     template <class STensor, class SyncFn, class VTensor>
     CUTLASS_DEVICE void
     reduce(STensor&& smem_buffer, SyncFn const& sync_fn,
            int epi_m, int epi_n, bool is_last_iteration, VTensor visit_results) {
       auto* scratch = reinterpret_cast<__nv_bfloat16*>(cute::raw_pointer_cast(smem_buffer.data()));
-      if constexpr (kIsWide64x32Config) {
+      if constexpr (kIsSupportedConfig) {
         reduce_partitioned_fp4(scratch, epi_m, epi_n, visit_results, sync_fn);
-      } else if constexpr (kIsM32Config) {
-        reduce_m32_fp4(scratch, epi_m, epi_n, visit_results, sync_fn);
       } else {
-        // Unsupported config — just call sync to avoid deadlock
         sync_fn();
       }
     }
@@ -685,16 +610,17 @@ struct Sm90SwiGLUNvf4StoreNode {
       auto tRS_cD_mn = sm90_partition_for_epilogue<ReferenceSrc>(
           cta_identity, args.epi_tile, args.tiled_copy, args.thread_idx);
 
-      auto tRS_epi0 = tRS_cD_mn(_, _, _, 0, 0);
-
-      int num_thread_values = cute::size(tRS_epi0);
-      CUTLASS_PRAGMA_UNROLL
-      for (int i = 0; i < kMaxThreadValues; ++i) {
-        if (i >= num_thread_values) {
-          break;
+      {
+        auto tRS_epi0 = tRS_cD_mn(_, _, _, 0, 0);
+        int num_thread_values = cute::size(tRS_epi0);
+        CUTLASS_PRAGMA_UNROLL
+        for (int i = 0; i < kMaxThreadValues; ++i) {
+          if (i >= num_thread_values) {
+            break;
+          }
+          callbacks.m_in_epitile_[i] = int(get<0>(tRS_epi0(i)));
+          callbacks.n_in_epitile_[i] = int(get<1>(tRS_epi0(i)));
         }
-        callbacks.m_in_epitile_[i] = int(get<0>(tRS_epi0(i)));
-        callbacks.n_in_epitile_[i] = int(get<1>(tRS_epi0(i)));
       }
     }
 

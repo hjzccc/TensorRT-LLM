@@ -1,0 +1,36 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "eval_tokens": 296960,
+    "seqlen": 2048,
+    "nsamples": 145,
+    "dtype": "float16",
+    "layer_batch_size": 2,
+    "runtime": "docker-only TRT-LLM fused wrappers",
+    "nvfp4_linear": "torch.ops.auto_deploy.torch_quant_nvfp4_linear",
+    "fp8_linear": "torch.ops.auto_deploy.torch_quant_fp8_linear",
+    "nvfp4_weight_prep": "fp4_global_scale + torch.ops.trtllm.fp4_quantize + alpha=1/(s_in2*s_w2)",
+    "fp8_weight_prep": "weight_scale=max(abs(W))/448, weight_fp8=(W/scale).to(float8_e4m3fn)",
+    "fp8_input_scale": "test_quant_linear_fp8_matches_fused_op recipe (scalar 1.0)"
+  },
+  "results": {
+    "uniform_bf16": {
+      "mode": "bf16",
+      "quant_scope": "moe_only",
+      "ppl": 6.5896,
+      "time_s": 144.2
+    },
+    "uniform_nvfp4": {
+      "mode": "nvfp4",
+      "quant_scope": "reference_nvfp4",
+      "ppl": 6.8431,
+      "time_s": 368.3
+    },
+    "uniform_fp8": {
+      "mode": "fp8",
+      "quant_scope": "reference_fp8",
+      "ppl": 6.6257,
+      "time_s": 353.7
+    }
+  }
+}

@@ -1,0 +1,5 @@
+Generating SQLite file .sisyphus/evidence/m64-b4096-unfused.sqlite from .sisyphus/evidence/m64-b4096-unfused.nsys-rep
+Processing [.sisyphus/evidence/m64-b4096-unfused.sqlite] with [/usr/local/cuda-13.1/NsightSystems-cli-2025.5.2/target-linux-x64/reports/nvtx_gpu_proj_sum.py]... 
+Range,Style,Total Proj Time (ns),Total Range Time (ns),Range Instances,Proj Avg (ns),Proj Med (ns),Proj Min (ns),Proj Max (ns),Proj StdDev (ns),Total GPU Ops,Avg GPU Ops,Avg Range Lvl,Avg Num Child
+:single_tile_swiglu_unfused_tactic_1,PushPop,2949423,2990911,1,2949423.0,2949423.0,2949423,2949423,0.0,45,45.0,0.0,0.0
+

@@ -1,0 +1,2167 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/MC-MoE/eval_ppl_utils.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter01_calibration_cache.pt",
+    "metric_cache_path": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter20_router_preserve_metric_cache.pt",
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      },
+      "mxmoe_perturbation_perchannel": {
+        "ppl": 6.59972,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_25pct": {
+        "ppl": 6.590387,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_w1_4_w2_16": {
+        "ppl": 6.606149,
+        "memory_gb": 24.874
+      },
+      "mxmoe_block_plus_channel_topup": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "output_perturbation_per_channel_9experts": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "topup_01pct": {
+        "ppl": 6.5769,
+        "memory_gb": 20.251
+      },
+      "topup_02pct": {
+        "ppl": 6.5788,
+        "memory_gb": 20.37
+      },
+      "topup_03pct": {
+        "ppl": 6.5791,
+        "memory_gb": 20.488
+      },
+      "topup_05pct": {
+        "ppl": 6.5763,
+        "memory_gb": 20.743
+      },
+      "topup_08pct": {
+        "ppl": 6.5798,
+        "memory_gb": 21.1
+      },
+      "topup_10pct": {
+        "ppl": 6.5791,
+        "memory_gb": 21.337
+      },
+      "topup_15pct": {
+        "ppl": 6.5872,
+        "memory_gb": 21.948
+      },
+      "topup_20pct": {
+        "ppl": 6.5939,
+        "memory_gb": 22.542
+      },
+      "perchannel_hessian_25pct": {
+        "ppl": 6.614806,
+        "memory_gb": 27.612
+      },
+      "perchannel_hessian_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_30pct": {
+        "ppl": 6.627915,
+        "memory_gb": 28.417
+      },
+      "perchannel_akurt_40pct": {
+        "ppl": 6.614058,
+        "memory_gb": 30.028
+      },
+      "mxmoe_topup_hessian_5pct": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "perturbation_proportional_30pct": {
+        "ppl": 6.5893,
+        "memory_gb": 28.417
+      },
+      "perturbation_proportional_40pct": {
+        "ppl": 6.596071,
+        "memory_gb": 30.028
+      },
+      "mxmoe_block_35pct": {
+        "ppl": 6.57889,
+        "memory_gb": 29.222
+      },
+      "mxmoe_layer_adaptive": {
+        "ppl": 6.583283,
+        "memory_gb": 27.813
+      },
+      "global_channel_ranking": {
+        "ppl": 6.612899,
+        "memory_gb": 25.281
+      },
+      "mxmoe_block_15pct": {
+        "ppl": 6.584293,
+        "memory_gb": 26.001
+      },
+      "mxmoe_block_20pct": {
+        "ppl": 6.58199,
+        "memory_gb": 26.806
+      },
+      "mxmoe_block_10pct": {
+        "ppl": 6.58375,
+        "memory_gb": 25.196
+      },
+      "perchannel_akurt_w1_0_w2_25": {
+        "ppl": 6.618204,
+        "memory_gb": 24.927
+      },
+      "perchannel_akurt_w1_0_w2_40": {
+        "ppl": 6.615269,
+        "memory_gb": 25.733
+      },
+      "mxmoe_topup_w2_only_5pct": {
+        "ppl": 6.583489,
+        "memory_gb": 27.774
+      },
+      "mxmoe_topup_perturbation_channel": {
+        "ppl": 6.580924,
+        "memory_gb": 28.222
+      },
+      "mxmoe_topup_perturbation_10pct": {
+        "ppl": 6.578362,
+        "memory_gb": 28.817
+      },
+      "mxmoe_topup_perturbation_15pct": {
+        "ppl": 6.582766,
+        "memory_gb": 29.427
+      },
+      "pure_perturbation_perchannel_25pct": {
+        "ppl": 6.613174,
+        "memory_gb": 27.612
+      },
+      "mxmoe_block_w2_heavy": {
+        "ppl": 6.598593,
+        "memory_gb": 27.612
+      },
+      "joint_w1_w2_optimization": {
+        "ppl": 6.576243,
+        "memory_gb": 28.953
+      },
+      "mxmoe_topup_combined_5pct": {
+        "ppl": 6.581458,
+        "memory_gb": 28.222
+      },
+      "perturbation_per_channel_w1_4_w2_16": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "scalebits_topup_5pct": {
+        "ppl": 6.578943,
+        "memory_gb": 28.222
+      },
+      "scalebits_perchannel_w1_4_w2_16": {
+        "ppl": 6.604948,
+        "memory_gb": 24.874
+      },
+      "dynamic_oracle_25pct": {
+        "ppl": 6.600562,
+        "memory_gb": 27.612
+      },
+      "dynamic_oracle_10pct": {
+        "ppl": 6.593817,
+        "memory_gb": 25.221
+      },
+      "cascade_aware_25pct": {
+        "ppl": 6.628183,
+        "memory_gb": 27.601
+      },
+      "cascade_aware_reverse": {
+        "ppl": 6.581219,
+        "memory_gb": 27.601
+      },
+      "mxmoe_topup_8pct_at_20pct_budget": {
+        "ppl": 6.580448,
+        "memory_gb": 27.838
+      },
+      "joint_w1w2_with_topup": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_topup_1pct": {
+        "ppl": 6.578734,
+        "memory_gb": 29.058
+      },
+      "joint_topup_3pct": {
+        "ppl": 6.574401,
+        "memory_gb": 29.269
+      },
+      "joint_topup_5pct": {
+        "ppl": 6.573759,
+        "memory_gb": 29.496
+      },
+      "joint_topup_10pct": {
+        "ppl": 6.581485,
+        "memory_gb": 30.024
+      },
+      "joint_topup_15pct": {
+        "ppl": 6.590167,
+        "memory_gb": 30.567
+      },
+      "joint_cascade_reverse_topup_5pct": {
+        "ppl": 6.574862,
+        "memory_gb": 29.486
+      },
+      "joint_cascade_reverse_topup_10pct": {
+        "ppl": 6.580087,
+        "memory_gb": 30.015
+      },
+      "mxmoe_cascade_reverse_topup_5pct": {
+        "ppl": 6.581586,
+        "memory_gb": 28.212
+      },
+      "replicate_iter07_joint": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_w1w2_topup_w2_only_5pct": {
+        "ppl": 6.579621,
+        "memory_gb": 29.087
+      },
+      "joint_w1w2_topup_w2_only_3pct": {
+        "ppl": 6.582795,
+        "memory_gb": 29.033
+      },
+      "joint_w1w2_at_30pct_base": {
+        "ppl": 6.582143,
+        "memory_gb": 30.516
+      },
+      "joint_w1w2_at_40pct_base": {
+        "ppl": 6.577684,
+        "memory_gb": 30.006
+      },
+      "mxmoe_topup_w1_0_w2_10": {
+        "ppl": 6.584496,
+        "memory_gb": 27.938
+      },
+      "ensemble_metric_topup_5pct": {
+        "ppl": 6.578666,
+        "memory_gb": 28.222
+      },
+      "adaptive_topup_per_expert": {
+        "ppl": 6.5804,
+        "memory_gb": 27.863
+      },
+      "perchannel_real_hessian_25pct": {
+        "ppl": 6.603661,
+        "memory_gb": 27.612
+      },
+      "perchannel_real_hessian_w1_4_w2_16": {
+        "ppl": 6.603787,
+        "memory_gb": 24.874
+      },
+      "perchannel_real_hessian_w1_0_w2_25": {
+        "ppl": 6.615687,
+        "memory_gb": 24.927
+      },
+      "perchannel_output_perturbation_25pct": {
+        "ppl": 6.599597,
+        "memory_gb": 27.612
+      },
+      "perchannel_output_perturbation_w1_4_w2_16": {
+        "ppl": 6.603022,
+        "memory_gb": 24.874
+      },
+      "perchannel_output_perturbation_w1_0_w2_25": {
+        "ppl": 6.61138,
+        "memory_gb": 24.927
+      },
+      "micromix_threshold": {
+        "ppl": 6.618633,
+        "memory_gb": 28.946
+      },
+      "micromix_threshold_routing": {
+        "ppl": 6.618053,
+        "memory_gb": 26.266
+      },
+      "router_affinity_weighted_25pct": {
+        "ppl": 6.589607,
+        "memory_gb": 27.612
+      },
+      "router_affinity_weighted_w1_4_w2_16": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "cross_expert_outlier_agreement_5pct": {
+        "ppl": 6.62236,
+        "memory_gb": 23.589
+      },
+      "cross_expert_outlier_10pct": {
+        "ppl": 6.622091,
+        "memory_gb": 23.619
+      },
+      "hessian_normalized_25pct": {
+        "ppl": 6.616846,
+        "memory_gb": 27.612
+      },
+      "hessian_normalized_w1_4_w2_16": {
+        "ppl": 6.609929,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_10pct": {
+        "ppl": 6.605976,
+        "memory_gb": 24.23
+      },
+      "ra_perchannel_15pct": {
+        "ppl": 6.591708,
+        "memory_gb": 24.552
+      },
+      "ra_perchannel_20pct": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_30pct": {
+        "ppl": 6.592682,
+        "memory_gb": 25.518
+      },
+      "ra_perchannel_40pct": {
+        "ppl": 6.593389,
+        "memory_gb": 26.162
+      },
+      "ra_plus_mxmoe_topup_5pct": {
+        "ppl": 6.582004,
+        "memory_gb": 27.828
+      },
+      "ra_plus_mxmoe_topup_3pct": {
+        "ppl": 6.583331,
+        "memory_gb": 27.741
+      },
+      "ra_joint_w1w2": {
+        "ppl": 6.576245,
+        "memory_gb": 28.283
+      },
+      "gptq_residual_perchannel_20pct": {
+        "ppl": 6.606762,
+        "memory_gb": 24.874
+      },
+      "gptq_residual_perchannel_25pct": {
+        "ppl": 6.601963,
+        "memory_gb": 25.196
+      },
+      "gptq_residual_perchannel_w1_4_w2_16": {
+        "ppl": 6.606762,
+        "memory_gb": 24.874
+      },
+      "gptq_residual_plus_mxmoe_topup_5pct": {
+        "ppl": 6.573739,
+        "memory_gb": 28.222
+      },
+      "gptq_residual_plus_router_affinity_25pct": {
+        "ppl": 6.593733,
+        "memory_gb": 25.196
+      },
+      "gptq_residual_joint_w1w2": {
+        "ppl": 6.578532,
+        "memory_gb": 28.283
+      },
+      "wanda_w1_4_w2_16": {
+        "ppl": 6.610881,
+        "memory_gb": 24.874
+      },
+      "rqe_w1_4_w2_16": {
+        "ppl": 6.628687,
+        "memory_gb": 24.874
+      },
+      "baq_equalloss_2x": {
+        "ppl": 6.607711,
+        "memory_gb": 25.887
+      },
+      "baq_equalloss_3x": {
+        "ppl": 6.604456,
+        "memory_gb": 24.761
+      },
+      "ra_joint_w1w2_topup_3pct": {
+        "ppl": 6.577888,
+        "memory_gb": 29.269
+      },
+      "ra_joint_w1w2_topup_5pct": {
+        "ppl": 6.577093,
+        "memory_gb": 29.496
+      },
+      "ra_joint_w1w2_topup_8pct": {
+        "ppl": 6.584755,
+        "memory_gb": 29.813
+      },
+      "ra_extreme_hot": {
+        "ppl": 6.606742,
+        "memory_gb": 26.202
+      },
+      "ra_extreme_hot_perchannel": {
+        "ppl": 6.602858,
+        "memory_gb": 26.041
+      },
+      "ra_mxmoe_topup_router_affinity_8pct": {
+        "ppl": 6.583336,
+        "memory_gb": 28.579
+      },
+      "ra_perchannel_30pct_uniform": {
+        "ppl": 6.614181,
+        "memory_gb": 25.525
+      },
+      "output_perturbation_mxmoe_topup_router_affinity_5pct": {
+        "ppl": 6.575752,
+        "memory_gb": 29.498
+      },
+      "mxmoe_block_plus_residual_1pct": {
+        "ppl": 6.574685,
+        "memory_gb": 27.73
+      },
+      "mxmoe_block_plus_residual_3pct": {
+        "ppl": 6.578832,
+        "memory_gb": 27.967
+      },
+      "mxmoe_block_plus_residual_5pct": {
+        "ppl": 6.574262,
+        "memory_gb": 28.222
+      },
+      "mxmoe_block_plus_residual_8pct": {
+        "ppl": 6.581616,
+        "memory_gb": 28.579
+      },
+      "joint_topup_residual_5pct": {
+        "ppl": 6.576196,
+        "memory_gb": 29.496
+      },
+      "joint_topup_residual_3pct": {
+        "ppl": 6.57291,
+        "memory_gb": 29.269
+      },
+      "mxmoe_block_plus_fp8_3pct_and_residual_3pct": {
+        "ppl": 6.578276,
+        "memory_gb": 28.323
+      },
+      "joint_fp8_3pct_residual_3pct": {
+        "ppl": 6.577194,
+        "memory_gb": 29.585
+      },
+      "cfk_joint_plus_0p25gb": {
+        "ppl": 6.58713,
+        "memory_gb": 28.184
+      },
+      "cfk_joint_plus_0p50gb": {
+        "ppl": 6.579591,
+        "memory_gb": 28.434
+      },
+      "cfk_union_plus_0p25gb": {
+        "ppl": 6.589761,
+        "memory_gb": 29.748
+      },
+      "cfk_union_plus_0p50gb": {
+        "ppl": 6.588386,
+        "memory_gb": 29.998
+      },
+      "cfk_mxmoe_plus_0p25gb": {
+        "ppl": 6.575977,
+        "memory_gb": 28.472
+      },
+      "cfk_mxmoe_plus_0p50gb": {
+        "ppl": 6.586991,
+        "memory_gb": 28.722
+      },
+      "agq_perchannel_20pct": {
+        "ppl": 6.601373,
+        "memory_gb": 25.196
+      },
+      "agq_perchannel_w1_4_w2_16": {
+        "ppl": 6.600996,
+        "memory_gb": 24.874
+      },
+      "agq_joint_w1w2": {
+        "ppl": 6.572765,
+        "memory_gb": 27.934
+      },
+      "agq_joint_w1w2_topup_5pct": {
+        "ppl": 6.576964,
+        "memory_gb": 29.496
+      },
+      "agq_mxmoe_topup_5pct": {
+        "ppl": 6.574663,
+        "memory_gb": 28.222
+      },
+      "agq_union_router_affinity_topup_5pct": {
+        "ppl": 6.575529,
+        "memory_gb": 29.498
+      },
+      "cfk_mxmoe_plus_0p10gb": {
+        "ppl": 6.577299,
+        "memory_gb": 28.322
+      },
+      "cfk_mxmoe_plus_0p15gb": {
+        "ppl": 6.576781,
+        "memory_gb": 28.372
+      },
+      "cfk_mxmoe_plus_0p20gb": {
+        "ppl": 6.578807,
+        "memory_gb": 28.422
+      },
+      "cfk_mxmoe_plus_0p30gb": {
+        "ppl": 6.578927,
+        "memory_gb": 28.522
+      }
+    },
+    "success_targets": {
+      "joint_w1w2_with_topup": 6.5725,
+      "output_perturbation_mxmoe_topup_router_affinity_5pct": 6.5758,
+      "mxmoe_block_plus_channel_topup": 6.5763,
+      "router_affinity_weighted_w1_4_w2_16": 6.5796
+    },
+    "experiment": "Iteration 20 router-rank preservation via inverse-gap weighted routing counts and router-affinity channel scores",
+    "router_gap_calibration": {
+      "metric_name": "router_gap_affinity_weighted_qerror",
+      "gap_eps": 0.0001,
+      "fragile_quantile": 0.2,
+      "total_gap_tokens": 10485760,
+      "total_fragile_tokens": 2711062,
+      "total_fragile_fraction": 0.258547,
+      "layer_gap_summary": {
+        "0": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.06091058,
+          "median_gap": 0.03125,
+          "fragile_tokens": 61246,
+          "fragile_fraction": 0.233635,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 31,
+              "gap_weighted_count": 75742008.0,
+              "raw_count": 31752
+            },
+            {
+              "expert_idx": 89,
+              "gap_weighted_count": 66961260.0,
+              "raw_count": 26340
+            },
+            {
+              "expert_idx": 245,
+              "gap_weighted_count": 66771676.0,
+              "raw_count": 16500
+            },
+            {
+              "expert_idx": 181,
+              "gap_weighted_count": 66569976.0,
+              "raw_count": 16525
+            },
+            {
+              "expert_idx": 108,
+              "gap_weighted_count": 62752008.0,
+              "raw_count": 32320
+            }
+          ]
+        },
+        "1": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.0588544,
+          "median_gap": 0.03125,
+          "fragile_tokens": 63882,
+          "fragile_fraction": 0.24369,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 138,
+              "gap_weighted_count": 98561568.0,
+              "raw_count": 27409
+            },
+            {
+              "expert_idx": 205,
+              "gap_weighted_count": 90083352.0,
+              "raw_count": 29929
+            },
+            {
+              "expert_idx": 238,
+              "gap_weighted_count": 84574352.0,
+              "raw_count": 38140
+            },
+            {
+              "expert_idx": 84,
+              "gap_weighted_count": 56772360.0,
+              "raw_count": 20378
+            },
+            {
+              "expert_idx": 239,
+              "gap_weighted_count": 55254704.0,
+              "raw_count": 22794
+            }
+          ]
+        },
+        "2": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.06469047,
+          "median_gap": 0.03125,
+          "fragile_tokens": 56608,
+          "fragile_fraction": 0.215942,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 223,
+              "gap_weighted_count": 61309076.0,
+              "raw_count": 26874
+            },
+            {
+              "expert_idx": 88,
+              "gap_weighted_count": 47197864.0,
+              "raw_count": 27638
+            },
+            {
+              "expert_idx": 41,
+              "gap_weighted_count": 44991748.0,
+              "raw_count": 23028
+            },
+            {
+              "expert_idx": 40,
+              "gap_weighted_count": 43474292.0,
+              "raw_count": 22514
+            },
+            {
+              "expert_idx": 180,
+              "gap_weighted_count": 38916544.0,
+              "raw_count": 18620
+            }
+          ]
+        },
+        "3": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.0437935,
+          "median_gap": 0.03125,
+          "fragile_tokens": 79233,
+          "fragile_fraction": 0.30225,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 61,
+              "gap_weighted_count": 150361696.0,
+              "raw_count": 55224
+            },
+            {
+              "expert_idx": 94,
+              "gap_weighted_count": 139884576.0,
+              "raw_count": 51322
+            },
+            {
+              "expert_idx": 39,
+              "gap_weighted_count": 139799632.0,
+              "raw_count": 49792
+            },
+            {
+              "expert_idx": 19,
+              "gap_weighted_count": 101764168.0,
+              "raw_count": 34588
+            },
+            {
+              "expert_idx": 101,
+              "gap_weighted_count": 92281568.0,
+              "raw_count": 31909
+            }
+          ]
+        },
+        "4": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05551976,
+          "median_gap": 0.03125,
+          "fragile_tokens": 66959,
+          "fragile_fraction": 0.255428,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 25,
+              "gap_weighted_count": 171556304.0,
+              "raw_count": 71469
+            },
+            {
+              "expert_idx": 204,
+              "gap_weighted_count": 83756360.0,
+              "raw_count": 35511
+            },
+            {
+              "expert_idx": 212,
+              "gap_weighted_count": 78670032.0,
+              "raw_count": 33844
+            },
+            {
+              "expert_idx": 129,
+              "gap_weighted_count": 69806720.0,
+              "raw_count": 28701
+            },
+            {
+              "expert_idx": 117,
+              "gap_weighted_count": 65564976.0,
+              "raw_count": 26658
+            }
+          ]
+        },
+        "5": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05615008,
+          "median_gap": 0.03125,
+          "fragile_tokens": 64337,
+          "fragile_fraction": 0.245426,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 203,
+              "gap_weighted_count": 83835952.0,
+              "raw_count": 34980
+            },
+            {
+              "expert_idx": 240,
+              "gap_weighted_count": 72761984.0,
+              "raw_count": 28193
+            },
+            {
+              "expert_idx": 46,
+              "gap_weighted_count": 72563312.0,
+              "raw_count": 31997
+            },
+            {
+              "expert_idx": 253,
+              "gap_weighted_count": 68788272.0,
+              "raw_count": 29220
+            },
+            {
+              "expert_idx": 174,
+              "gap_weighted_count": 67116640.0,
+              "raw_count": 22584
+            }
+          ]
+        },
+        "6": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.06069654,
+          "median_gap": 0.03125,
+          "fragile_tokens": 60433,
+          "fragile_fraction": 0.230534,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 162,
+              "gap_weighted_count": 111498648.0,
+              "raw_count": 48174
+            },
+            {
+              "expert_idx": 100,
+              "gap_weighted_count": 99809712.0,
+              "raw_count": 45953
+            },
+            {
+              "expert_idx": 126,
+              "gap_weighted_count": 87743232.0,
+              "raw_count": 42391
+            },
+            {
+              "expert_idx": 85,
+              "gap_weighted_count": 81321040.0,
+              "raw_count": 35054
+            },
+            {
+              "expert_idx": 250,
+              "gap_weighted_count": 78259704.0,
+              "raw_count": 33018
+            }
+          ]
+        },
+        "7": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05361873,
+          "median_gap": 0.03125,
+          "fragile_tokens": 65827,
+          "fragile_fraction": 0.25111,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 215,
+              "gap_weighted_count": 150689968.0,
+              "raw_count": 61749
+            },
+            {
+              "expert_idx": 254,
+              "gap_weighted_count": 144207632.0,
+              "raw_count": 55719
+            },
+            {
+              "expert_idx": 210,
+              "gap_weighted_count": 122122896.0,
+              "raw_count": 49038
+            },
+            {
+              "expert_idx": 130,
+              "gap_weighted_count": 103022984.0,
+              "raw_count": 43928
+            },
+            {
+              "expert_idx": 121,
+              "gap_weighted_count": 88910704.0,
+              "raw_count": 36521
+            }
+          ]
+        },
+        "8": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05141819,
+          "median_gap": 0.03125,
+          "fragile_tokens": 69461,
+          "fragile_fraction": 0.264973,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 150,
+              "gap_weighted_count": 408581984.0,
+              "raw_count": 151499
+            },
+            {
+              "expert_idx": 228,
+              "gap_weighted_count": 115241200.0,
+              "raw_count": 45045
+            },
+            {
+              "expert_idx": 28,
+              "gap_weighted_count": 101064880.0,
+              "raw_count": 41891
+            },
+            {
+              "expert_idx": 199,
+              "gap_weighted_count": 90322992.0,
+              "raw_count": 33715
+            },
+            {
+              "expert_idx": 123,
+              "gap_weighted_count": 85528664.0,
+              "raw_count": 31482
+            }
+          ]
+        },
+        "9": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05519426,
+          "median_gap": 0.03125,
+          "fragile_tokens": 64891,
+          "fragile_fraction": 0.24754,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 42,
+              "gap_weighted_count": 115860144.0,
+              "raw_count": 47692
+            },
+            {
+              "expert_idx": 66,
+              "gap_weighted_count": 114502656.0,
+              "raw_count": 47777
+            },
+            {
+              "expert_idx": 65,
+              "gap_weighted_count": 95645936.0,
+              "raw_count": 44161
+            },
+            {
+              "expert_idx": 37,
+              "gap_weighted_count": 94409304.0,
+              "raw_count": 38430
+            },
+            {
+              "expert_idx": 192,
+              "gap_weighted_count": 80712184.0,
+              "raw_count": 31358
+            }
+          ]
+        },
+        "10": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.06687057,
+          "median_gap": 0.03125,
+          "fragile_tokens": 53833,
+          "fragile_fraction": 0.205357,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 246,
+              "gap_weighted_count": 97532464.0,
+              "raw_count": 44195
+            },
+            {
+              "expert_idx": 181,
+              "gap_weighted_count": 84115288.0,
+              "raw_count": 42130
+            },
+            {
+              "expert_idx": 85,
+              "gap_weighted_count": 61808720.0,
+              "raw_count": 30343
+            },
+            {
+              "expert_idx": 20,
+              "gap_weighted_count": 60806652.0,
+              "raw_count": 37413
+            },
+            {
+              "expert_idx": 187,
+              "gap_weighted_count": 58198492.0,
+              "raw_count": 28651
+            }
+          ]
+        },
+        "11": {
+          "tokens": 262144,
+          "fragile_threshold": 0.015625,
+          "mean_gap": 0.07147795,
+          "median_gap": 0.0625,
+          "fragile_tokens": 55095,
+          "fragile_fraction": 0.210171,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 115,
+              "gap_weighted_count": 128106968.0,
+              "raw_count": 67263
+            },
+            {
+              "expert_idx": 250,
+              "gap_weighted_count": 83538456.0,
+              "raw_count": 42586
+            },
+            {
+              "expert_idx": 240,
+              "gap_weighted_count": 68887224.0,
+              "raw_count": 35784
+            },
+            {
+              "expert_idx": 110,
+              "gap_weighted_count": 64168480.0,
+              "raw_count": 33351
+            },
+            {
+              "expert_idx": 109,
+              "gap_weighted_count": 50230788.0,
+              "raw_count": 26712
+            }
+          ]
+        },
+        "12": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05955082,
+          "median_gap": 0.03125,
+          "fragile_tokens": 59903,
+          "fragile_fraction": 0.228512,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 241,
+              "gap_weighted_count": 152867232.0,
+              "raw_count": 64460
+            },
+            {
+              "expert_idx": 20,
+              "gap_weighted_count": 112770888.0,
+              "raw_count": 50533
+            },
+            {
+              "expert_idx": 125,
+              "gap_weighted_count": 88310808.0,
+              "raw_count": 39974
+            },
+            {
+              "expert_idx": 36,
+              "gap_weighted_count": 82728776.0,
+              "raw_count": 40872
+            },
+            {
+              "expert_idx": 3,
+              "gap_weighted_count": 82528704.0,
+              "raw_count": 38611
+            }
+          ]
+        },
+        "13": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.06017739,
+          "median_gap": 0.03125,
+          "fragile_tokens": 58695,
+          "fragile_fraction": 0.223904,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 224,
+              "gap_weighted_count": 211628816.0,
+              "raw_count": 89197
+            },
+            {
+              "expert_idx": 41,
+              "gap_weighted_count": 145951136.0,
+              "raw_count": 66790
+            },
+            {
+              "expert_idx": 124,
+              "gap_weighted_count": 126027992.0,
+              "raw_count": 54204
+            },
+            {
+              "expert_idx": 175,
+              "gap_weighted_count": 112284728.0,
+              "raw_count": 50200
+            },
+            {
+              "expert_idx": 237,
+              "gap_weighted_count": 100239208.0,
+              "raw_count": 40181
+            }
+          ]
+        },
+        "14": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05666274,
+          "median_gap": 0.03125,
+          "fragile_tokens": 61470,
+          "fragile_fraction": 0.234489,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 105,
+              "gap_weighted_count": 174672560.0,
+              "raw_count": 76949
+            },
+            {
+              "expert_idx": 168,
+              "gap_weighted_count": 143023840.0,
+              "raw_count": 61979
+            },
+            {
+              "expert_idx": 247,
+              "gap_weighted_count": 120298048.0,
+              "raw_count": 49311
+            },
+            {
+              "expert_idx": 250,
+              "gap_weighted_count": 97713800.0,
+              "raw_count": 43784
+            },
+            {
+              "expert_idx": 152,
+              "gap_weighted_count": 84205568.0,
+              "raw_count": 38244
+            }
+          ]
+        },
+        "15": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05600137,
+          "median_gap": 0.03125,
+          "fragile_tokens": 62427,
+          "fragile_fraction": 0.23814,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 245,
+              "gap_weighted_count": 208757488.0,
+              "raw_count": 87488
+            },
+            {
+              "expert_idx": 63,
+              "gap_weighted_count": 117541184.0,
+              "raw_count": 50966
+            },
+            {
+              "expert_idx": 135,
+              "gap_weighted_count": 96787296.0,
+              "raw_count": 41649
+            },
+            {
+              "expert_idx": 26,
+              "gap_weighted_count": 87016184.0,
+              "raw_count": 38979
+            },
+            {
+              "expert_idx": 220,
+              "gap_weighted_count": 86624824.0,
+              "raw_count": 34310
+            }
+          ]
+        },
+        "16": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05412531,
+          "median_gap": 0.03125,
+          "fragile_tokens": 64677,
+          "fragile_fraction": 0.246723,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 224,
+              "gap_weighted_count": 223462256.0,
+              "raw_count": 86966
+            },
+            {
+              "expert_idx": 6,
+              "gap_weighted_count": 142303296.0,
+              "raw_count": 63386
+            },
+            {
+              "expert_idx": 184,
+              "gap_weighted_count": 139242528.0,
+              "raw_count": 55365
+            },
+            {
+              "expert_idx": 30,
+              "gap_weighted_count": 93711808.0,
+              "raw_count": 41351
+            },
+            {
+              "expert_idx": 180,
+              "gap_weighted_count": 89648616.0,
+              "raw_count": 34488
+            }
+          ]
+        },
+        "17": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.0541451,
+          "median_gap": 0.03125,
+          "fragile_tokens": 65448,
+          "fragile_fraction": 0.249664,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 220,
+              "gap_weighted_count": 256293792.0,
+              "raw_count": 104190
+            },
+            {
+              "expert_idx": 255,
+              "gap_weighted_count": 152985024.0,
+              "raw_count": 57447
+            },
+            {
+              "expert_idx": 232,
+              "gap_weighted_count": 113980904.0,
+              "raw_count": 48537
+            },
+            {
+              "expert_idx": 247,
+              "gap_weighted_count": 98763328.0,
+              "raw_count": 35467
+            },
+            {
+              "expert_idx": 237,
+              "gap_weighted_count": 85892472.0,
+              "raw_count": 34693
+            }
+          ]
+        },
+        "18": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05647075,
+          "median_gap": 0.03125,
+          "fragile_tokens": 65364,
+          "fragile_fraction": 0.249344,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 196,
+              "gap_weighted_count": 151694336.0,
+              "raw_count": 57367
+            },
+            {
+              "expert_idx": 235,
+              "gap_weighted_count": 110455672.0,
+              "raw_count": 45649
+            },
+            {
+              "expert_idx": 21,
+              "gap_weighted_count": 108482216.0,
+              "raw_count": 46336
+            },
+            {
+              "expert_idx": 145,
+              "gap_weighted_count": 105801688.0,
+              "raw_count": 42747
+            },
+            {
+              "expert_idx": 25,
+              "gap_weighted_count": 94352000.0,
+              "raw_count": 41592
+            }
+          ]
+        },
+        "19": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05269229,
+          "median_gap": 0.03125,
+          "fragile_tokens": 66892,
+          "fragile_fraction": 0.255173,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 160,
+              "gap_weighted_count": 203660096.0,
+              "raw_count": 74728
+            },
+            {
+              "expert_idx": 197,
+              "gap_weighted_count": 179956976.0,
+              "raw_count": 69597
+            },
+            {
+              "expert_idx": 253,
+              "gap_weighted_count": 144797312.0,
+              "raw_count": 54573
+            },
+            {
+              "expert_idx": 42,
+              "gap_weighted_count": 96314512.0,
+              "raw_count": 38962
+            },
+            {
+              "expert_idx": 175,
+              "gap_weighted_count": 86096872.0,
+              "raw_count": 34728
+            }
+          ]
+        },
+        "20": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05388951,
+          "median_gap": 0.03125,
+          "fragile_tokens": 69512,
+          "fragile_fraction": 0.265167,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 150,
+              "gap_weighted_count": 375557184.0,
+              "raw_count": 138495
+            },
+            {
+              "expert_idx": 228,
+              "gap_weighted_count": 127873760.0,
+              "raw_count": 48699
+            },
+            {
+              "expert_idx": 28,
+              "gap_weighted_count": 97957824.0,
+              "raw_count": 40465
+            },
+            {
+              "expert_idx": 156,
+              "gap_weighted_count": 95663832.0,
+              "raw_count": 33708
+            },
+            {
+              "expert_idx": 9,
+              "gap_weighted_count": 95111432.0,
+              "raw_count": 41162
+            }
+          ]
+        },
+        "21": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05500263,
+          "median_gap": 0.03125,
+          "fragile_tokens": 65561,
+          "fragile_fraction": 0.250095,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 66,
+              "gap_weighted_count": 129840328.0,
+              "raw_count": 52447
+            },
+            {
+              "expert_idx": 42,
+              "gap_weighted_count": 128307640.0,
+              "raw_count": 52792
+            },
+            {
+              "expert_idx": 44,
+              "gap_weighted_count": 124072960.0,
+              "raw_count": 47534
+            },
+            {
+              "expert_idx": 6,
+              "gap_weighted_count": 108186800.0,
+              "raw_count": 48243
+            },
+            {
+              "expert_idx": 65,
+              "gap_weighted_count": 103136656.0,
+              "raw_count": 46707
+            }
+          ]
+        },
+        "22": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05790287,
+          "median_gap": 0.03125,
+          "fragile_tokens": 61780,
+          "fragile_fraction": 0.235672,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 246,
+              "gap_weighted_count": 103848832.0,
+              "raw_count": 43550
+            },
+            {
+              "expert_idx": 181,
+              "gap_weighted_count": 99607984.0,
+              "raw_count": 44531
+            },
+            {
+              "expert_idx": 20,
+              "gap_weighted_count": 78413696.0,
+              "raw_count": 39004
+            },
+            {
+              "expert_idx": 28,
+              "gap_weighted_count": 74798520.0,
+              "raw_count": 33109
+            },
+            {
+              "expert_idx": 85,
+              "gap_weighted_count": 70176304.0,
+              "raw_count": 30254
+            }
+          ]
+        },
+        "23": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05848199,
+          "median_gap": 0.03125,
+          "fragile_tokens": 61382,
+          "fragile_fraction": 0.234154,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 115,
+              "gap_weighted_count": 169813072.0,
+              "raw_count": 74579
+            },
+            {
+              "expert_idx": 110,
+              "gap_weighted_count": 84710704.0,
+              "raw_count": 37195
+            },
+            {
+              "expert_idx": 240,
+              "gap_weighted_count": 82177480.0,
+              "raw_count": 36970
+            },
+            {
+              "expert_idx": 131,
+              "gap_weighted_count": 81204512.0,
+              "raw_count": 36606
+            },
+            {
+              "expert_idx": 250,
+              "gap_weighted_count": 68927280.0,
+              "raw_count": 27300
+            }
+          ]
+        },
+        "24": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05054659,
+          "median_gap": 0.03125,
+          "fragile_tokens": 70048,
+          "fragile_fraction": 0.267212,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 241,
+              "gap_weighted_count": 164974944.0,
+              "raw_count": 59309
+            },
+            {
+              "expert_idx": 20,
+              "gap_weighted_count": 114795960.0,
+              "raw_count": 47377
+            },
+            {
+              "expert_idx": 36,
+              "gap_weighted_count": 87467536.0,
+              "raw_count": 37621
+            },
+            {
+              "expert_idx": 230,
+              "gap_weighted_count": 87414712.0,
+              "raw_count": 32364
+            },
+            {
+              "expert_idx": 125,
+              "gap_weighted_count": 84766864.0,
+              "raw_count": 33350
+            }
+          ]
+        },
+        "25": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05026984,
+          "median_gap": 0.03125,
+          "fragile_tokens": 68671,
+          "fragile_fraction": 0.261959,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 224,
+              "gap_weighted_count": 295581280.0,
+              "raw_count": 105540
+            },
+            {
+              "expert_idx": 237,
+              "gap_weighted_count": 147199664.0,
+              "raw_count": 51820
+            },
+            {
+              "expert_idx": 124,
+              "gap_weighted_count": 134380800.0,
+              "raw_count": 51108
+            },
+            {
+              "expert_idx": 47,
+              "gap_weighted_count": 121350912.0,
+              "raw_count": 50273
+            },
+            {
+              "expert_idx": 41,
+              "gap_weighted_count": 107966752.0,
+              "raw_count": 42812
+            }
+          ]
+        },
+        "26": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.04867423,
+          "median_gap": 0.03125,
+          "fragile_tokens": 72575,
+          "fragile_fraction": 0.276852,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 105,
+              "gap_weighted_count": 171443280.0,
+              "raw_count": 66392
+            },
+            {
+              "expert_idx": 168,
+              "gap_weighted_count": 162051952.0,
+              "raw_count": 58264
+            },
+            {
+              "expert_idx": 160,
+              "gap_weighted_count": 136873808.0,
+              "raw_count": 44527
+            },
+            {
+              "expert_idx": 247,
+              "gap_weighted_count": 106843976.0,
+              "raw_count": 38012
+            },
+            {
+              "expert_idx": 250,
+              "gap_weighted_count": 99670368.0,
+              "raw_count": 39322
+            }
+          ]
+        },
+        "27": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05019706,
+          "median_gap": 0.03125,
+          "fragile_tokens": 69803,
+          "fragile_fraction": 0.266277,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 218,
+              "gap_weighted_count": 413264512.0,
+              "raw_count": 147717
+            },
+            {
+              "expert_idx": 245,
+              "gap_weighted_count": 202441072.0,
+              "raw_count": 75389
+            },
+            {
+              "expert_idx": 63,
+              "gap_weighted_count": 110743776.0,
+              "raw_count": 44128
+            },
+            {
+              "expert_idx": 135,
+              "gap_weighted_count": 87254368.0,
+              "raw_count": 32056
+            },
+            {
+              "expert_idx": 26,
+              "gap_weighted_count": 84428864.0,
+              "raw_count": 33442
+            }
+          ]
+        },
+        "28": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.04505056,
+          "median_gap": 0.03125,
+          "fragile_tokens": 77154,
+          "fragile_fraction": 0.294319,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 224,
+              "gap_weighted_count": 220107664.0,
+              "raw_count": 70343
+            },
+            {
+              "expert_idx": 130,
+              "gap_weighted_count": 210934640.0,
+              "raw_count": 68952
+            },
+            {
+              "expert_idx": 6,
+              "gap_weighted_count": 161587760.0,
+              "raw_count": 60003
+            },
+            {
+              "expert_idx": 184,
+              "gap_weighted_count": 131207192.0,
+              "raw_count": 46145
+            },
+            {
+              "expert_idx": 218,
+              "gap_weighted_count": 111671800.0,
+              "raw_count": 31028
+            }
+          ]
+        },
+        "29": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.04543597,
+          "median_gap": 0.03125,
+          "fragile_tokens": 77254,
+          "fragile_fraction": 0.294701,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 220,
+              "gap_weighted_count": 240792240.0,
+              "raw_count": 87801
+            },
+            {
+              "expert_idx": 247,
+              "gap_weighted_count": 147188624.0,
+              "raw_count": 45819
+            },
+            {
+              "expert_idx": 73,
+              "gap_weighted_count": 116792760.0,
+              "raw_count": 35849
+            },
+            {
+              "expert_idx": 232,
+              "gap_weighted_count": 106588000.0,
+              "raw_count": 41842
+            },
+            {
+              "expert_idx": 180,
+              "gap_weighted_count": 102325288.0,
+              "raw_count": 36963
+            }
+          ]
+        },
+        "30": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.04669052,
+          "median_gap": 0.03125,
+          "fragile_tokens": 76731,
+          "fragile_fraction": 0.292706,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 196,
+              "gap_weighted_count": 142929712.0,
+              "raw_count": 50565
+            },
+            {
+              "expert_idx": 235,
+              "gap_weighted_count": 126477824.0,
+              "raw_count": 46790
+            },
+            {
+              "expert_idx": 209,
+              "gap_weighted_count": 97255328.0,
+              "raw_count": 37892
+            },
+            {
+              "expert_idx": 27,
+              "gap_weighted_count": 96289024.0,
+              "raw_count": 35814
+            },
+            {
+              "expert_idx": 25,
+              "gap_weighted_count": 88047672.0,
+              "raw_count": 35986
+            }
+          ]
+        },
+        "31": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.0438929,
+          "median_gap": 0.03125,
+          "fragile_tokens": 80150,
+          "fragile_fraction": 0.305748,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 253,
+              "gap_weighted_count": 166977744.0,
+              "raw_count": 52490
+            },
+            {
+              "expert_idx": 197,
+              "gap_weighted_count": 164250560.0,
+              "raw_count": 54021
+            },
+            {
+              "expert_idx": 160,
+              "gap_weighted_count": 122211056.0,
+              "raw_count": 35572
+            },
+            {
+              "expert_idx": 190,
+              "gap_weighted_count": 119408512.0,
+              "raw_count": 38977
+            },
+            {
+              "expert_idx": 13,
+              "gap_weighted_count": 103978568.0,
+              "raw_count": 35045
+            }
+          ]
+        },
+        "32": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05117303,
+          "median_gap": 0.03125,
+          "fragile_tokens": 68589,
+          "fragile_fraction": 0.261646,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 66,
+              "gap_weighted_count": 288085792.0,
+              "raw_count": 105327
+            },
+            {
+              "expert_idx": 117,
+              "gap_weighted_count": 278219008.0,
+              "raw_count": 95093
+            },
+            {
+              "expert_idx": 103,
+              "gap_weighted_count": 110806320.0,
+              "raw_count": 44799
+            },
+            {
+              "expert_idx": 212,
+              "gap_weighted_count": 94313608.0,
+              "raw_count": 35247
+            },
+            {
+              "expert_idx": 50,
+              "gap_weighted_count": 81700984.0,
+              "raw_count": 32989
+            }
+          ]
+        },
+        "33": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05415833,
+          "median_gap": 0.03125,
+          "fragile_tokens": 70242,
+          "fragile_fraction": 0.267952,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 29,
+              "gap_weighted_count": 123282584.0,
+              "raw_count": 51581
+            },
+            {
+              "expert_idx": 47,
+              "gap_weighted_count": 92869792.0,
+              "raw_count": 34754
+            },
+            {
+              "expert_idx": 90,
+              "gap_weighted_count": 76120112.0,
+              "raw_count": 21741
+            },
+            {
+              "expert_idx": 250,
+              "gap_weighted_count": 74528600.0,
+              "raw_count": 28170
+            },
+            {
+              "expert_idx": 104,
+              "gap_weighted_count": 73632072.0,
+              "raw_count": 26661
+            }
+          ]
+        },
+        "34": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.05845827,
+          "median_gap": 0.03125,
+          "fragile_tokens": 63291,
+          "fragile_fraction": 0.241436,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 202,
+              "gap_weighted_count": 266806608.0,
+              "raw_count": 101479
+            },
+            {
+              "expert_idx": 48,
+              "gap_weighted_count": 99860744.0,
+              "raw_count": 39755
+            },
+            {
+              "expert_idx": 173,
+              "gap_weighted_count": 95099584.0,
+              "raw_count": 39067
+            },
+            {
+              "expert_idx": 239,
+              "gap_weighted_count": 87500816.0,
+              "raw_count": 38228
+            },
+            {
+              "expert_idx": 102,
+              "gap_weighted_count": 86513552.0,
+              "raw_count": 40296
+            }
+          ]
+        },
+        "35": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.04542351,
+          "median_gap": 0.03125,
+          "fragile_tokens": 77824,
+          "fragile_fraction": 0.296875,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 126,
+              "gap_weighted_count": 138343088.0,
+              "raw_count": 47932
+            },
+            {
+              "expert_idx": 255,
+              "gap_weighted_count": 119413360.0,
+              "raw_count": 42037
+            },
+            {
+              "expert_idx": 3,
+              "gap_weighted_count": 112092976.0,
+              "raw_count": 41525
+            },
+            {
+              "expert_idx": 34,
+              "gap_weighted_count": 108855240.0,
+              "raw_count": 40823
+            },
+            {
+              "expert_idx": 159,
+              "gap_weighted_count": 108287696.0,
+              "raw_count": 40805
+            }
+          ]
+        },
+        "36": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.04675668,
+          "median_gap": 0.03125,
+          "fragile_tokens": 80448,
+          "fragile_fraction": 0.306885,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 1,
+              "gap_weighted_count": 128492384.0,
+              "raw_count": 40126
+            },
+            {
+              "expert_idx": 39,
+              "gap_weighted_count": 123124384.0,
+              "raw_count": 30396
+            },
+            {
+              "expert_idx": 227,
+              "gap_weighted_count": 106908168.0,
+              "raw_count": 27285
+            },
+            {
+              "expert_idx": 84,
+              "gap_weighted_count": 102067808.0,
+              "raw_count": 40224
+            },
+            {
+              "expert_idx": 2,
+              "gap_weighted_count": 98997208.0,
+              "raw_count": 32198
+            }
+          ]
+        },
+        "37": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.04497832,
+          "median_gap": 0.03125,
+          "fragile_tokens": 82660,
+          "fragile_fraction": 0.315323,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 55,
+              "gap_weighted_count": 224825472.0,
+              "raw_count": 64123
+            },
+            {
+              "expert_idx": 3,
+              "gap_weighted_count": 168296064.0,
+              "raw_count": 50614
+            },
+            {
+              "expert_idx": 59,
+              "gap_weighted_count": 142596176.0,
+              "raw_count": 50580
+            },
+            {
+              "expert_idx": 27,
+              "gap_weighted_count": 133772752.0,
+              "raw_count": 31111
+            },
+            {
+              "expert_idx": 101,
+              "gap_weighted_count": 131708064.0,
+              "raw_count": 30319
+            }
+          ]
+        },
+        "38": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.04221302,
+          "median_gap": 0.03125,
+          "fragile_tokens": 87672,
+          "fragile_fraction": 0.334442,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 209,
+              "gap_weighted_count": 247636672.0,
+              "raw_count": 67309
+            },
+            {
+              "expert_idx": 33,
+              "gap_weighted_count": 186836592.0,
+              "raw_count": 63003
+            },
+            {
+              "expert_idx": 173,
+              "gap_weighted_count": 172119200.0,
+              "raw_count": 40825
+            },
+            {
+              "expert_idx": 168,
+              "gap_weighted_count": 167787584.0,
+              "raw_count": 47082
+            },
+            {
+              "expert_idx": 157,
+              "gap_weighted_count": 160559968.0,
+              "raw_count": 52588
+            }
+          ]
+        },
+        "39": {
+          "tokens": 262144,
+          "fragile_threshold": 0.0,
+          "mean_gap": 0.06763089,
+          "median_gap": 0.03125,
+          "fragile_tokens": 63034,
+          "fragile_fraction": 0.240456,
+          "top_gap_weighted_experts": [
+            {
+              "expert_idx": 35,
+              "gap_weighted_count": 371410336.0,
+              "raw_count": 142886
+            },
+            {
+              "expert_idx": 239,
+              "gap_weighted_count": 143877216.0,
+              "raw_count": 49127
+            },
+            {
+              "expert_idx": 52,
+              "gap_weighted_count": 96949864.0,
+              "raw_count": 49151
+            },
+            {
+              "expert_idx": 154,
+              "gap_weighted_count": 94596992.0,
+              "raw_count": 38059
+            },
+            {
+              "expert_idx": 213,
+              "gap_weighted_count": 89819024.0,
+              "raw_count": 46060
+            }
+          ]
+        }
+      },
+      "runtime_seconds": 435.499
+    },
+    "runtime_seconds": 2227.418
+  },
+  "results": {
+    "routergap_joint_topup_3pct": {
+      "description": "Gap-aware joint three-tier plan: rebucket experts with gap-weighted routing counts and rank medium-tier W1/W2 channels by inverse-gap router-affinity at 3% topup.",
+      "mode": "per_channel",
+      "ppl": 6.590375,
+      "nll": 1.88561,
+      "memory_gb": 27.73,
+      "fp8_weights": 8290211328,
+      "fp8_fraction": 0.257362,
+      "w1_pair_fraction": 0.257321,
+      "w2_channel_fraction": 0.257443,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 310.9,
+      "channel_metric_requested": "router_gap_affinity_weighted_qerror",
+      "channel_metric_effective": "router_gap_affinity_weighted_qerror",
+      "channel_metric_fallback_used": false,
+      "routing_count_metric": "inverse_router_gap_weighted_topk_count",
+      "budget_source": "joint_gap_weighted_percentile_buckets_with_gap_topup",
+      "joint_gap_threshold_p50": 29887048.0,
+      "joint_gap_threshold_p75": 115581016.0,
+      "joint_gap_high_experts": 2560,
+      "joint_gap_medium_experts": 2559,
+      "joint_gap_low_experts": 5118,
+      "medium_tier_w1_fraction": 0.03,
+      "medium_tier_w2_fraction": 0.03,
+      "medium_tier_w1_pairs": 15,
+      "medium_tier_w2_channels": 61,
+      "source_base": "joint_w1w2_with_topup"
+    },
+    "routergap_joint_topup_5pct": {
+      "description": "Gap-aware joint three-tier plan: rebucket experts with gap-weighted routing counts and rank medium-tier W1/W2 channels by inverse-gap router-affinity at 5% topup.",
+      "mode": "per_channel",
+      "ppl": 6.594716,
+      "nll": 1.886269,
+      "memory_gb": 27.815,
+      "fp8_weights": 8459228160,
+      "fp8_fraction": 0.262609,
+      "w1_pair_fraction": 0.26269,
+      "w2_channel_fraction": 0.262446,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 208.9,
+      "channel_metric_requested": "router_gap_affinity_weighted_qerror",
+      "channel_metric_effective": "router_gap_affinity_weighted_qerror",
+      "channel_metric_fallback_used": false,
+      "routing_count_metric": "inverse_router_gap_weighted_topk_count",
+      "budget_source": "joint_gap_weighted_percentile_buckets_with_gap_topup",
+      "joint_gap_threshold_p50": 29887048.0,
+      "joint_gap_threshold_p75": 115581016.0,
+      "joint_gap_high_experts": 2560,
+      "joint_gap_medium_experts": 2559,
+      "joint_gap_low_experts": 5118,
+      "medium_tier_w1_fraction": 0.05,
+      "medium_tier_w2_fraction": 0.05,
+      "medium_tier_w1_pairs": 26,
+      "medium_tier_w2_channels": 102,
+      "source_base": "joint_w1w2_with_topup"
+    },
+    "routergap_joint_topup_8pct": {
+      "description": "Gap-aware joint three-tier plan: rebucket experts with gap-weighted routing counts and rank medium-tier W1/W2 channels by inverse-gap router-affinity at 8% topup.",
+      "mode": "per_channel",
+      "ppl": 6.592926,
+      "nll": 1.885997,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697686016,
+      "fp8_fraction": 0.270012,
+      "w1_pair_fraction": 0.270012,
+      "w2_channel_fraction": 0.270012,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 313.5,
+      "channel_metric_requested": "router_gap_affinity_weighted_qerror",
+      "channel_metric_effective": "router_gap_affinity_weighted_qerror",
+      "channel_metric_fallback_used": false,
+      "routing_count_metric": "inverse_router_gap_weighted_topk_count",
+      "budget_source": "joint_gap_weighted_percentile_buckets_with_gap_topup",
+      "joint_gap_threshold_p50": 29887048.0,
+      "joint_gap_threshold_p75": 115581016.0,
+      "joint_gap_high_experts": 2560,
+      "joint_gap_medium_experts": 2559,
+      "joint_gap_low_experts": 5118,
+      "medium_tier_w1_fraction": 0.08,
+      "medium_tier_w2_fraction": 0.08,
+      "medium_tier_w1_pairs": 41,
+      "medium_tier_w2_channels": 164,
+      "source_base": "joint_w1w2_with_topup"
+    },
+    "routergap_union_topup_5pct": {
+      "description": "Union the MxMoE block base and joint three-tier base, then replace router-affinity topups with inverse-gap router-affinity on every remaining FP4 W1/W2 path.",
+      "mode": "per_channel",
+      "ppl": 6.573449,
+      "nll": 1.883039,
+      "memory_gb": 29.498,
+      "fp8_weights": 11825048576,
+      "fp8_fraction": 0.367098,
+      "w1_pair_fraction": 0.288066,
+      "w2_channel_fraction": 0.525161,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 310.5,
+      "channel_metric_requested": "router_gap_affinity_weighted_qerror",
+      "channel_metric_effective": "router_gap_affinity_weighted_qerror",
+      "channel_metric_fallback_used": false,
+      "routing_count_metric": "inverse_router_gap_weighted_topk_count",
+      "budget_source": "mxmoe_plus_joint_base_plus_router_gap_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "mxmoe_promoted_w1_projections": 2560,
+      "mxmoe_promoted_w2_projections": 5123,
+      "merged_base_w1_projections": 2560,
+      "merged_base_w2_projections": 5123,
+      "w1_topup_fraction": 0.05,
+      "w2_topup_fraction": 0.05,
+      "mxmoe_base_fraction": 0.25,
+      "topup_fraction": 0.05,
+      "source_base": "output_perturbation_mxmoe_topup_router_affinity_5pct"
+    },
+    "routergap_mxmoe_topup_8pct": {
+      "description": "Keep the MxMoE block projection base and replace activation-kurtosis topups with inverse-gap router-affinity ranking at 8% on non-promoted W1/W2 paths.",
+      "mode": "per_channel",
+      "ppl": 6.577843,
+      "nll": 1.883707,
+      "memory_gb": 28.579,
+      "fp8_weights": 9986678784,
+      "fp8_fraction": 0.310027,
+      "w1_pair_fraction": 0.244627,
+      "w2_channel_fraction": 0.440829,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 296.4,
+      "channel_metric_requested": "router_gap_affinity_weighted_qerror",
+      "channel_metric_effective": "router_gap_affinity_weighted_qerror",
+      "channel_metric_fallback_used": false,
+      "routing_count_metric": "inverse_router_gap_weighted_topk_count",
+      "budget_source": "mxmoe_block_plus_router_gap_topup",
+      "w1_topup_fraction": 0.08,
+      "w2_topup_fraction": 0.08,
+      "mxmoe_promoted_w1_projections": 1832,
+      "mxmoe_promoted_w2_projections": 4016,
+      "mxmoe_base_fraction": 0.25,
+      "topup_fraction": 0.08,
+      "source_base": "mxmoe_block_plus_channel_topup"
+    },
+    "routergap_perchannel_20pct": {
+      "description": "Pure per-channel plan with a 1:4 W1:W2 split: allocate expert budgets by inverse-gap routing counts and rank channels by inverse-gap router-affinity.",
+      "mode": "per_channel",
+      "ppl": 6.605868,
+      "nll": 1.887958,
+      "memory_gb": 24.874,
+      "fp8_weights": 2576979456,
+      "fp8_fraction": 0.08,
+      "w1_pair_fraction": 0.04,
+      "w2_channel_fraction": 0.16,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 335.8,
+      "channel_metric_requested": "router_gap_affinity_weighted_qerror",
+      "channel_metric_effective": "router_gap_affinity_weighted_qerror",
+      "channel_metric_fallback_used": false,
+      "routing_count_metric": "inverse_router_gap_weighted_topk_count",
+      "target_w1_pairs": 209715,
+      "target_w2_channels": 3355443,
+      "realized_w1_pairs": 209715,
+      "realized_w2_channels": 3355443,
+      "budget_source": "inverse_gap_weighted_expert_budget_plus_router_gap_affinity",
+      "w1_fraction_target": 0.04,
+      "w2_fraction_target": 0.16,
+      "source_base": "router_affinity_weighted_w1_4_w2_16"
+    }
+  }
+}

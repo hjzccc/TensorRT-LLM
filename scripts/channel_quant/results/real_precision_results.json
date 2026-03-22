@@ -1,0 +1,40 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "eval_tokens": 512,
+    "calib_tokens": 128,
+    "computation": "REAL FP8 matmul via torch._scaled_mm (both weight and activation in FP8 E4M3)"
+  },
+  "results": {
+    "bf16": {
+      "ppl": 5.55,
+      "nll": 1.713804,
+      "time_s": 35.8,
+      "memory_gb": 64.4
+    },
+    "uniform_fp4": {
+      "ppl": 5.7197,
+      "nll": 1.743915,
+      "time_s": 40.0,
+      "memory_gb": 16.1
+    },
+    "uniform_fp8": {
+      "ppl": 5.5703,
+      "nll": 1.717455,
+      "time_s": 37.0,
+      "memory_gb": 32.2
+    },
+    "mixed_25pct": {
+      "ppl": 5.6076,
+      "nll": 1.724118,
+      "time_s": 39.0,
+      "memory_gb": 20.1
+    },
+    "mixed_50pct": {
+      "ppl": 5.6173,
+      "nll": 1.725847,
+      "time_s": 40.1,
+      "memory_gb": 24.2
+    }
+  }
+}

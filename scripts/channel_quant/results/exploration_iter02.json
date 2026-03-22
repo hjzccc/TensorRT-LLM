@@ -1,0 +1,151 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "split": "train",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 128,
+      "preview": "= Valkyria Chronicles III =\n\nSenj\u014d no Valkyria 3 : Unrecorded Chronicles ( Japanese : \u6226\u5834\u306e\u30f4\u30a1\u30eb\u30ad\u30e5\u30ea\u30a23 , lit . Valkyria of the Battlefield 3 ) , commonly referred to as Valkyria Chronicles III outside Japan , is a tactical role @-@ playing video game developed by Sega and Media.Vision for the PlayStation Portable . Released in January 2011 in Japan , it is the third game in the Valkyria series . Employing the same fusion of tactical and real @-@ time gameplay as its predecessors , the story runs parallel to the first"
+    },
+    "evaluation": {
+      "split": "test",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 512,
+      "preview": "= Robert Boulter =\n\nRobert Boulter is an English film , television and theatre actor . He had a guest @-@ starring role on the television series The Bill in 2000 . This was followed by a starring role in the play Herons written by Simon Stephens , which was performed in 2001 at the Royal Court Theatre . He had a guest role in the television series Judge John Deed in 2002 . In 2004 Boulter landed a role as \" Craig \" in the episode \" Teddy 's Story \" of the television series The Long Firm ; he starred alongside"
+    },
+    "calibration_tokens": 128,
+    "eval_tokens": 512,
+    "mini_batch_tokens": 32,
+    "target_fp8_fraction": 0.25,
+    "per_projection_split": {
+      "w1_fraction": 0.1,
+      "w2_fraction": 0.4
+    },
+    "iter01_score_source": "recomputed_from_calibration",
+    "iter01_json": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/exploration_iter01.json",
+    "mxmoe_target_ppl": 5.337,
+    "notes": {
+      "threshold_auto": "Global threshold is mean + std over active W1/W2 activation_kurtosis scores.",
+      "kmeans_2cluster": "Manual 1D 2-means fallback; high cluster promoted per expert/projection.",
+      "weak_column_gap": "Largest descending-score gap per expert/projection, capped at 50% promotion.",
+      "submodular_greedy": "Equivalent to sort-and-split under uniform item size within each projection."
+    }
+  },
+  "strategies": {
+    "sort_and_split": {
+      "description": "Two-level routing-aware top-k split using activation_kurtosis at 25%/25%.",
+      "metric": "activation_kurtosis",
+      "budget_fixed": true,
+      "ppl": 5.350305,
+      "nll": 1.677154,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.25,
+      "time_s": 41.6
+    },
+    "sort_and_split_hessian": {
+      "description": "Two-level routing-aware top-k split using hessian_diag at 25%/25%.",
+      "metric": "hessian_diag",
+      "budget_fixed": true,
+      "ppl": 5.392507,
+      "nll": 1.68501,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.25,
+      "time_s": 41.9
+    },
+    "threshold_auto": {
+      "description": "Global mean+std threshold over activation_kurtosis across all active W1/W2 channels.",
+      "metric": "activation_kurtosis",
+      "budget_fixed": false,
+      "ppl": 5.396605,
+      "nll": 1.68577,
+      "memory_gb": 27.026,
+      "fp8_weights": 6882157056,
+      "fp8_fraction": 0.21365,
+      "w1_pair_fraction": 0.319831,
+      "w2_channel_fraction": 0.001289,
+      "time_s": 40.7,
+      "threshold": 3.5077099800109863
+    },
+    "kmeans_2cluster": {
+      "description": "Per-expert 2-cluster split on activation_kurtosis; high cluster promoted to FP8.",
+      "metric": "activation_kurtosis",
+      "budget_fixed": false,
+      "ppl": 5.356903,
+      "nll": 1.678386,
+      "memory_gb": 26.946,
+      "fp8_weights": 6722070016,
+      "fp8_fraction": 0.208681,
+      "w1_pair_fraction": 0.187985,
+      "w2_channel_fraction": 0.250071,
+      "time_s": 41.6
+    },
+    "weak_column_gap": {
+      "description": "Per-expert largest-gap split on activation_kurtosis with a 50% cap.",
+      "metric": "activation_kurtosis",
+      "budget_fixed": false,
+      "ppl": 5.370858,
+      "nll": 1.680988,
+      "memory_gb": 24.698,
+      "fp8_weights": 2226062336,
+      "fp8_fraction": 0.069106,
+      "w1_pair_fraction": 0.074131,
+      "w2_channel_fraction": 0.059056,
+      "time_s": 41.8
+    },
+    "per_projection_split": {
+      "description": "Two-level routing-aware split with W1=10% FP8 and W2=40% FP8 using activation_kurtosis.",
+      "metric": "activation_kurtosis",
+      "budget_fixed": true,
+      "ppl": 5.330317,
+      "nll": 1.673411,
+      "memory_gb": 26.806,
+      "fp8_weights": 6442414080,
+      "fp8_fraction": 0.199999,
+      "w1_pair_fraction": 0.099998,
+      "w2_channel_fraction": 0.4,
+      "time_s": 41.6,
+      "w1_fraction_target": 0.1,
+      "w2_fraction_target": 0.4
+    },
+    "submodular_greedy": {
+      "description": "Routing-aware greedy promotion by activation_kurtosis until the 25% budget is filled.",
+      "metric": "activation_kurtosis",
+      "budget_fixed": true,
+      "ppl": 5.350305,
+      "nll": 1.677154,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.25,
+      "time_s": 42.0,
+      "equivalent_to": "sort_and_split"
+    },
+    "combined_metric": {
+      "description": "Two-level routing-aware top-k split using hessian_diag * activation_kurtosis.",
+      "metric": "hessian_diag*activation_kurtosis",
+      "budget_fixed": true,
+      "ppl": 5.40793,
+      "nll": 1.687866,
+      "memory_gb": 27.612,
+      "fp8_weights": 8053063680,
+      "fp8_fraction": 0.25,
+      "w1_pair_fraction": 0.25,
+      "w2_channel_fraction": 0.25,
+      "time_s": 42.2
+    }
+  },
+  "best_strategy": "per_projection_split",
+  "best_ppl": 5.330317,
+  "runtime_seconds": 1124.236
+}

@@ -1,0 +1,111 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "calibration": {
+      "split": "train",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 16,
+      "max_eval_tokens": 16,
+      "preview": "= Valkyria Chronicles III =\n\nSenj\u014d no Valkyria "
+    },
+    "evaluation": {
+      "split": "test",
+      "source_dataset": "wikitext/wikitext-2-raw-v1",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "actual_tokens": 16,
+      "max_eval_tokens": 16,
+      "preview": "= Robert Boulter =\n\nRobert Boulter is an English film , television and"
+    },
+    "target_fp8_fraction": 0.25,
+    "metric": "gate_aware_act_qerror",
+    "fgmp_block_proxy": "weight_variance_per_16_block",
+    "fgmp_samples_per_layer": 1024,
+    "random_seeds": [
+      0,
+      1,
+      2
+    ],
+    "note": "W1 uses pair-wise gate_up_proj assignment when channel-level masks are used.",
+    "runtime_seconds": 802.293
+  },
+  "related_work": {
+    "random_baseline": {
+      "avg_nll": 2.710538397894965,
+      "ppl": 15.03750502224475,
+      "memory_gb": 27.612,
+      "seed_results": [
+        {
+          "seed": 0,
+          "avg_nll": 2.7133834838867186,
+          "ppl": 15.080212950811749,
+          "memory_gb": 27.612
+        },
+        {
+          "seed": 1,
+          "avg_nll": 2.7136993408203125,
+          "ppl": 15.084976892954808,
+          "memory_gb": 27.612
+        },
+        {
+          "seed": 2,
+          "avg_nll": 2.7045323689778646,
+          "ppl": 14.947325222967692,
+          "memory_gb": 27.612
+        }
+      ]
+    },
+    "dynaexq_per_expert": {
+      "avg_nll": 1.6815492439643278,
+      "ppl": 5.373874968740015,
+      "memory_gb": 27.612
+    },
+    "ours_two_level": {
+      "avg_nll": 1.6757510683541195,
+      "ppl": 5.342806455352808,
+      "memory_gb": 27.612
+    },
+    "mxmoe_per_block": {
+      "avg_nll": 2.7761138916015624,
+      "ppl": 16.056502241261466,
+      "memory_gb": 27.612
+    },
+    "fgmp_per_16block": {
+      "avg_nll": 2.71934076944987,
+      "ppl": 15.170318210614035,
+      "memory_gb": 27.657
+    },
+    "scalebits_submodular": {
+      "avg_nll": 2.761144256591797,
+      "ppl": 15.817932370199708,
+      "memory_gb": 27.612
+    }
+  },
+  "alternative_strategies": {
+    "threshold_median": {
+      "avg_nll": 2.769994608561198,
+      "ppl": 15.95854797002734,
+      "memory_gb": 26.336
+    },
+    "threshold_p75": {
+      "avg_nll": 2.769994608561198,
+      "ppl": 15.95854797002734,
+      "memory_gb": 26.336
+    },
+    "threshold_p90": {
+      "avg_nll": 2.8244715372721356,
+      "ppl": 16.852036959094747,
+      "memory_gb": 24.326
+    },
+    "kmeans_2cluster": {
+      "avg_nll": 2.783252461751302,
+      "ppl": 16.171532797228544,
+      "memory_gb": 24.104
+    },
+    "sensitivity_gap": {
+      "avg_nll": 2.7048324584960937,
+      "ppl": 14.951811431691105,
+      "memory_gb": 23.833
+    }
+  }
+}

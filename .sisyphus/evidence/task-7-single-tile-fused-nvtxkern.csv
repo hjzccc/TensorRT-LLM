@@ -1,0 +1,31 @@
+
+NOTICE: Existing SQLite export found: /code/tensorrt_llm/.sisyphus/evidence/task-7-single-tile-fused.sqlite
+        It is assumed file was previously exported from: /code/tensorrt_llm/.sisyphus/evidence/task-7-single-tile-fused.nsys-rep
+        Consider using --force-export=true if needed.
+
+Processing [/code/tensorrt_llm/.sisyphus/evidence/task-7-single-tile-fused.sqlite] with [/usr/local/cuda-13.1/NsightSystems-cli-2025.5.2/target-linux-x64/reports/nvtx_kern_sum.py](base)... 
+NVTX Range,Style,PID,TID,NVTX Inst,Kern Inst,Total Time (ns),Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Kernel Name
+,,532640,532640,0,20,2587415,129370.8,129524.5,85443,173766,43437.7,device_kernel
+,,532640,532640,0,36,1608022,44667.3,832.0,672,538034,147259.2,vectorized_elementwise_kernel
+,,532640,532640,0,7,1485970,212281.4,27841.0,3168,1095813,398361.7,CatArrayBatchedCopy_vectorized
+,,532640,532640,0,258,1212672,4700.3,4448.0,2720,6336,1002.1,quantize_with_block_size
+,,532640,532640,0,8,1078373,134796.6,1520.0,1216,1064132,375510.7,elementwise_kernel
+,,532640,532640,0,4,853213,213303.3,277113.5,3840,295146,139988.3,distribution_elementwise_grid_stride_kernel
+,,532640,532640,0,259,425290,1642.0,1664.0,1504,1856,88.8,block_scale_interleave_kernel
+,,532640,532640,0,10,187879,18787.9,18705.0,18113,19425,346.1,expandInputRowsKernel
+,,532640,532640,0,32,49474,1546.1,1248.0,1184,5120,871.1,reduce_kernel
+,,532640,532640,0,10,46787,4678.7,4928.5,1856,5377,1007.4,computeStridesTmaWarpSpecializedKernel
+,,532640,532640,0,10,22907,2290.7,2272.0,2271,2368,34.4,blockExpertPrefixSumKernel
+,,532640,532640,0,28,18465,659.5,656.5,608,768,37.3,elementwise_kernel_with_index
+,,532640,532640,0,10,12352,1235.2,1232.0,960,1440,121.8,mergeExpertPrefixSumKernel
+,,532640,532640,0,10,10594,1059.4,1056.0,1024,1089,23.7,globalExpertPrefixSumKernel
+,,532640,532640,0,1,2752,2752.0,2752.0,2752,2752,0.0,unrolled_elementwise_kernel
+,,532640,532640,0,1,2145,2145.0,2145.0,2145,2145,0.0,kernelHistogram1D
+,,532640,532640,0,1,1632,1632.0,1632.0,1632,1632,0.0,block_scale_interleave_reverse_kernel
+:single_tile_swiglu_fused_tactic_0,PushPop,532640,532640,1,10,1293164,129316.4,130276.5,86467,174758,43243.6,device_kernel
+:single_tile_swiglu_fused_tactic_0,PushPop,532640,532640,1,5,93892,18778.4,18753.0,18625,19073,184.3,expandInputRowsKernel
+:single_tile_swiglu_fused_tactic_0,PushPop,532640,532640,1,5,25217,5043.4,5088.0,4801,5184,147.3,computeStridesTmaWarpSpecializedKernel
+:single_tile_swiglu_fused_tactic_0,PushPop,532640,532640,1,5,11485,2297.0,2303.0,2271,2335,26.6,blockExpertPrefixSumKernel
+:single_tile_swiglu_fused_tactic_0,PushPop,532640,532640,1,5,6048,1209.6,1216.0,992,1344,132.7,mergeExpertPrefixSumKernel
+:single_tile_swiglu_fused_tactic_0,PushPop,532640,532640,1,5,5312,1062.4,1056.0,1056,1088,14.3,globalExpertPrefixSumKernel
+

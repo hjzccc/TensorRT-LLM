@@ -1,0 +1,82 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "nsamples": 4,
+    "seqlen": 2048,
+    "eval_tokens": 8192,
+    "dtype": "float16",
+    "layer_batch_size": 2,
+    "runtime": "docker-only TRT-LLM fused wrappers",
+    "baseline_source": "/workspace/exact_docker_eval.py",
+    "mixed_linear_strategy": "split routed-expert output channels into NVFP4 and FP8 groups, call exact TRT-LLM fused wrappers per group, scatter back to original row order",
+    "nvfp4_linear": "torch.ops.auto_deploy.torch_quant_nvfp4_linear",
+    "fp8_linear": "torch.ops.auto_deploy.torch_quant_fp8_linear"
+  },
+  "results": {
+    "uniform_bf16": {
+      "mode": "bf16",
+      "quant_scope": "moe_only",
+      "ppl": 7.2463,
+      "time_s": 45.1
+    },
+    "uniform_nvfp4": {
+      "mode": "nvfp4",
+      "quant_scope": "reference_nvfp4",
+      "ppl": 7.5525,
+      "time_s": 55.7
+    },
+    "uniform_fp8": {
+      "mode": "fp8",
+      "quant_scope": "reference_fp8",
+      "ppl": 7.3038,
+      "time_s": 54.5
+    },
+    "mixed_best_small": {
+      "mode": "mixed_nvfp4_fp8",
+      "quant_scope": "moe_only",
+      "ppl": 7.2867,
+      "time_s": 60.1,
+      "w1_fp8_fraction": 0.04,
+      "w2_fp8_fraction": 0.16,
+      "budget_source": "joint_base_then_router_affinity_global_topk",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "medium_tier_w1_fraction": 0.08,
+      "medium_tier_w2_fraction": 0.08,
+      "medium_tier_w1_pairs": 41,
+      "medium_tier_w2_channels": 164,
+      "w1_fraction_target": 0.04,
+      "w2_fraction_target": 0.16,
+      "global_w1_selected": 209715,
+      "global_w2_selected": 3355443,
+      "global_w1_total": 5242880,
+      "global_w2_total": 20971520,
+      "w1_pair_granularity": 16,
+      "w2_channel_granularity": 32,
+      "w1_masks_resnapped": 1012,
+      "w2_masks_resnapped": 2709,
+      "score_source": "router_affinity_weighted_qerror",
+      "metric_cache_path": "/workspace/channel_quant/results/proper_iter10_novel_perchannel_metric_cache.pt",
+      "calibration_cache_path": "/workspace/channel_quant/results/proper_iter01_calibration_cache.pt",
+      "selection_policy": "boost joint_w1w2_with_topup mask members, then global top-k by cached router-affinity scores",
+      "base_family": "joint_w1w2_with_topup",
+      "joint_base_bonus": 1000000.0,
+      "joint_base_w1_selected": 1415639,
+      "joint_base_w2_selected": 5662556,
+      "mixed_w1_selected": 213984,
+      "mixed_w2_selected": 3352928,
+      "mixed_w1_overlap_with_joint": 213928,
+      "mixed_w2_overlap_with_joint": 3352928,
+      "metric_cache_metadata": {
+        "metric_name": "iter10_novel_perchannel_artifacts",
+        "runtime_seconds": 270.433,
+        "calibration_chunks": 128,
+        "micromix_threshold_formula": "weight_absmax / (2 * 6.0)",
+        "cross_expert_outlier_fraction": 0.05
+      }
+    }
+  }
+}

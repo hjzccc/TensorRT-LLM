@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: quantize -> dequantize -> BF16 -> F.linear for MoE expert weights; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/MC-MoE/eval_ppl_utils.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "experiment": "Iteration 19 balanced calibration / rare-expert coverage rebuilds",
+    "success_targets": {
+      "joint_w1w2_with_topup": 6.5725,
+      "output_perturbation_mxmoe_topup_router_affinity_5pct": 6.5758,
+      "mxmoe_block_plus_channel_topup": 6.5763,
+      "router_affinity_weighted_w1_4_w2_16": 6.5796,
+      "mxmoe_per_block": 6.5849
+    },
+    "balanced_calibration": {
+      "base_chunks": 128,
+      "extra_chunks": 0,
+      "total_chunks": 128,
+      "candidate_pool_source": "c4_train",
+      "candidate_pool_chunks": 64,
+      "coverage_json": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant/results/proper_iter19_calibration_coverage.json"
+    }
+  },
+  "results": {}
+}

@@ -1,0 +1,835 @@
+{
+  "metadata": {
+    "source_metric": "weight_l1",
+    "layers": [
+      5,
+      20,
+      35
+    ],
+    "num_experts": 256,
+    "w1_channels": 512,
+    "w2_channels": 2048,
+    "w1_channel_cost_weights": 4096,
+    "w2_channel_cost_weights": 512,
+    "budget_levels": [
+      0.1,
+      0.25,
+      0.5,
+      0.75
+    ],
+    "ground_truth_reference_experts": [
+      {
+        "layer": 5,
+        "expert_id": 2,
+        "role": "cold"
+      },
+      {
+        "layer": 5,
+        "expert_id": 87,
+        "role": "medium"
+      },
+      {
+        "layer": 5,
+        "expert_id": 242,
+        "role": "hot"
+      },
+      {
+        "layer": 20,
+        "expert_id": 1,
+        "role": "cold"
+      },
+      {
+        "layer": 20,
+        "expert_id": 104,
+        "role": "medium"
+      },
+      {
+        "layer": 20,
+        "expert_id": 147,
+        "role": "hot"
+      },
+      {
+        "layer": 35,
+        "expert_id": 0,
+        "role": "cold"
+      },
+      {
+        "layer": 35,
+        "expert_id": 145,
+        "role": "medium"
+      },
+      {
+        "layer": 35,
+        "expert_id": 19,
+        "role": "hot"
+      }
+    ],
+    "budget_interpretation": "Budget is a fraction of total promoted weights. Each promoted W1 pair costs 4096 weights, each promoted W2 channel costs 512 weights. Channels are greedily selected by descending weight_l1 within each allocation policy."
+  },
+  "per_layer_stats": {
+    "5": {
+      "num_experts": 256,
+      "layer_total_sensitivity": 6669162.0569496155,
+      "w1_mean": 34.06259822865832,
+      "w1_median": 34.03852806799114,
+      "w1_std": 0.8215663341242336,
+      "w1_min": 32.098809368908405,
+      "w1_max": 42.463904317468405,
+      "w2_mean": 4.20476757416327,
+      "w2_median": 4.196017938200384,
+      "w2_std": 0.09481956493222114,
+      "w2_min": 4.020632219268009,
+      "w2_max": 4.5542257552733645,
+      "expert_total_mean": 26051.414284959435,
+      "expert_total_std": 528.8736594240522
+    },
+    "20": {
+      "num_experts": 256,
+      "layer_total_sensitivity": 6787426.354890704,
+      "w1_mean": 34.86399575418909,
+      "w1_median": 34.73506211861968,
+      "w1_std": 1.2409158125765125,
+      "w1_min": 30.95352813601494,
+      "w1_max": 38.529634557664394,
+      "w2_mean": 4.229989439769042,
+      "w2_median": 4.219778589147609,
+      "w2_std": 0.1609893411501564,
+      "w2_min": 3.715725399670191,
+      "w2_max": 5.091236045234837,
+      "expert_total_mean": 26513.384198791813,
+      "expert_total_std": 879.6816322659721
+    },
+    "35": {
+      "num_experts": 256,
+      "layer_total_sensitivity": 7411912.930016518,
+      "w1_mean": 37.897747096649255,
+      "w1_median": 37.6722581256181,
+      "w1_std": 1.400532881772582,
+      "w1_min": 34.837291564792395,
+      "w1_max": 43.00680572167039,
+      "w2_mean": 4.662665219429982,
+      "w2_median": 4.651039533637231,
+      "w2_std": 0.14549993533655592,
+      "w2_min": 4.260130382259376,
+      "w2_max": 5.2462661331519485,
+      "expert_total_mean": 28952.784882877022,
+      "expert_total_std": 965.5360665236886
+    }
+  },
+  "expert_ranking": {
+    "5": {
+      "top10": [
+        {
+          "expert_id": 64,
+          "score": 30206.162623405457
+        },
+        {
+          "expert_id": 199,
+          "score": 28127.558565855026
+        },
+        {
+          "expert_id": 179,
+          "score": 27748.5830886364
+        },
+        {
+          "expert_id": 126,
+          "score": 27577.232892036438
+        },
+        {
+          "expert_id": 241,
+          "score": 27530.28995203972
+        },
+        {
+          "expert_id": 54,
+          "score": 27302.814788341522
+        },
+        {
+          "expert_id": 183,
+          "score": 27278.064663887024
+        },
+        {
+          "expert_id": 217,
+          "score": 27227.014822244644
+        },
+        {
+          "expert_id": 191,
+          "score": 27216.331937789917
+        },
+        {
+          "expert_id": 37,
+          "score": 27184.568390369415
+        }
+      ],
+      "bottom10": [
+        {
+          "expert_id": 86,
+          "score": 24837.293089151382
+        },
+        {
+          "expert_id": 71,
+          "score": 24943.073419570923
+        },
+        {
+          "expert_id": 127,
+          "score": 25036.836580753326
+        },
+        {
+          "expert_id": 103,
+          "score": 25038.61444377899
+        },
+        {
+          "expert_id": 174,
+          "score": 25076.382535219193
+        },
+        {
+          "expert_id": 213,
+          "score": 25105.685207366943
+        },
+        {
+          "expert_id": 65,
+          "score": 25113.272537231445
+        },
+        {
+          "expert_id": 114,
+          "score": 25195.130711078644
+        },
+        {
+          "expert_id": 27,
+          "score": 25326.841259002686
+        },
+        {
+          "expert_id": 60,
+          "score": 25330.888936519623
+        }
+      ],
+      "top_10pct_experts_capture_pct": 0.10605209173480996,
+      "top_25pct_experts_capture_pct": 0.2561716496654237,
+      "experts_for_50pct": 127,
+      "experts_for_80pct": 204,
+      "experts_for_90pct": 230
+    },
+    "20": {
+      "top10": [
+        {
+          "expert_id": 164,
+          "score": 29516.43839764595
+        },
+        {
+          "expert_id": 22,
+          "score": 29008.512719273567
+        },
+        {
+          "expert_id": 14,
+          "score": 29007.656629681587
+        },
+        {
+          "expert_id": 55,
+          "score": 28673.23008275032
+        },
+        {
+          "expert_id": 27,
+          "score": 28550.632526278496
+        },
+        {
+          "expert_id": 130,
+          "score": 28545.642074108124
+        },
+        {
+          "expert_id": 161,
+          "score": 28526.238782167435
+        },
+        {
+          "expert_id": 226,
+          "score": 28299.36128425598
+        },
+        {
+          "expert_id": 90,
+          "score": 28280.00540649891
+        },
+        {
+          "expert_id": 67,
+          "score": 28212.256588459015
+        }
+      ],
+      "bottom10": [
+        {
+          "expert_id": 50,
+          "score": 23502.167450904846
+        },
+        {
+          "expert_id": 234,
+          "score": 24738.276017427444
+        },
+        {
+          "expert_id": 26,
+          "score": 24816.39663386345
+        },
+        {
+          "expert_id": 197,
+          "score": 24850.098706007004
+        },
+        {
+          "expert_id": 139,
+          "score": 24865.613636255264
+        },
+        {
+          "expert_id": 237,
+          "score": 24882.57181239128
+        },
+        {
+          "expert_id": 11,
+          "score": 24887.238605976105
+        },
+        {
+          "expert_id": 127,
+          "score": 24908.948882341385
+        },
+        {
+          "expert_id": 243,
+          "score": 25053.15028476715
+        },
+        {
+          "expert_id": 33,
+          "score": 25053.455166101456
+        }
+      ],
+      "top_10pct_experts_capture_pct": 0.10808166900322841,
+      "top_25pct_experts_capture_pct": 0.2607931444501705,
+      "experts_for_50pct": 125,
+      "experts_for_80pct": 203,
+      "experts_for_90pct": 229
+    },
+    "35": {
+      "top10": [
+        {
+          "expert_id": 169,
+          "score": 32763.83757019043
+        },
+        {
+          "expert_id": 207,
+          "score": 32236.86344051361
+        },
+        {
+          "expert_id": 127,
+          "score": 31529.2866846323
+        },
+        {
+          "expert_id": 31,
+          "score": 31506.38157260418
+        },
+        {
+          "expert_id": 226,
+          "score": 31376.207148313522
+        },
+        {
+          "expert_id": 232,
+          "score": 31141.934381246567
+        },
+        {
+          "expert_id": 23,
+          "score": 31136.73897099495
+        },
+        {
+          "expert_id": 48,
+          "score": 31072.555359840393
+        },
+        {
+          "expert_id": 113,
+          "score": 30992.724101424217
+        },
+        {
+          "expert_id": 100,
+          "score": 30984.700747013092
+        }
+      ],
+      "bottom10": [
+        {
+          "expert_id": 97,
+          "score": 26872.069462537766
+        },
+        {
+          "expert_id": 225,
+          "score": 26968.304222345352
+        },
+        {
+          "expert_id": 43,
+          "score": 27231.478178024292
+        },
+        {
+          "expert_id": 57,
+          "score": 27263.051017045975
+        },
+        {
+          "expert_id": 224,
+          "score": 27297.24631357193
+        },
+        {
+          "expert_id": 46,
+          "score": 27312.46675515175
+        },
+        {
+          "expert_id": 213,
+          "score": 27383.67716920376
+        },
+        {
+          "expert_id": 162,
+          "score": 27391.62888288498
+        },
+        {
+          "expert_id": 208,
+          "score": 27474.94345974922
+        },
+        {
+          "expert_id": 24,
+          "score": 27523.10315299034
+        }
+      ],
+      "top_10pct_experts_capture_pct": 0.10855872295065348,
+      "top_25pct_experts_capture_pct": 0.2613391845793643,
+      "experts_for_50pct": 125,
+      "experts_for_80pct": 203,
+      "experts_for_90pct": 230
+    }
+  },
+  "budget_comparison": {
+    "0.10": {
+      "uniform": {
+        "total_sensitivity": 18558261.390604854,
+        "remaining_fraction": 0.8892953589044634,
+        "promoted_sensitivity": 2310239.9512519836,
+        "actual_budget_fraction": 0.09999974568684895,
+        "layer_budgets": [
+          0.09999974568684895,
+          0.09999974568684895,
+          0.09999974568684895
+        ],
+        "layer_budget_shares": [
+          0.3333333333333333,
+          0.3333333333333333,
+          0.3333333333333333
+        ],
+        "layer_remaining_sensitivity": [
+          5963914.998185158,
+          6032980.758752704,
+          6561365.633666992
+        ],
+        "layer_promoted_sensitivity": [
+          705247.0587644577,
+          754445.5961380005,
+          850547.2963495255
+        ],
+        "promoted_units": {
+          "w1": 58980,
+          "w2": 18
+        },
+        "improvement_vs_uniform_pct": 0.0
+      },
+      "proportional": {
+        "total_sensitivity": 18551345.384441257,
+        "remaining_fraction": 0.8889639500481061,
+        "promoted_sensitivity": 2317155.9574155807,
+        "actual_budget_fraction": 0.09999953375922309,
+        "layer_budgets": [
+          0.09587351481119792,
+          0.09757359822591145,
+          0.10655148824055989
+        ],
+        "layer_budget_shares": [
+          0.31957987271567445,
+          0.32524684385311653,
+          0.355173283431209
+        ],
+        "layer_remaining_sensitivity": [
+          5992222.064479828,
+          6050539.795640826,
+          6508583.524320602
+        ],
+        "layer_promoted_sensitivity": [
+          676939.9924697876,
+          736886.5592498779,
+          903329.4056959152
+        ],
+        "promoted_units": {
+          "w1": 58980,
+          "w2": 17
+        },
+        "improvement_vs_uniform_pct": 0.0003726645518150932
+      },
+      "marginal_benefit": {
+        "total_sensitivity": 18458881.60968864,
+        "remaining_fraction": 0.8845331683049458,
+        "promoted_sensitivity": 2409619.7321681976,
+        "actual_budget_fraction": 0.09999995761447483,
+        "layer_budgets": [
+          0.0039475758870442705,
+          0.03701337178548177,
+          0.25903892517089844
+        ],
+        "layer_budget_shares": [
+          0.013158591867485837,
+          0.12337795824600145,
+          0.8634634498865127
+        ],
+        "layer_remaining_sensitivity": [
+          6636599.948863983,
+          6496889.887231708,
+          5325391.773592949
+        ],
+        "layer_promoted_sensitivity": [
+          32562.108085632324,
+          290536.4676589966,
+          2086521.1564235687
+        ],
+        "promoted_units": {
+          "w1": 58982,
+          "w2": 3
+        },
+        "improvement_vs_uniform_pct": 0.005355015689482914
+      }
+    },
+    "0.25": {
+      "uniform": {
+        "total_sensitivity": 15314063.659602046,
+        "remaining_fraction": 0.733836292733009,
+        "promoted_sensitivity": 5554437.682254791,
+        "actual_budget_fraction": 0.25,
+        "layer_budgets": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "layer_budget_shares": [
+          0.3333333333333333,
+          0.3333333333333333,
+          0.3333333333333333
+        ],
+        "layer_remaining_sensitivity": [
+          4945932.376976013,
+          4974436.864023089,
+          5393694.418602943
+        ],
+        "layer_promoted_sensitivity": [
+          1723229.6799736023,
+          1812989.4908676147,
+          2018218.5114135742
+        ],
+        "promoted_units": {
+          "w1": 147456,
+          "w2": 0
+        },
+        "improvement_vs_uniform_pct": 0.0
+      },
+      "proportional": {
+        "total_sensitivity": 15301920.807621837,
+        "remaining_fraction": 0.7332544180798516,
+        "promoted_sensitivity": 5566580.534235001,
+        "actual_budget_fraction": 0.24999978807237414,
+        "layer_budgets": [
+          0.23968505859375,
+          0.24393526713053384,
+          0.26637903849283856
+        ],
+        "layer_budget_shares": [
+          0.3195803490366186,
+          0.325247298556263,
+          0.3551723524071184
+        ],
+        "layer_remaining_sensitivity": [
+          5015451.097545624,
+          5016404.326373935,
+          5270065.383702278
+        ],
+        "layer_promoted_sensitivity": [
+          1653710.9594039917,
+          1771022.0285167694,
+          2141847.5463142395
+        ],
+        "promoted_units": {
+          "w1": 147455,
+          "w2": 7
+        },
+        "improvement_vs_uniform_pct": 0.0007929216078839845
+      },
+      "marginal_benefit": {
+        "total_sensitivity": 15194835.91837585,
+        "remaining_fraction": 0.7281230055509028,
+        "promoted_sensitivity": 5673665.423480988,
+        "actual_budget_fraction": 0.25,
+        "layer_budgets": [
+          0.036671956380208336,
+          0.18951416015625,
+          0.5238138834635416
+        ],
+        "layer_budget_shares": [
+          0.048895941840277776,
+          0.252685546875,
+          0.6984185112847222
+        ],
+        "layer_remaining_sensitivity": [
+          6402273.851200104,
+          5395962.2552737,
+          3396599.811902046
+        ],
+        "layer_promoted_sensitivity": [
+          266888.2057495117,
+          1391464.0996170044,
+          4015313.1181144714
+        ],
+        "promoted_units": {
+          "w1": 147456,
+          "w2": 0
+        },
+        "improvement_vs_uniform_pct": 0.007785506438811197
+      }
+    },
+    "0.50": {
+      "uniform": {
+        "total_sensitivity": 10129397.98024261,
+        "remaining_fraction": 0.48539173054682405,
+        "promoted_sensitivity": 10739103.361614227,
+        "actual_budget_fraction": 0.5,
+        "layer_budgets": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "layer_budget_shares": [
+          0.3333333333333333,
+          0.3333333333333333,
+          0.3333333333333333
+        ],
+        "layer_remaining_sensitivity": [
+          3278625.4361686707,
+          3286298.5377634764,
+          3564474.006310463
+        ],
+        "layer_promoted_sensitivity": [
+          3390536.620780945,
+          3501127.817127228,
+          3847438.9237060547
+        ],
+        "promoted_units": {
+          "w1": 294912,
+          "w2": 0
+        },
+        "improvement_vs_uniform_pct": 0.0
+      },
+      "proportional": {
+        "total_sensitivity": 10114990.378889918,
+        "remaining_fraction": 0.4847013311205943,
+        "promoted_sensitivity": 10753510.962966919,
+        "actual_budget_fraction": 0.49999957614474827,
+        "layer_budgets": [
+          0.4793701171875,
+          0.4878705342610677,
+          0.5327580769856771
+        ],
+        "layer_budget_shares": [
+          0.3195803490366186,
+          0.325247298556263,
+          0.3551723524071184
+        ],
+        "layer_remaining_sensitivity": [
+          3414748.773838043,
+          3366350.3280237913,
+          3333891.277028084
+        ],
+        "layer_promoted_sensitivity": [
+          3254413.2831115723,
+          3421076.026866913,
+          4078021.652988434
+        ],
+        "promoted_units": {
+          "w1": 294911,
+          "w2": 6
+        },
+        "improvement_vs_uniform_pct": 0.0014223551469488786
+      },
+      "marginal_benefit": {
+        "total_sensitivity": 10096790.365435481,
+        "remaining_fraction": 0.4838292026837558,
+        "promoted_sensitivity": 10771710.976421356,
+        "actual_budget_fraction": 0.5,
+        "layer_budgets": [
+          0.4235432942708333,
+          0.4609476725260417,
+          0.615509033203125
+        ],
+        "layer_budget_shares": [
+          0.2823621961805556,
+          0.3072984483506944,
+          0.41033935546875
+        ],
+        "layer_remaining_sensitivity": [
+          3784677.439048767,
+          3544781.2000368834,
+          2767331.7263498306
+        ],
+        "layer_promoted_sensitivity": [
+          2884484.6179008484,
+          3242645.154853821,
+          4644581.203666687
+        ],
+        "promoted_units": {
+          "w1": 294912,
+          "w2": 0
+        },
+        "improvement_vs_uniform_pct": 0.0032191068877666824
+      }
+    },
+    "0.75": {
+      "uniform": {
+        "total_sensitivity": 4931397.95542419,
+        "remaining_fraction": 0.23630819840105508,
+        "promoted_sensitivity": 15937103.386432648,
+        "actual_budget_fraction": 0.75,
+        "layer_budgets": [
+          0.75,
+          0.75,
+          0.75
+        ],
+        "layer_budget_shares": [
+          0.3333333333333333,
+          0.3333333333333333,
+          0.3333333333333333
+        ],
+        "layer_remaining_sensitivity": [
+          1603642.3217687607,
+          1581324.653010726,
+          1746430.980644703
+        ],
+        "layer_promoted_sensitivity": [
+          5065519.735180855,
+          5206101.701879978,
+          5665481.949371815
+        ],
+        "promoted_units": {
+          "w1": 393174,
+          "w2": 393552
+        },
+        "improvement_vs_uniform_pct": 0.0
+      },
+      "proportional": {
+        "total_sensitivity": 4895135.590041041,
+        "remaining_fraction": 0.2345705381450972,
+        "promoted_sensitivity": 15973365.751815796,
+        "actual_budget_fraction": 0.7499995761447482,
+        "layer_budgets": [
+          0.71905517578125,
+          0.7318064371744791,
+          0.7991371154785156
+        ],
+        "layer_budget_shares": [
+          0.3195802587326947,
+          0.3252474892213549,
+          0.35517225204595043
+        ],
+        "layer_remaining_sensitivity": [
+          1820151.2237429619,
+          1714323.5852879286,
+          1360660.781010151
+        ],
+        "layer_promoted_sensitivity": [
+          4849010.833206654,
+          5073102.769602776,
+          6051252.149006367
+        ],
+        "promoted_units": {
+          "w1": 393174,
+          "w2": 393550
+        },
+        "improvement_vs_uniform_pct": 0.007353364240917153
+      },
+      "marginal_benefit": {
+        "total_sensitivity": 4878008.487196803,
+        "remaining_fraction": 0.2337498226292261,
+        "promoted_sensitivity": 15990492.854660034,
+        "actual_budget_fraction": 0.75,
+        "layer_budgets": [
+          0.6779492696126302,
+          0.7202059427897135,
+          0.8518447875976562
+        ],
+        "layer_budget_shares": [
+          0.3013107864945023,
+          0.32009153012876157,
+          0.3785976833767361
+        ],
+        "layer_remaining_sensitivity": [
+          2116982.567756653,
+          1800247.547451377,
+          960778.3719887733
+        ],
+        "layer_promoted_sensitivity": [
+          4552179.489192963,
+          4987178.807439327,
+          6451134.558027744
+        ],
+        "promoted_units": {
+          "w1": 393174,
+          "w2": 393552
+        },
+        "improvement_vs_uniform_pct": 0.010826436785265287
+      }
+    }
+  },
+  "channel_concentration": {
+    "mean_gini_w1": 0.024680986835617178,
+    "mean_gini_w2": 0.0588721799432794,
+    "top10_captures_pct_w1": 0.10990284184486143,
+    "top25_captures_pct_w1": 0.26418393952398644,
+    "top50_captures_pct_w1": 0.5172145281056928,
+    "top10_captures_pct_w2": 0.114245698798828,
+    "top25_captures_pct_w2": 0.27729889396108515,
+    "top50_captures_pct_w2": 0.5392993172139734,
+    "by_layer": {
+      "5": {
+        "w1": {
+          "mean_gini": 0.012197817024204513,
+          "top10_captures_pct": 0.10578733600221563,
+          "top25_captures_pct": 0.2570505064929835,
+          "top50_captures_pct": 0.5084476395137074
+        },
+        "w2": {
+          "mean_gini": 0.039101922593879165,
+          "top10_captures_pct": 0.11118668559738609,
+          "top25_captures_pct": 0.26967837076163964,
+          "top50_captures_pct": 0.5258893305763939
+        }
+      },
+      "20": {
+        "w1": {
+          "mean_gini": 0.023213804299858296,
+          "top10_captures_pct": 0.10992702230538917,
+          "top25_captures_pct": 0.2637115460323872,
+          "top50_captures_pct": 0.5161701011271356
+        },
+        "w2": {
+          "mean_gini": 0.06875257060473752,
+          "top10_captures_pct": 0.11636791300097543,
+          "top25_captures_pct": 0.28185135834396446,
+          "top50_captures_pct": 0.5458964418854211
+        }
+      },
+      "35": {
+        "w1": {
+          "mean_gini": 0.03863133918278873,
+          "top10_captures_pct": 0.11399416722697947,
+          "top25_captures_pct": 0.2717897660465885,
+          "top50_captures_pct": 0.5270258436762354
+        },
+        "w2": {
+          "mean_gini": 0.06876204663122154,
+          "top10_captures_pct": 0.11518249779812251,
+          "top25_captures_pct": 0.28036695277765133,
+          "top50_captures_pct": 0.5461121791801054
+        }
+      }
+    }
+  },
+  "optimal_layer_budget_ratios": [
+    0.036671956380208336,
+    0.18951416015625,
+    0.5238138834635416
+  ]
+}

@@ -45,7 +45,7 @@ except ImportError:
     )
 
 
-DEFAULT_GUARD_TACTICS = (2,)
+DEFAULT_GUARD_TACTICS = (3,)
 
 
 def assert_gate_state(case_name: str, tactic: int, expected_gate: int,

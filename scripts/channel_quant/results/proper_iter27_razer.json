@@ -1,0 +1,1811 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "calibration": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "train",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "samples": 128,
+      "random_seed": 0,
+      "train_tokens": 2505800,
+      "sample_shape": [
+        128,
+        2048
+      ]
+    },
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "quantization": "simulated quantization: FP8 uses the unchanged standard path; FP4 uses standard NVFP4 or blockwise RaZeR NVFP4 (+5/-5 special replacement) before BF16 F.linear; FP32 logits and loss",
+    "protocol": {
+      "reference": "/home/jerry/Documents/fork_new/MC-MoE/eval_ppl_utils.py",
+      "full_test_join": true,
+      "seqlen": 2048,
+      "non_overlapping": true,
+      "loss_accumulation": "loss.float() * seqlen"
+    },
+    "experiment": "Iteration 27 RaZeR NVFP4 swap on strongest masks",
+    "success_targets": {
+      "joint_w1w2_with_topup": 6.5725,
+      "mxmoe_block_plus_channel_topup": 6.5763
+    },
+    "razer_variant": {
+      "format": "E4M3-compatible reassignment with unchanged NVFP4 block scales",
+      "groupsize": 16,
+      "special_values": [
+        -5.0,
+        5.0
+      ],
+      "selection_rule": "per block, choose the sign whose per-element best-of{standard FP4, special value} reconstruction gives lower squared error"
+    },
+    "calibration_summary": {
+      "active_experts_per_layer": {
+        "0": 256,
+        "1": 256,
+        "2": 256,
+        "3": 256,
+        "4": 256,
+        "5": 256,
+        "6": 256,
+        "7": 256,
+        "8": 256,
+        "9": 256,
+        "10": 256,
+        "11": 256,
+        "12": 256,
+        "13": 256,
+        "14": 256,
+        "15": 256,
+        "16": 256,
+        "17": 256,
+        "18": 256,
+        "19": 256,
+        "20": 256,
+        "21": 256,
+        "22": 256,
+        "23": 256,
+        "24": 256,
+        "25": 256,
+        "26": 256,
+        "27": 256,
+        "28": 256,
+        "29": 256,
+        "30": 256,
+        "31": 256,
+        "32": 256,
+        "33": 256,
+        "34": 254,
+        "35": 256,
+        "36": 256,
+        "37": 256,
+        "38": 256,
+        "39": 255
+      },
+      "routing_top5_per_layer": {
+        "0": [
+          {
+            "expert_idx": 108,
+            "count": 32486
+          },
+          {
+            "expert_idx": 31,
+            "count": 32478
+          },
+          {
+            "expert_idx": 89,
+            "count": 26609
+          },
+          {
+            "expert_idx": 64,
+            "count": 25557
+          },
+          {
+            "expert_idx": 242,
+            "count": 22152
+          }
+        ],
+        "1": [
+          {
+            "expert_idx": 238,
+            "count": 36946
+          },
+          {
+            "expert_idx": 205,
+            "count": 28231
+          },
+          {
+            "expert_idx": 138,
+            "count": 27117
+          },
+          {
+            "expert_idx": 42,
+            "count": 26926
+          },
+          {
+            "expert_idx": 11,
+            "count": 23465
+          }
+        ],
+        "2": [
+          {
+            "expert_idx": 88,
+            "count": 27729
+          },
+          {
+            "expert_idx": 223,
+            "count": 26575
+          },
+          {
+            "expert_idx": 41,
+            "count": 23791
+          },
+          {
+            "expert_idx": 40,
+            "count": 22729
+          },
+          {
+            "expert_idx": 6,
+            "count": 22340
+          }
+        ],
+        "3": [
+          {
+            "expert_idx": 61,
+            "count": 56163
+          },
+          {
+            "expert_idx": 39,
+            "count": 51599
+          },
+          {
+            "expert_idx": 94,
+            "count": 51474
+          },
+          {
+            "expert_idx": 19,
+            "count": 35783
+          },
+          {
+            "expert_idx": 101,
+            "count": 31973
+          }
+        ],
+        "4": [
+          {
+            "expert_idx": 25,
+            "count": 73143
+          },
+          {
+            "expert_idx": 204,
+            "count": 34852
+          },
+          {
+            "expert_idx": 212,
+            "count": 33057
+          },
+          {
+            "expert_idx": 93,
+            "count": 30583
+          },
+          {
+            "expert_idx": 206,
+            "count": 29553
+          }
+        ],
+        "5": [
+          {
+            "expert_idx": 203,
+            "count": 34353
+          },
+          {
+            "expert_idx": 46,
+            "count": 32763
+          },
+          {
+            "expert_idx": 64,
+            "count": 29125
+          },
+          {
+            "expert_idx": 52,
+            "count": 28791
+          },
+          {
+            "expert_idx": 253,
+            "count": 28337
+          }
+        ],
+        "6": [
+          {
+            "expert_idx": 162,
+            "count": 47584
+          },
+          {
+            "expert_idx": 100,
+            "count": 46196
+          },
+          {
+            "expert_idx": 126,
+            "count": 42282
+          },
+          {
+            "expert_idx": 85,
+            "count": 35482
+          },
+          {
+            "expert_idx": 250,
+            "count": 32207
+          }
+        ],
+        "7": [
+          {
+            "expert_idx": 215,
+            "count": 60715
+          },
+          {
+            "expert_idx": 254,
+            "count": 54031
+          },
+          {
+            "expert_idx": 210,
+            "count": 48121
+          },
+          {
+            "expert_idx": 130,
+            "count": 43871
+          },
+          {
+            "expert_idx": 74,
+            "count": 39121
+          }
+        ],
+        "8": [
+          {
+            "expert_idx": 150,
+            "count": 150864
+          },
+          {
+            "expert_idx": 228,
+            "count": 44088
+          },
+          {
+            "expert_idx": 28,
+            "count": 43366
+          },
+          {
+            "expert_idx": 9,
+            "count": 34979
+          },
+          {
+            "expert_idx": 199,
+            "count": 33051
+          }
+        ],
+        "9": [
+          {
+            "expert_idx": 42,
+            "count": 48837
+          },
+          {
+            "expert_idx": 66,
+            "count": 48239
+          },
+          {
+            "expert_idx": 65,
+            "count": 44686
+          },
+          {
+            "expert_idx": 37,
+            "count": 39239
+          },
+          {
+            "expert_idx": 34,
+            "count": 34751
+          }
+        ],
+        "10": [
+          {
+            "expert_idx": 246,
+            "count": 43051
+          },
+          {
+            "expert_idx": 181,
+            "count": 41607
+          },
+          {
+            "expert_idx": 20,
+            "count": 37864
+          },
+          {
+            "expert_idx": 85,
+            "count": 30697
+          },
+          {
+            "expert_idx": 187,
+            "count": 28316
+          }
+        ],
+        "11": [
+          {
+            "expert_idx": 115,
+            "count": 67278
+          },
+          {
+            "expert_idx": 250,
+            "count": 41251
+          },
+          {
+            "expert_idx": 240,
+            "count": 34727
+          },
+          {
+            "expert_idx": 110,
+            "count": 33487
+          },
+          {
+            "expert_idx": 71,
+            "count": 27712
+          }
+        ],
+        "12": [
+          {
+            "expert_idx": 241,
+            "count": 63173
+          },
+          {
+            "expert_idx": 20,
+            "count": 53619
+          },
+          {
+            "expert_idx": 36,
+            "count": 42001
+          },
+          {
+            "expert_idx": 3,
+            "count": 40088
+          },
+          {
+            "expert_idx": 125,
+            "count": 39822
+          }
+        ],
+        "13": [
+          {
+            "expert_idx": 224,
+            "count": 86181
+          },
+          {
+            "expert_idx": 41,
+            "count": 68572
+          },
+          {
+            "expert_idx": 124,
+            "count": 54219
+          },
+          {
+            "expert_idx": 175,
+            "count": 49590
+          },
+          {
+            "expert_idx": 207,
+            "count": 39736
+          }
+        ],
+        "14": [
+          {
+            "expert_idx": 105,
+            "count": 77395
+          },
+          {
+            "expert_idx": 168,
+            "count": 61447
+          },
+          {
+            "expert_idx": 247,
+            "count": 47811
+          },
+          {
+            "expert_idx": 250,
+            "count": 42582
+          },
+          {
+            "expert_idx": 16,
+            "count": 38314
+          }
+        ],
+        "15": [
+          {
+            "expert_idx": 245,
+            "count": 85201
+          },
+          {
+            "expert_idx": 63,
+            "count": 51628
+          },
+          {
+            "expert_idx": 135,
+            "count": 41368
+          },
+          {
+            "expert_idx": 26,
+            "count": 40568
+          },
+          {
+            "expert_idx": 32,
+            "count": 35252
+          }
+        ],
+        "16": [
+          {
+            "expert_idx": 224,
+            "count": 85098
+          },
+          {
+            "expert_idx": 6,
+            "count": 65850
+          },
+          {
+            "expert_idx": 184,
+            "count": 54412
+          },
+          {
+            "expert_idx": 30,
+            "count": 42551
+          },
+          {
+            "expert_idx": 180,
+            "count": 33918
+          }
+        ],
+        "17": [
+          {
+            "expert_idx": 220,
+            "count": 102300
+          },
+          {
+            "expert_idx": 255,
+            "count": 55862
+          },
+          {
+            "expert_idx": 232,
+            "count": 47075
+          },
+          {
+            "expert_idx": 247,
+            "count": 33810
+          },
+          {
+            "expert_idx": 237,
+            "count": 33681
+          }
+        ],
+        "18": [
+          {
+            "expert_idx": 196,
+            "count": 56188
+          },
+          {
+            "expert_idx": 21,
+            "count": 48048
+          },
+          {
+            "expert_idx": 235,
+            "count": 44295
+          },
+          {
+            "expert_idx": 25,
+            "count": 42841
+          },
+          {
+            "expert_idx": 145,
+            "count": 42509
+          }
+        ],
+        "19": [
+          {
+            "expert_idx": 160,
+            "count": 73973
+          },
+          {
+            "expert_idx": 197,
+            "count": 68270
+          },
+          {
+            "expert_idx": 253,
+            "count": 53127
+          },
+          {
+            "expert_idx": 42,
+            "count": 39691
+          },
+          {
+            "expert_idx": 13,
+            "count": 35001
+          }
+        ],
+        "20": [
+          {
+            "expert_idx": 150,
+            "count": 137868
+          },
+          {
+            "expert_idx": 228,
+            "count": 47578
+          },
+          {
+            "expert_idx": 9,
+            "count": 42577
+          },
+          {
+            "expert_idx": 28,
+            "count": 41895
+          },
+          {
+            "expert_idx": 211,
+            "count": 34418
+          }
+        ],
+        "21": [
+          {
+            "expert_idx": 42,
+            "count": 54241
+          },
+          {
+            "expert_idx": 66,
+            "count": 52786
+          },
+          {
+            "expert_idx": 6,
+            "count": 51275
+          },
+          {
+            "expert_idx": 44,
+            "count": 49300
+          },
+          {
+            "expert_idx": 65,
+            "count": 47472
+          }
+        ],
+        "22": [
+          {
+            "expert_idx": 181,
+            "count": 44031
+          },
+          {
+            "expert_idx": 246,
+            "count": 42351
+          },
+          {
+            "expert_idx": 20,
+            "count": 39515
+          },
+          {
+            "expert_idx": 28,
+            "count": 34854
+          },
+          {
+            "expert_idx": 85,
+            "count": 30480
+          }
+        ],
+        "23": [
+          {
+            "expert_idx": 115,
+            "count": 74919
+          },
+          {
+            "expert_idx": 110,
+            "count": 37487
+          },
+          {
+            "expert_idx": 131,
+            "count": 36598
+          },
+          {
+            "expert_idx": 240,
+            "count": 35656
+          },
+          {
+            "expert_idx": 71,
+            "count": 31791
+          }
+        ],
+        "24": [
+          {
+            "expert_idx": 241,
+            "count": 58066
+          },
+          {
+            "expert_idx": 20,
+            "count": 50447
+          },
+          {
+            "expert_idx": 36,
+            "count": 38759
+          },
+          {
+            "expert_idx": 125,
+            "count": 33264
+          },
+          {
+            "expert_idx": 230,
+            "count": 31576
+          }
+        ],
+        "25": [
+          {
+            "expert_idx": 224,
+            "count": 102164
+          },
+          {
+            "expert_idx": 47,
+            "count": 53237
+          },
+          {
+            "expert_idx": 124,
+            "count": 51235
+          },
+          {
+            "expert_idx": 237,
+            "count": 48997
+          },
+          {
+            "expert_idx": 41,
+            "count": 44242
+          }
+        ],
+        "26": [
+          {
+            "expert_idx": 105,
+            "count": 66877
+          },
+          {
+            "expert_idx": 168,
+            "count": 57623
+          },
+          {
+            "expert_idx": 160,
+            "count": 43232
+          },
+          {
+            "expert_idx": 250,
+            "count": 38197
+          },
+          {
+            "expert_idx": 247,
+            "count": 36869
+          }
+        ],
+        "27": [
+          {
+            "expert_idx": 218,
+            "count": 144410
+          },
+          {
+            "expert_idx": 245,
+            "count": 73259
+          },
+          {
+            "expert_idx": 63,
+            "count": 44880
+          },
+          {
+            "expert_idx": 26,
+            "count": 35116
+          },
+          {
+            "expert_idx": 95,
+            "count": 34162
+          }
+        ],
+        "28": [
+          {
+            "expert_idx": 224,
+            "count": 68527
+          },
+          {
+            "expert_idx": 130,
+            "count": 68100
+          },
+          {
+            "expert_idx": 6,
+            "count": 62619
+          },
+          {
+            "expert_idx": 184,
+            "count": 45270
+          },
+          {
+            "expert_idx": 105,
+            "count": 36217
+          }
+        ],
+        "29": [
+          {
+            "expert_idx": 220,
+            "count": 86249
+          },
+          {
+            "expert_idx": 247,
+            "count": 43218
+          },
+          {
+            "expert_idx": 232,
+            "count": 40808
+          },
+          {
+            "expert_idx": 73,
+            "count": 38748
+          },
+          {
+            "expert_idx": 180,
+            "count": 36574
+          }
+        ],
+        "30": [
+          {
+            "expert_idx": 196,
+            "count": 49740
+          },
+          {
+            "expert_idx": 235,
+            "count": 45612
+          },
+          {
+            "expert_idx": 25,
+            "count": 37382
+          },
+          {
+            "expert_idx": 27,
+            "count": 37327
+          },
+          {
+            "expert_idx": 209,
+            "count": 37298
+          }
+        ],
+        "31": [
+          {
+            "expert_idx": 197,
+            "count": 52619
+          },
+          {
+            "expert_idx": 253,
+            "count": 50656
+          },
+          {
+            "expert_idx": 190,
+            "count": 38119
+          },
+          {
+            "expert_idx": 13,
+            "count": 36471
+          },
+          {
+            "expert_idx": 160,
+            "count": 34815
+          }
+        ],
+        "32": [
+          {
+            "expert_idx": 66,
+            "count": 108338
+          },
+          {
+            "expert_idx": 117,
+            "count": 94408
+          },
+          {
+            "expert_idx": 103,
+            "count": 45047
+          },
+          {
+            "expert_idx": 55,
+            "count": 35319
+          },
+          {
+            "expert_idx": 212,
+            "count": 34314
+          }
+        ],
+        "33": [
+          {
+            "expert_idx": 29,
+            "count": 53359
+          },
+          {
+            "expert_idx": 47,
+            "count": 35304
+          },
+          {
+            "expert_idx": 10,
+            "count": 33150
+          },
+          {
+            "expert_idx": 212,
+            "count": 28514
+          },
+          {
+            "expert_idx": 197,
+            "count": 27341
+          }
+        ],
+        "34": [
+          {
+            "expert_idx": 202,
+            "count": 96643
+          },
+          {
+            "expert_idx": 102,
+            "count": 40773
+          },
+          {
+            "expert_idx": 48,
+            "count": 40497
+          },
+          {
+            "expert_idx": 173,
+            "count": 38447
+          },
+          {
+            "expert_idx": 47,
+            "count": 36903
+          }
+        ],
+        "35": [
+          {
+            "expert_idx": 126,
+            "count": 47855
+          },
+          {
+            "expert_idx": 3,
+            "count": 43255
+          },
+          {
+            "expert_idx": 34,
+            "count": 41847
+          },
+          {
+            "expert_idx": 255,
+            "count": 40286
+          },
+          {
+            "expert_idx": 159,
+            "count": 40086
+          }
+        ],
+        "36": [
+          {
+            "expert_idx": 1,
+            "count": 41937
+          },
+          {
+            "expert_idx": 84,
+            "count": 40657
+          },
+          {
+            "expert_idx": 31,
+            "count": 36661
+          },
+          {
+            "expert_idx": 18,
+            "count": 35425
+          },
+          {
+            "expert_idx": 15,
+            "count": 35381
+          }
+        ],
+        "37": [
+          {
+            "expert_idx": 55,
+            "count": 67296
+          },
+          {
+            "expert_idx": 3,
+            "count": 54991
+          },
+          {
+            "expert_idx": 59,
+            "count": 51414
+          },
+          {
+            "expert_idx": 87,
+            "count": 41143
+          },
+          {
+            "expert_idx": 102,
+            "count": 40917
+          }
+        ],
+        "38": [
+          {
+            "expert_idx": 33,
+            "count": 64734
+          },
+          {
+            "expert_idx": 209,
+            "count": 61976
+          },
+          {
+            "expert_idx": 157,
+            "count": 52336
+          },
+          {
+            "expert_idx": 4,
+            "count": 46563
+          },
+          {
+            "expert_idx": 168,
+            "count": 46419
+          }
+        ],
+        "39": [
+          {
+            "expert_idx": 35,
+            "count": 147375
+          },
+          {
+            "expert_idx": 52,
+            "count": 50223
+          },
+          {
+            "expert_idx": 239,
+            "count": 48599
+          },
+          {
+            "expert_idx": 213,
+            "count": 45184
+          },
+          {
+            "expert_idx": 181,
+            "count": 42520
+          }
+        ]
+      }
+    },
+    "references": {
+      "bf16": {
+        "ppl": 6.58517,
+        "memory_gb": 71.904
+      },
+      "uniform_fp4": {
+        "ppl": 6.620491,
+        "memory_gb": 23.585
+      },
+      "uniform_fp8": {
+        "ppl": 6.606242,
+        "memory_gb": 39.691
+      },
+      "routing_per_expert_25pct": {
+        "ppl": 6.612707,
+        "memory_gb": 27.612
+      },
+      "perchannel_akurt_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_w1_10_w2_40": {
+        "ppl": 6.616776,
+        "memory_gb": 26.806
+      },
+      "mxmoe_per_block": {
+        "ppl": 6.584854,
+        "memory_gb": 27.612
+      },
+      "mc_moe_per_expert": {
+        "ppl": 6.612743,
+        "memory_gb": 27.612
+      },
+      "mxmoe_perturbation_perchannel": {
+        "ppl": 6.59972,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_25pct": {
+        "ppl": 6.590387,
+        "memory_gb": 27.612
+      },
+      "perturbation_proportional_w1_4_w2_16": {
+        "ppl": 6.606149,
+        "memory_gb": 24.874
+      },
+      "mxmoe_block_plus_channel_topup": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "output_perturbation_per_channel_9experts": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "topup_01pct": {
+        "ppl": 6.5769,
+        "memory_gb": 20.251
+      },
+      "topup_02pct": {
+        "ppl": 6.5788,
+        "memory_gb": 20.37
+      },
+      "topup_03pct": {
+        "ppl": 6.5791,
+        "memory_gb": 20.488
+      },
+      "topup_05pct": {
+        "ppl": 6.5763,
+        "memory_gb": 20.743
+      },
+      "topup_08pct": {
+        "ppl": 6.5798,
+        "memory_gb": 21.1
+      },
+      "topup_10pct": {
+        "ppl": 6.5791,
+        "memory_gb": 21.337
+      },
+      "topup_15pct": {
+        "ppl": 6.5872,
+        "memory_gb": 21.948
+      },
+      "topup_20pct": {
+        "ppl": 6.5939,
+        "memory_gb": 22.542
+      },
+      "perchannel_hessian_25pct": {
+        "ppl": 6.614806,
+        "memory_gb": 27.612
+      },
+      "perchannel_hessian_w1_4_w2_16": {
+        "ppl": 6.606775,
+        "memory_gb": 24.874
+      },
+      "perchannel_akurt_30pct": {
+        "ppl": 6.627915,
+        "memory_gb": 28.417
+      },
+      "perchannel_akurt_40pct": {
+        "ppl": 6.614058,
+        "memory_gb": 30.028
+      },
+      "mxmoe_topup_hessian_5pct": {
+        "ppl": 6.578639,
+        "memory_gb": 28.222
+      },
+      "perturbation_proportional_30pct": {
+        "ppl": 6.5893,
+        "memory_gb": 28.417
+      },
+      "perturbation_proportional_40pct": {
+        "ppl": 6.596071,
+        "memory_gb": 30.028
+      },
+      "mxmoe_block_35pct": {
+        "ppl": 6.57889,
+        "memory_gb": 29.222
+      },
+      "mxmoe_layer_adaptive": {
+        "ppl": 6.583283,
+        "memory_gb": 27.813
+      },
+      "global_channel_ranking": {
+        "ppl": 6.612899,
+        "memory_gb": 25.281
+      },
+      "mxmoe_block_15pct": {
+        "ppl": 6.584293,
+        "memory_gb": 26.001
+      },
+      "mxmoe_block_20pct": {
+        "ppl": 6.58199,
+        "memory_gb": 26.806
+      },
+      "mxmoe_block_10pct": {
+        "ppl": 6.58375,
+        "memory_gb": 25.196
+      },
+      "perchannel_akurt_w1_0_w2_25": {
+        "ppl": 6.618204,
+        "memory_gb": 24.927
+      },
+      "perchannel_akurt_w1_0_w2_40": {
+        "ppl": 6.615269,
+        "memory_gb": 25.733
+      },
+      "mxmoe_topup_w2_only_5pct": {
+        "ppl": 6.583489,
+        "memory_gb": 27.774
+      },
+      "mxmoe_topup_perturbation_channel": {
+        "ppl": 6.580924,
+        "memory_gb": 28.222
+      },
+      "mxmoe_topup_perturbation_10pct": {
+        "ppl": 6.578362,
+        "memory_gb": 28.817
+      },
+      "mxmoe_topup_perturbation_15pct": {
+        "ppl": 6.582766,
+        "memory_gb": 29.427
+      },
+      "pure_perturbation_perchannel_25pct": {
+        "ppl": 6.613174,
+        "memory_gb": 27.612
+      },
+      "mxmoe_block_w2_heavy": {
+        "ppl": 6.598593,
+        "memory_gb": 27.612
+      },
+      "joint_w1_w2_optimization": {
+        "ppl": 6.576243,
+        "memory_gb": 28.953
+      },
+      "mxmoe_topup_combined_5pct": {
+        "ppl": 6.581458,
+        "memory_gb": 28.222
+      },
+      "perturbation_per_channel_w1_4_w2_16": {
+        "ppl": 6.612314,
+        "memory_gb": 24.874
+      },
+      "scalebits_topup_5pct": {
+        "ppl": 6.578943,
+        "memory_gb": 28.222
+      },
+      "scalebits_perchannel_w1_4_w2_16": {
+        "ppl": 6.604948,
+        "memory_gb": 24.874
+      },
+      "dynamic_oracle_25pct": {
+        "ppl": 6.600562,
+        "memory_gb": 27.612
+      },
+      "dynamic_oracle_10pct": {
+        "ppl": 6.593817,
+        "memory_gb": 25.221
+      },
+      "cascade_aware_25pct": {
+        "ppl": 6.628183,
+        "memory_gb": 27.601
+      },
+      "cascade_aware_reverse": {
+        "ppl": 6.581219,
+        "memory_gb": 27.601
+      },
+      "mxmoe_topup_8pct_at_20pct_budget": {
+        "ppl": 6.580448,
+        "memory_gb": 27.838
+      },
+      "joint_w1w2_with_topup": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_topup_1pct": {
+        "ppl": 6.578734,
+        "memory_gb": 29.058
+      },
+      "joint_topup_3pct": {
+        "ppl": 6.574401,
+        "memory_gb": 29.269
+      },
+      "joint_topup_5pct": {
+        "ppl": 6.573759,
+        "memory_gb": 29.496
+      },
+      "joint_topup_10pct": {
+        "ppl": 6.581485,
+        "memory_gb": 30.024
+      },
+      "joint_topup_15pct": {
+        "ppl": 6.590167,
+        "memory_gb": 30.567
+      },
+      "joint_cascade_reverse_topup_5pct": {
+        "ppl": 6.574862,
+        "memory_gb": 29.486
+      },
+      "joint_cascade_reverse_topup_10pct": {
+        "ppl": 6.580087,
+        "memory_gb": 30.015
+      },
+      "mxmoe_cascade_reverse_topup_5pct": {
+        "ppl": 6.581586,
+        "memory_gb": 28.212
+      },
+      "replicate_iter07_joint": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "joint_w1w2_topup_w2_only_5pct": {
+        "ppl": 6.579621,
+        "memory_gb": 29.087
+      },
+      "joint_w1w2_topup_w2_only_3pct": {
+        "ppl": 6.582795,
+        "memory_gb": 29.033
+      },
+      "joint_w1w2_at_30pct_base": {
+        "ppl": 6.582143,
+        "memory_gb": 30.516
+      },
+      "joint_w1w2_at_40pct_base": {
+        "ppl": 6.577684,
+        "memory_gb": 30.006
+      },
+      "mxmoe_topup_w1_0_w2_10": {
+        "ppl": 6.584496,
+        "memory_gb": 27.938
+      },
+      "ensemble_metric_topup_5pct": {
+        "ppl": 6.578666,
+        "memory_gb": 28.222
+      },
+      "adaptive_topup_per_expert": {
+        "ppl": 6.5804,
+        "memory_gb": 27.863
+      },
+      "perchannel_real_hessian_25pct": {
+        "ppl": 6.603661,
+        "memory_gb": 27.612
+      },
+      "perchannel_real_hessian_w1_4_w2_16": {
+        "ppl": 6.603787,
+        "memory_gb": 24.874
+      },
+      "perchannel_real_hessian_w1_0_w2_25": {
+        "ppl": 6.615687,
+        "memory_gb": 24.927
+      },
+      "perchannel_output_perturbation_25pct": {
+        "ppl": 6.599597,
+        "memory_gb": 27.612
+      },
+      "perchannel_output_perturbation_w1_4_w2_16": {
+        "ppl": 6.603022,
+        "memory_gb": 24.874
+      },
+      "perchannel_output_perturbation_w1_0_w2_25": {
+        "ppl": 6.61138,
+        "memory_gb": 24.927
+      },
+      "micromix_threshold": {
+        "ppl": 6.618633,
+        "memory_gb": 28.946
+      },
+      "micromix_threshold_routing": {
+        "ppl": 6.618053,
+        "memory_gb": 26.266
+      },
+      "router_affinity_weighted_25pct": {
+        "ppl": 6.589607,
+        "memory_gb": 27.612
+      },
+      "router_affinity_weighted_w1_4_w2_16": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "cross_expert_outlier_agreement_5pct": {
+        "ppl": 6.62236,
+        "memory_gb": 23.589
+      },
+      "cross_expert_outlier_10pct": {
+        "ppl": 6.622091,
+        "memory_gb": 23.619
+      },
+      "hessian_normalized_25pct": {
+        "ppl": 6.616846,
+        "memory_gb": 27.612
+      },
+      "hessian_normalized_w1_4_w2_16": {
+        "ppl": 6.609929,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_10pct": {
+        "ppl": 6.605976,
+        "memory_gb": 24.23
+      },
+      "ra_perchannel_15pct": {
+        "ppl": 6.591708,
+        "memory_gb": 24.552
+      },
+      "ra_perchannel_20pct": {
+        "ppl": 6.586086,
+        "memory_gb": 24.874
+      },
+      "ra_perchannel_30pct": {
+        "ppl": 6.592682,
+        "memory_gb": 25.518
+      },
+      "ra_perchannel_40pct": {
+        "ppl": 6.593389,
+        "memory_gb": 26.162
+      },
+      "ra_plus_mxmoe_topup_5pct": {
+        "ppl": 6.582004,
+        "memory_gb": 27.828
+      },
+      "ra_plus_mxmoe_topup_3pct": {
+        "ppl": 6.583331,
+        "memory_gb": 27.741
+      },
+      "ra_joint_w1w2": {
+        "ppl": 6.576245,
+        "memory_gb": 28.283
+      },
+      "gptq_residual_perchannel_20pct": {
+        "ppl": 6.606762,
+        "memory_gb": 24.874
+      },
+      "gptq_residual_perchannel_25pct": {
+        "ppl": 6.601963,
+        "memory_gb": 25.196
+      },
+      "gptq_residual_perchannel_w1_4_w2_16": {
+        "ppl": 6.606762,
+        "memory_gb": 24.874
+      },
+      "gptq_residual_plus_mxmoe_topup_5pct": {
+        "ppl": 6.573739,
+        "memory_gb": 28.222
+      },
+      "gptq_residual_plus_router_affinity_25pct": {
+        "ppl": 6.593733,
+        "memory_gb": 25.196
+      },
+      "gptq_residual_joint_w1w2": {
+        "ppl": 6.578532,
+        "memory_gb": 28.283
+      },
+      "wanda_w1_4_w2_16": {
+        "ppl": 6.610881,
+        "memory_gb": 24.874
+      },
+      "rqe_w1_4_w2_16": {
+        "ppl": 6.628687,
+        "memory_gb": 24.874
+      },
+      "baq_equalloss_2x": {
+        "ppl": 6.607711,
+        "memory_gb": 25.887
+      },
+      "baq_equalloss_3x": {
+        "ppl": 6.604456,
+        "memory_gb": 24.761
+      },
+      "ra_joint_w1w2_topup_3pct": {
+        "ppl": 6.577888,
+        "memory_gb": 29.269
+      },
+      "ra_joint_w1w2_topup_5pct": {
+        "ppl": 6.577093,
+        "memory_gb": 29.496
+      },
+      "ra_joint_w1w2_topup_8pct": {
+        "ppl": 6.584755,
+        "memory_gb": 29.813
+      },
+      "ra_extreme_hot": {
+        "ppl": 6.606742,
+        "memory_gb": 26.202
+      },
+      "ra_extreme_hot_perchannel": {
+        "ppl": 6.602858,
+        "memory_gb": 26.041
+      },
+      "ra_mxmoe_topup_router_affinity_8pct": {
+        "ppl": 6.583336,
+        "memory_gb": 28.579
+      },
+      "ra_perchannel_30pct_uniform": {
+        "ppl": 6.614181,
+        "memory_gb": 25.525
+      },
+      "output_perturbation_mxmoe_topup_router_affinity_5pct": {
+        "ppl": 6.575752,
+        "memory_gb": 29.498
+      },
+      "mxmoe_block_plus_residual_1pct": {
+        "ppl": 6.574685,
+        "memory_gb": 27.73
+      },
+      "mxmoe_block_plus_residual_3pct": {
+        "ppl": 6.578832,
+        "memory_gb": 27.967
+      },
+      "mxmoe_block_plus_residual_5pct": {
+        "ppl": 6.574262,
+        "memory_gb": 28.222
+      },
+      "mxmoe_block_plus_residual_8pct": {
+        "ppl": 6.581616,
+        "memory_gb": 28.579
+      },
+      "joint_topup_residual_5pct": {
+        "ppl": 6.576196,
+        "memory_gb": 29.496
+      },
+      "joint_topup_residual_3pct": {
+        "ppl": 6.57291,
+        "memory_gb": 29.269
+      },
+      "mxmoe_block_plus_fp8_3pct_and_residual_3pct": {
+        "ppl": 6.578276,
+        "memory_gb": 28.323
+      },
+      "joint_fp8_3pct_residual_3pct": {
+        "ppl": 6.577194,
+        "memory_gb": 29.585
+      },
+      "cfk_joint_plus_0p25gb": {
+        "ppl": 6.58713,
+        "memory_gb": 28.184
+      },
+      "cfk_joint_plus_0p50gb": {
+        "ppl": 6.579591,
+        "memory_gb": 28.434
+      },
+      "cfk_union_plus_0p25gb": {
+        "ppl": 6.589761,
+        "memory_gb": 29.748
+      },
+      "cfk_union_plus_0p50gb": {
+        "ppl": 6.588386,
+        "memory_gb": 29.998
+      },
+      "cfk_mxmoe_plus_0p25gb": {
+        "ppl": 6.575977,
+        "memory_gb": 28.472
+      },
+      "cfk_mxmoe_plus_0p50gb": {
+        "ppl": 6.586991,
+        "memory_gb": 28.722
+      },
+      "agq_perchannel_20pct": {
+        "ppl": 6.601373,
+        "memory_gb": 25.196
+      },
+      "agq_perchannel_w1_4_w2_16": {
+        "ppl": 6.600996,
+        "memory_gb": 24.874
+      },
+      "agq_joint_w1w2": {
+        "ppl": 6.572765,
+        "memory_gb": 27.934
+      },
+      "agq_joint_w1w2_topup_5pct": {
+        "ppl": 6.576964,
+        "memory_gb": 29.496
+      },
+      "agq_mxmoe_topup_5pct": {
+        "ppl": 6.574663,
+        "memory_gb": 28.222
+      },
+      "agq_union_router_affinity_topup_5pct": {
+        "ppl": 6.575529,
+        "memory_gb": 29.498
+      },
+      "cfk_mxmoe_plus_0p10gb": {
+        "ppl": 6.577299,
+        "memory_gb": 28.322
+      },
+      "cfk_mxmoe_plus_0p15gb": {
+        "ppl": 6.576781,
+        "memory_gb": 28.372
+      },
+      "cfk_mxmoe_plus_0p20gb": {
+        "ppl": 6.578807,
+        "memory_gb": 28.422
+      },
+      "cfk_mxmoe_plus_0p30gb": {
+        "ppl": 6.578927,
+        "memory_gb": 28.522
+      },
+      "cfk_mxmoe_w2only_plus_0p10gb": {
+        "ppl": 6.577299,
+        "memory_gb": 28.322
+      },
+      "cfk_mxmoe_w2only_plus_0p20gb": {
+        "ppl": 6.578809,
+        "memory_gb": 28.422
+      },
+      "cfk_mxmoe_w2only_plus_0p30gb": {
+        "ppl": 6.578927,
+        "memory_gb": 28.522
+      },
+      "cfk_mxmoe_smallbundles_plus_0p20gb": {
+        "ppl": 6.582004,
+        "memory_gb": 28.422
+      },
+      "routergap_joint_topup_3pct": {
+        "ppl": 6.590375,
+        "memory_gb": 27.73
+      },
+      "routergap_joint_topup_5pct": {
+        "ppl": 6.594716,
+        "memory_gb": 27.815
+      },
+      "routergap_joint_topup_8pct": {
+        "ppl": 6.592926,
+        "memory_gb": 27.934
+      },
+      "routergap_union_topup_5pct": {
+        "ppl": 6.573449,
+        "memory_gb": 29.498
+      },
+      "routergap_mxmoe_topup_8pct": {
+        "ppl": 6.577843,
+        "memory_gb": 28.579
+      },
+      "routergap_perchannel_20pct": {
+        "ppl": 6.605868,
+        "memory_gb": 24.874
+      },
+      "joint_topup_residual_2pct": {
+        "ppl": 6.57472,
+        "memory_gb": 28.172
+      },
+      "joint_topup_residual_4pct": {
+        "ppl": 6.574115,
+        "memory_gb": 28.41
+      },
+      "union_topup_residual_2pct": {
+        "ppl": 6.579173,
+        "memory_gb": 29.709
+      },
+      "union_topup_residual_3pct": {
+        "ppl": 6.580066,
+        "memory_gb": 29.814
+      },
+      "union_topup_residual_5pct": {
+        "ppl": 6.581548,
+        "memory_gb": 30.04
+      },
+      "routergap_union_residual_3pct": {
+        "ppl": 6.575683,
+        "memory_gb": 29.814
+      },
+      "serq_joint_salient_1pct": {
+        "ppl": 6.579768,
+        "memory_gb": 28.578
+      },
+      "serq_joint_salient_3pct": {
+        "ppl": 6.583334,
+        "memory_gb": 29.867
+      },
+      "serq_union_salient_1pct": {
+        "ppl": 6.584853,
+        "memory_gb": 30.142
+      },
+      "serq_union_salient_3pct": {
+        "ppl": 6.585099,
+        "memory_gb": 31.431
+      },
+      "serq_mxmoe_salient_1pct": {
+        "ppl": 6.575306,
+        "memory_gb": 28.866
+      },
+      "serq_mxmoe_salient_3pct": {
+        "ppl": 6.579932,
+        "memory_gb": 30.155
+      },
+      "wushdiag_joint_base": {
+        "ppl": 6.588455,
+        "memory_gb": 28.953
+      },
+      "wushdiag_joint_topup_5pct": {
+        "ppl": 6.594819,
+        "memory_gb": 27.815
+      },
+      "wushdiag_mxmoe_topup_5pct": {
+        "ppl": 6.589036,
+        "memory_gb": 28.222
+      },
+      "wushdiag_union_topup_5pct": {
+        "ppl": 6.588998,
+        "memory_gb": 29.498
+      },
+      "wushdiag_perchannel_ra_20pct": {
+        "ppl": 6.59304,
+        "memory_gb": 24.874
+      },
+      "wushdiag_joint_residual_2pct": {
+        "ppl": 6.592798,
+        "memory_gb": 28.172
+      },
+      "scalebits128_joint_topup_5pct": {
+        "ppl": 6.573678,
+        "memory_gb": 27.815
+      },
+      "scalebits128_joint_topup_8pct": {
+        "ppl": 6.580198,
+        "memory_gb": 27.934
+      },
+      "scalebits128_union_topup_5pct": {
+        "ppl": 6.572765,
+        "memory_gb": 29.498
+      },
+      "restore_lm_head_bf16": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "restore_embeddings_bf16": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "restore_attention_bf16": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "restore_shared_expert_bf16": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "restore_layer0_moe_bf16": {
+        "ppl": 6.575724,
+        "memory_gb": 29.142
+      },
+      "restore_layer19_moe_bf16": {
+        "ppl": 6.572213,
+        "memory_gb": 29.052
+      },
+      "restore_layer39_moe_bf16": {
+        "ppl": 6.571918,
+        "memory_gb": 28.893
+      },
+      "restore_top3_layers_moe_bf16": {
+        "ppl": 6.571202,
+        "memory_gb": 30.856
+      },
+      "router_retune_mse_10steps": {
+        "ppl": 6.575568,
+        "memory_gb": 27.934
+      },
+      "baseline_no_retune": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "router_retune_mse_50steps": {
+        "ppl": 6.57775,
+        "memory_gb": 27.934
+      },
+      "router_retune_mse_100steps": {
+        "ppl": 6.578102,
+        "memory_gb": 27.934
+      },
+      "baseline_no_correction": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      },
+      "correction_scalar": {
+        "ppl": 6.573451,
+        "memory_gb": 27.934
+      },
+      "correction_perchannel": {
+        "ppl": 6.587261,
+        "memory_gb": 28.018
+      },
+      "correction_scalar_top10layers": {
+        "ppl": 4.709187,
+        "memory_gb": 27.934
+      },
+      "correction_bias_only": {
+        "ppl": 6.574679,
+        "memory_gb": 27.934
+      },
+      "maca_joint_w1w2_topup": {
+        "ppl": 6.570344,
+        "memory_gb": 27.934
+      },
+      "maca_mxmoe_topup_5pct": {
+        "ppl": 6.583902,
+        "memory_gb": 28.222
+      },
+      "maca_perchannel_ra_20pct": {
+        "ppl": 6.589496,
+        "memory_gb": 24.874
+      },
+      "standard_joint_w1w2_topup": {
+        "ppl": 6.572458,
+        "memory_gb": 27.934
+      }
+    },
+    "runtime_seconds": 1150.859
+  },
+  "results": {
+    "razer_joint_w1w2_topup": {
+      "description": "Reuse the current best joint three-tier plus 8% within-expert topup mask, but quantize every FP4 channel with the RaZeR NVFP4 element assignment.",
+      "mode": "per_channel",
+      "ppl": 6.600719,
+      "nll": 1.887179,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697686016,
+      "fp8_fraction": 0.270012,
+      "w1_pair_fraction": 0.270012,
+      "w2_channel_fraction": 0.270012,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 199.0,
+      "budget_source": "global_perturbation_percentile_buckets_with_medium_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "medium_tier_w1_fraction": 0.08,
+      "medium_tier_w2_fraction": 0.08,
+      "medium_tier_w1_pairs": 41,
+      "medium_tier_w2_channels": 164,
+      "source_base": "joint_w1w2_with_topup",
+      "fp4_quantization": "razer_nvfp4_e4m3_plusminus5"
+    },
+    "razer_mxmoe_topup_5pct": {
+      "description": "Reuse the MxMoE block-plus-channel topup mask, but quantize every remaining FP4 channel with the RaZeR NVFP4 element assignment.",
+      "mode": "per_channel",
+      "ppl": 6.600644,
+      "nll": 1.887167,
+      "memory_gb": 28.222,
+      "fp8_weights": 9273524224,
+      "fp8_fraction": 0.287888,
+      "w1_pair_fraction": 0.220602,
+      "w2_channel_fraction": 0.422459,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 187.8,
+      "mxmoe_promoted_w1_projections": 1832,
+      "mxmoe_promoted_w2_projections": 4016,
+      "topup_fraction": 0.05,
+      "source_base": "mxmoe_block_plus_channel_topup",
+      "fp4_quantization": "razer_nvfp4_e4m3_plusminus5"
+    },
+    "razer_uniform_fp4": {
+      "description": "Quantize all expert weights with uniform RaZeR NVFP4 and evaluate the dequantized BF16 weights with F.linear.",
+      "mode": "uniform_fp4",
+      "ppl": 6.639113,
+      "nll": 1.892978,
+      "memory_gb": 23.585,
+      "fp8_weights": 0,
+      "fp8_fraction": 0.0,
+      "w1_pair_fraction": 0.0,
+      "w2_channel_fraction": 0.0,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 186.2,
+      "source_base": "uniform_fp4",
+      "fp4_quantization": "razer_nvfp4_e4m3_plusminus5"
+    },
+    "standard_joint_w1w2_topup": {
+      "description": "Rebuild the current best joint three-tier plus 8% within-expert topup mask with the unchanged standard NVFP4 path as a control.",
+      "mode": "per_channel",
+      "ppl": 6.572458,
+      "nll": 1.882888,
+      "memory_gb": 27.934,
+      "fp8_weights": 8697686016,
+      "fp8_fraction": 0.270012,
+      "w1_pair_fraction": 0.270012,
+      "w2_channel_fraction": 0.270012,
+      "eval_chunks": 145,
+      "seqlen": 2048,
+      "time_s": 183.3,
+      "budget_source": "global_perturbation_percentile_buckets_with_medium_topup",
+      "joint_precision_threshold_p50": 2.1648120880126953,
+      "joint_precision_threshold_p75": 4.49111270904541,
+      "joint_precision_high_experts": 2560,
+      "joint_precision_medium_experts": 2559,
+      "joint_precision_low_experts": 5121,
+      "medium_tier_w1_fraction": 0.08,
+      "medium_tier_w2_fraction": 0.08,
+      "medium_tier_w1_pairs": 41,
+      "medium_tier_w2_channels": 164,
+      "source_base": "joint_w1w2_with_topup",
+      "fp4_quantization": "standard_nvfp4",
+      "expected_reference_ppl": 6.5725
+    }
+  }
+}
