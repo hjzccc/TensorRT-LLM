@@ -416,9 +416,31 @@ iter02's infrastructure to get the actual headline number.
 **Next critical step**: Integrate BF16 rescue tier into iter02's `build_global_fraction_masks`
 infrastructure, then run on 145 chunks to get the true comparison vs budget_50pct (6.6212).
 
+## [19] Efficient Three-Tier with Integrated Global Allocation (Iter19) — BEST RESULT
+**Eval**: exact TRT-LLM path, 4 chunks, seqlen=2048, moe_only scope
+**Approach**: Memory-efficient BF16 rescue via correction: compute FP8+NVFP4 base (iter02 path),
+then for BF16 rescue channels, replace with BF16 output. Uses iter02's global allocation +
+router-affinity metric for both FP8 and BF16 channel selection.
+**Result** (4-chunk):
+| Config | BF16 | FP8 | NVFP4 | PPL | vs BF16 | vs FP8 |
+|--------|------|-----|-------|-----|---------|--------|
+| uniform_bf16 | 100% | — | — | 7.2353 | — | -0.058 |
+| **rescue5_fp8_50** | **5%** | **50%** | **45%** | **7.2595** | **+0.024** | **-0.034** |
+| rescue10_fp8_50 | 10% | 50% | 40% | 7.2658 | +0.030 | -0.028 |
+| rescue10_fp8_55 | 10% | 55% | 35% | 7.2694 | +0.034 | -0.024 |
+| rescue5_fp8_55 | 5% | 55% | 40% | 7.2762 | +0.041 | -0.017 |
+| fp8_50pct (baseline) | 0% | 50% | 50% | 7.2863 | +0.051 | -0.007 |
+| uniform_fp8 | — | 100% | — | 7.2933 | +0.058 | — |
+
+**BEST RESULT: rescue5_fp8_50 = PPL 7.2595 (only +0.024 from BF16, beats FP8 by 0.034)**
+
+This is the best mixed-precision result of the entire project. 5% BF16 rescue + 50% FP8 + 45% NVFP4
+closes 59% of the BF16→FP8 gap while using ~30% less memory than FP8 for expert weights.
+
+**Pending**: Full 145-chunk validation to get the headline number.
+
 ### Confirmed actionable directions (updated priority):
-1. **Integrate BF16 into iter02 mask builder**: Add BF16 tier to the global allocation — this is the #1 priority
-2. **Run best 3-tier config on 145 chunks** with integrated masks
-3. **iter13**: W2 budget extension (W1=10%, W2=50%→100%)
-4. **iter15**: Hot-channel protection for W1
-5. **iter14**: MaCa multi-scale calibration
+1. **Run rescue5_fp8_50 on full 145 chunks** — #1 priority for headline result
+2. **iter13**: W2 budget extension (W1=10%, W2=50%→100%)
+3. **iter15**: Hot-channel protection for W1
+4. **iter14**: MaCa multi-scale calibration

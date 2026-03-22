@@ -144,12 +144,7 @@
       }
     ],
     "requested_configs": [
-      "maca_best_plus_correction",
-      "maca_long_heavy",
-      "maca_original",
-      "maca_short_heavy",
-      "maca_uniform_4k",
-      "maca_with_8k"
+      "maca_uniform_4k"
     ],
     "calibration_summaries": {
       "maca_long_heavy": {
@@ -4783,7 +4778,7 @@
         }
       }
     },
-    "elapsed_s": 4444.8
+    "elapsed_s": 17.8
   },
   "calibration_sets": {
     "maca_long_heavy": {
@@ -5931,25 +5926,17 @@
   },
   "selection": {
     "evaluated_base_configs": [
-      "maca_long_heavy",
-      "maca_original",
-      "maca_short_heavy",
-      "maca_uniform_4k",
-      "maca_with_8k"
+      "maca_uniform_4k"
     ],
     "missing_base_configs": [],
-    "original": {
-      "config": "maca_original",
-      "ppl": 6.574545,
-      "memory_gb": 27.933
-    },
+    "original": null,
     "best_new_mix": {
       "config": "maca_uniform_4k",
       "ppl": 6.567582,
       "memory_gb": 27.934,
-      "ppl_delta_vs_original": -0.006963
+      "ppl_delta_vs_original": null
     },
-    "should_run_correction": true,
+    "should_run_correction": false,
     "maca_best_plus_correction": {
       "status": "evaluated",
       "selected_base_variant": "maca_uniform_4k",
