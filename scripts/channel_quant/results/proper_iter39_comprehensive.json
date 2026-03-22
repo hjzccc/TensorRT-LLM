@@ -1,0 +1,42 @@
+{
+  "results": {
+    "standard_m6": {
+      "ppl": 6.57823371887207,
+      "memory_gb": 27.934,
+      "description": "Standard calibration + M=6",
+      "use_46": false,
+      "elapsed_s": 262.8
+    },
+    "maca_m6": {
+      "ppl": 6.57823371887207,
+      "memory_gb": 27.934,
+      "description": "Seed ensemble (MaCa proxy) + M=6",
+      "use_46": false,
+      "elapsed_s": 414.1
+    },
+    "standard_46": {
+      "ppl": 6.592270374298096,
+      "memory_gb": 27.934,
+      "description": "Standard calibration + 4/6 adaptive",
+      "use_46": true,
+      "elapsed_s": 476.6
+    },
+    "maca_46": {
+      "ppl": 6.592270374298096,
+      "memory_gb": 27.934,
+      "description": "Seed ensemble (MaCa proxy) + 4/6 adaptive",
+      "use_46": true,
+      "elapsed_s": 464.7
+    },
+    "ensemble_m6": {
+      "ppl": 6.57823371887207,
+      "memory_gb": 27.934,
+      "description": "Seed ensemble + M=6",
+      "use_46": false,
+      "elapsed_s": 435.6
+    }
+  },
+  "metadata": {
+    "approach": "comprehensive_best"
+  }
+}
