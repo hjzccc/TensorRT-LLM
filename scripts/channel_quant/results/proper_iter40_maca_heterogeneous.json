@@ -1,0 +1,21 @@
+{
+  "results": {
+    "maca_heterogeneous": {
+      "ppl": 6.57823371887207,
+      "memory_gb": 27.934,
+      "description": "MaCa Uniform 4K + Heterogeneous Precision (BF16/FP8/FP4)",
+      "precision_distribution": {
+        "bf16_count": 120,
+        "fp8_count": 400,
+        "fp4_count": 9720,
+        "bf16_pct": 1.2,
+        "fp8_pct": 3.9,
+        "fp4_pct": 94.9
+      },
+      "elapsed_s": 611.0
+    }
+  },
+  "metadata": {
+    "approach": "maca_heterogeneous"
+  }
+}

@@ -279,18 +279,11 @@
         }
       }
     },
-    "runtime_seconds_pre_eval": 276.106,
+    "runtime_seconds_pre_eval": 12.384,
     "requested_plan_order": [
-      "scalebits_topup_5pct",
-      "scalebits_perchannel_w1_4_w2_16",
-      "dynamic_oracle_25pct",
-      "dynamic_oracle_10pct",
-      "cascade_aware_25pct",
-      "cascade_aware_reverse",
-      "mxmoe_topup_8pct_at_20pct_budget",
       "joint_w1w2_with_topup"
     ],
-    "runtime_seconds": 1843.152,
+    "runtime_seconds": 14.111,
     "cache_version_expectation": {
       "seqlen": 2048,
       "calibration_samples": 128,

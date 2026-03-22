@@ -57,7 +57,6 @@
       }
     ],
     "requested_configs": [
-      "uniform_16k",
       "uniform_8k"
     ]
   },

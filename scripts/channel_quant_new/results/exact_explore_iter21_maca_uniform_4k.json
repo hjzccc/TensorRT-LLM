@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "seed": 0,
+    "evaluation": {
+      "dataset": "wikitext/wikitext-2-raw-v1",
+      "split": "test",
+      "tokenizer": "Qwen/Qwen3.5-35B-A3B",
+      "seqlen": 2048,
+      "total_tokens": 297193,
+      "nsamples": 145,
+      "used_tokens": 296960,
+      "non_overlapping": true
+    },
+    "experiment": "Exact-path implementation of maca_uniform_4k (PPL 6.5676)",
+    "strategy": "MACA uniform 4K calibration + joint_w1w2_with_topup",
+    "expected_ppl": 6.5676,
+    "expected_gain": 0.0243
+  },
+  "results": {}
+}

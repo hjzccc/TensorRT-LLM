@@ -1,0 +1,28 @@
+{
+  "results": {
+    "maca_uniform_topup_2pct": {
+      "ppl": 6.57167387008667,
+      "memory_gb": 27.691,
+      "description": "MaCa Uniform 4K + 2% topup (baseline)",
+      "topup_fraction": 0.02,
+      "elapsed_s": 319.4
+    },
+    "maca_uniform_topup_4pct": {
+      "ppl": 6.572633266448975,
+      "memory_gb": 27.77,
+      "description": "MaCa Uniform 4K + 4% topup",
+      "topup_fraction": 0.04,
+      "elapsed_s": 270.7
+    },
+    "maca_uniform_topup_6pct": {
+      "ppl": 6.575597763061523,
+      "memory_gb": 27.855,
+      "description": "MaCa Uniform 4K + 6% topup",
+      "topup_fraction": 0.06,
+      "elapsed_s": 313.7
+    }
+  },
+  "metadata": {
+    "approach": "maca_selective_topup"
+  }
+}
