@@ -247,6 +247,35 @@ def _compute_layer_bf16_fraction(
     else:
         # Uniform allocation
         return base_fraction
+
+
+def _compute_error_aware_bf16_fraction(
+    base_fraction: float,
+    layer_error_concentration: float,
+    strategy: str = "gini_based",
+) -> float:
+    """Compute BF16 fraction based on error concentration (Gini coefficient).
+    
+    Args:
+        base_fraction: Base BF16 fraction from config
+        layer_error_concentration: Gini coefficient for the layer (0-1)
+        strategy: Allocation strategy
+            - "gini_based": Higher Gini (more concentrated error) → more BF16
+            - "uniform": No error-aware adjustment
+    
+    Returns:
+        Error-aware adjusted BF16 fraction
+    """
+    if strategy == "gini_based":
+        # Higher Gini = more concentrated error = need more BF16
+        # Gini range: 0.04 (low) to 0.27 (high)
+        # Map to [0.7, 1.3] multiplier
+        # Clamp to reasonable range
+        scale = min(1.3, max(0.7, 0.7 + layer_error_concentration * 2.0))
+        return base_fraction * scale
+    else:
+        # No error-aware adjustment
+        return base_fraction
     
     routing_fraction = expert_routing_weight / total_routing
     
@@ -429,6 +458,17 @@ def evaluate_three_tier_ppl(
             layer_bf16_fraction = _compute_layer_bf16_fraction(
                 layer_idx, model_config.num_hidden_layers, tier_config.bf16_fraction
             )
+            
+            # Compute error concentration (Gini coefficient) for this layer
+            if profiling_data and str(layer_idx) in profiling_data:
+                layer_data = profiling_data[str(layer_idx)]
+                w1_gini = sum(e['w1']['gini_unweighted'] for e in layer_data['experts']) / len(layer_data['experts'])
+                w2_gini = sum(e['w2']['gini_unweighted'] for e in layer_data['experts']) / len(layer_data['experts'])
+                layer_error_concentration = (w1_gini + w2_gini) / 2
+                # Apply error-aware adjustment
+                layer_bf16_fraction = _compute_error_aware_bf16_fraction(
+                    layer_bf16_fraction, layer_error_concentration
+                )
             layer_config = ThreeTierConfig(
                 label=tier_config.label,
                 bf16_fraction=layer_bf16_fraction,
