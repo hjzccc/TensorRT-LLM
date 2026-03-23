@@ -129,6 +129,8 @@ def build_three_tier_masks(
     num_experts: int,
     routing_weights: dict[int, float] | None = None,
     oracle_data: dict | None = None,
+    profiling_data: dict | None = None,
+    layer_idx: int = 0,
 ) -> tuple[dict[int, torch.Tensor], dict[int, torch.Tensor]]:
     """Build per-expert channel tier assignments.
     
@@ -148,6 +150,18 @@ def build_three_tier_masks(
                 routing_weights[expert_idx],
                 routing_weights,
             )
+            
+            # Apply expert-level error-aware adjustment
+            if expert_error_concentration is not None:
+                expert_bf16_fraction = _compute_expert_error_aware_bf16_fraction(
+                    expert_bf16_fraction, expert_error_concentration
+                )
+            
+            # Apply expert-level error-aware adjustment
+            if expert_error_concentration is not None:
+                expert_bf16_fraction = _compute_expert_error_aware_bf16_fraction(
+                    expert_bf16_fraction, expert_error_concentration
+                )
         
         for proj, weights, n_channels, granularity, tiers_out in [
             ("w1", gate_up_weights[expert_idx], W1_CHANNELS, W1_GRANULARITY, w1_tiers),
@@ -292,6 +306,34 @@ def _compute_error_aware_bf16_fraction(
         return base_fraction * scale
     else:
         # No error-aware adjustment
+        return base_fraction
+
+
+def _compute_expert_error_aware_bf16_fraction(
+    base_fraction: float,
+    expert_error_concentration: float,
+    strategy: str = "gini_based",
+) -> float:
+    """Compute per-expert BF16 fraction based on error concentration.
+    
+    Args:
+        base_fraction: Base BF16 fraction from config
+        expert_error_concentration: Gini coefficient for the expert (0-1)
+        strategy: Allocation strategy
+            - "gini_based": Higher Gini (more concentrated error) → more BF16
+            - "uniform": No expert-level error-aware adjustment
+    
+    Returns:
+        Expert-error-aware adjusted BF16 fraction
+    """
+    if strategy == "gini_based":
+        # Higher Gini = more concentrated error = need more BF16
+        # Gini range: 0.05 (low) to 0.50 (high)
+        # Map to [0.8, 1.2] multiplier
+        scale = min(1.2, max(0.8, 0.8 + expert_error_concentration * 0.8))
+        return base_fraction * scale
+    else:
+        # No expert-level error-aware adjustment
         return base_fraction
     
     routing_fraction = expert_routing_weight / total_routing
@@ -510,6 +552,8 @@ def evaluate_three_tier_ppl(
                 model_config.num_experts,
                 routing_weights=layer_routing_weights,
                 oracle_data=oracle_data,
+                profiling_data=profiling_data,
+                layer_idx=layer_idx,
             )
 
             for sample_idx in range(nsamples):
