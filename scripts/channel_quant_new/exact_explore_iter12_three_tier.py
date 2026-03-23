@@ -127,6 +127,7 @@ def build_three_tier_masks(
     down_weights: torch.Tensor,
     config: ThreeTierConfig,
     num_experts: int,
+    routing_weights: dict[int, float] | None = None,
 ) -> tuple[dict[int, torch.Tensor], dict[int, torch.Tensor]]:
     """Build per-expert channel tier assignments.
     
@@ -138,12 +139,21 @@ def build_three_tier_masks(
     w2_tiers: dict[int, torch.Tensor] = {}
 
     for expert_idx in range(num_experts):
+        # Compute per-expert BF16 fraction based on routing importance
+        expert_bf16_fraction = config.bf16_fraction
+        if routing_weights is not None and expert_idx in routing_weights:
+            expert_bf16_fraction = _compute_expert_bf16_fraction(
+                config.bf16_fraction,
+                routing_weights[expert_idx],
+                routing_weights,
+            )
+        
         for proj, weights, n_channels, granularity, tiers_out in [
             ("w1", gate_up_weights[expert_idx], W1_CHANNELS, W1_GRANULARITY, w1_tiers),
             ("w2", down_weights[expert_idx], W2_CHANNELS, W2_GRANULARITY, w2_tiers),
         ]:
             sensitivity = compute_channel_sensitivity(weights)
-            n_bf16_raw = int(round(config.bf16_fraction * n_channels))
+            n_bf16_raw = int(round(expert_bf16_fraction * n_channels))
             n_fp8_raw = int(round(config.fp8_fraction * n_channels))
             n_bf16 = _snap(n_bf16_raw, n_channels, granularity) if n_bf16_raw > 0 else 0
             n_fp8 = _snap(n_fp8_raw, n_channels - n_bf16, granularity) if n_fp8_raw > 0 else 0
@@ -152,13 +162,22 @@ def build_three_tier_masks(
                 n_fp8 = n_channels - n_bf16
                 n_nvfp4 = 0
 
+            sensitivity_cpu = sensitivity.cpu()
             tiers = torch.zeros(n_channels, dtype=torch.long)
-            _, sorted_idx = sensitivity.sort(descending=True)
+            _, sorted_idx = sensitivity_cpu.sort(descending=True)
 
             if n_bf16 > 0:
                 tiers[sorted_idx[:n_bf16]] = 2
             if n_fp8 > 0:
                 tiers[sorted_idx[n_bf16 : n_bf16 + n_fp8]] = 1
+
+            # Move zero-weight NVFP4 channels to BF16 to avoid NVFP4 kernel
+            # NaN from division-by-zero scale on all-zero sub-matrices.
+            nvfp4_channels = (tiers == 0).nonzero(as_tuple=True)[0]
+            if nvfp4_channels.numel() > 0:
+                zero_mask = sensitivity_cpu[nvfp4_channels] == 0
+                if zero_mask.any():
+                    tiers[nvfp4_channels[zero_mask]] = 2
 
             tiers_out[expert_idx] = tiers
 
@@ -171,6 +190,85 @@ def _snap(n: int, total: int, granularity: int) -> int:
     if n >= total:
         return total
     return max(granularity, ((n + granularity // 2) // granularity) * granularity)
+
+def _compute_expert_bf16_fraction(
+    base_fraction: float,
+    expert_routing_weight: float,
+    all_routing_weights: dict[int, float],
+    strategy: str = "proportional",
+) -> float:
+    """Compute per-expert BF16 fraction based on routing importance.
+    
+    Args:
+        base_fraction: Base BF16 fraction from config
+        expert_routing_weight: routing_weight_sum for this expert
+        all_routing_weights: dict[expert_idx] -> routing_weight_sum for all experts
+        strategy: Allocation strategy
+            - "proportional": More routing weight → more BF16 budget
+            - "threshold": Only high-routing experts get extra BF16
+            - "uniform": All experts get same BF16 (no routing awareness)
+    
+    Returns:
+        Per-expert BF16 fraction
+    """
+    total_routing = sum(all_routing_weights.values())
+    if total_routing < 1e-10:
+        return base_fraction
+
+
+def _compute_layer_bf16_fraction(
+    layer_idx: int,
+    num_layers: int,
+    base_fraction: float,
+    strategy: str = "linear_increase",
+) -> float:
+    """Compute BF16 fraction based on layer depth.
+    
+    Args:
+        layer_idx: Current layer index (0 to num_layers-1)
+        num_layers: Total number of layers
+        base_fraction: Base BF16 fraction from config
+        strategy: Allocation strategy
+            - "linear_increase": Early layers get less BF16, later layers get more
+            - "linear_decrease": Early layers get more BF16, later layers get less
+            - "uniform": All layers get same BF16 (no depth awareness)
+    
+    Returns:
+        Per-layer BF16 fraction
+    """
+    if strategy == "linear_increase":
+        # Early layers (0): base_fraction * 0.7
+        # Late layers (num_layers-1): base_fraction * 1.3
+        return base_fraction * (0.7 + 0.6 * (layer_idx / (num_layers - 1)))
+    elif strategy == "linear_decrease":
+        # Early layers (0): base_fraction * 1.3
+        # Late layers (num_layers-1): base_fraction * 0.7
+        return base_fraction * (1.3 - 0.6 * (layer_idx / (num_layers - 1)))
+    else:
+        # Uniform allocation
+        return base_fraction
+    
+    routing_fraction = expert_routing_weight / total_routing
+    
+    if strategy == "proportional":
+        # Scale BF16 fraction by routing importance
+        # Low routing (0.1% of total): 0.5x base_fraction
+        # High routing (1% of total): 1.5x base_fraction
+        # Formula: 0.5 + routing_fraction * 1000 scales [0.001, 0.01] to [1.5, 10]
+        # Clamp to reasonable range [0.5, 2.0]
+        scale = min(2.0, max(0.5, 0.5 + routing_fraction * 1000))
+        return base_fraction * scale
+    elif strategy == "threshold":
+        # Only allocate extra BF16 if routing weight is above median
+        median_routing = sorted(all_routing_weights.values())[len(all_routing_weights) // 2]
+        if expert_routing_weight > median_routing:
+            return base_fraction * 1.5
+        else:
+            return base_fraction * 0.5
+    else:
+        # Uniform allocation
+        return base_fraction
+
 
 
 def three_tier_linear(
@@ -291,6 +389,7 @@ def evaluate_three_tier_ppl(
     dtype: torch.dtype,
     tier_config: ThreeTierConfig,
     layer_batch_size: int,
+    profiling_data: dict | None = None,
 ) -> float:
     store = exact_eval.WeightStore(exact_eval.MODEL_ID, snapshot_dir, weight_map)
     embed_key = "model.language_model.embed_tokens.weight"
@@ -325,11 +424,33 @@ def evaluate_three_tier_ppl(
             del raw
 
             moe_t = {k.replace("mlp.", "", 1): v for k, v in layer_tensors.items() if k.startswith("mlp.")}
+            
+            # Compute per-layer BF16 fraction based on depth
+            layer_bf16_fraction = _compute_layer_bf16_fraction(
+                layer_idx, model_config.num_hidden_layers, tier_config.bf16_fraction
+            )
+            layer_config = ThreeTierConfig(
+                label=tier_config.label,
+                bf16_fraction=layer_bf16_fraction,
+                fp8_fraction=tier_config.fp8_fraction,
+                nvfp4_fraction=tier_config.nvfp4_fraction,
+            )
+            
+            
+            # Load routing weights from profiling data
+            layer_routing_weights = None
+            if profiling_data and str(layer_idx) in profiling_data:
+                layer_routing_weights = {
+                    expert["expert"]: expert["routing_weight_sum"]
+                    for expert in profiling_data[str(layer_idx)]["experts"]
+                }
+            
             w1_tiers, w2_tiers = build_three_tier_masks(
                 moe_t.get("experts.gate_up_proj", torch.zeros(1)),
                 moe_t.get("experts.down_proj", torch.zeros(1)),
-                tier_config,
+                layer_config,
                 model_config.num_experts,
+                routing_weights=layer_routing_weights,
             )
 
             for sample_idx in range(nsamples):
@@ -404,6 +525,17 @@ def main() -> None:
 
     results: dict[str, dict[str, Any]] = {}
 
+    # Load profiling data for routing-aware allocation
+    profiling_path = SCRIPT_DIR / "profiling" / "error_profile.json"
+    profiling_data = None
+    if profiling_path.exists():
+        with profiling_path.open("r") as f:
+            profiling_data = json.load(f)
+        print(f"Loaded profiling data from {profiling_path}", flush=True)
+    else:
+        print(f"Warning: Profiling data not found at {profiling_path}", flush=True)
+
+
     for run_config in baselines:
         print(f"\n=== {run_config.label} ===", flush=True)
         start_time = time.time()
@@ -428,6 +560,7 @@ def main() -> None:
         ppl = evaluate_three_tier_ppl(
             eval_ids, nsamples, seqlen, model_config, weight_map, snapshot_dir,
             device, dtype, tier_config, args.layer_batch_size,
+            profiling_data=profiling_data,
         )
         elapsed = time.time() - start_time
         results[tier_config.label] = {
