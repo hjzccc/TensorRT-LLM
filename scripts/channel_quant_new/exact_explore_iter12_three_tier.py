@@ -128,6 +128,7 @@ def build_three_tier_masks(
     config: ThreeTierConfig,
     num_experts: int,
     routing_weights: dict[int, float] | None = None,
+    oracle_data: dict | None = None,
 ) -> tuple[dict[int, torch.Tensor], dict[int, torch.Tensor]]:
     """Build per-expert channel tier assignments.
     
@@ -164,7 +165,23 @@ def build_three_tier_masks(
 
             sensitivity_cpu = sensitivity.cpu()
             tiers = torch.zeros(n_channels, dtype=torch.long)
-            _, sorted_idx = sensitivity_cpu.sort(descending=True)
+            
+            # Use oracle-based selection if available, otherwise fall back to magnitude
+            if oracle_data and layer_idx in oracle_data and expert_idx in oracle_data[layer_idx]:
+                # Oracle-based: sort by actual quantization error
+                expert_oracle = oracle_data[layer_idx][expert_idx]
+                if proj == "w1" and "w1_oracle_error" in expert_oracle:
+                    oracle_error = expert_oracle["w1_oracle_error"]
+                    _, sorted_idx = torch.tensor(oracle_error).sort(descending=True)
+                elif proj == "w2" and "w2_oracle_error" in expert_oracle:
+                    oracle_error = expert_oracle["w2_oracle_error"]
+                    _, sorted_idx = torch.tensor(oracle_error).sort(descending=True)
+                else:
+                    # Fall back to magnitude if oracle not available for this projection
+                    _, sorted_idx = sensitivity_cpu.sort(descending=True)
+            else:
+                # Magnitude-based: sort by weight magnitude (current approach)
+                _, sorted_idx = sensitivity_cpu.sort(descending=True)
 
             if n_bf16 > 0:
                 tiers[sorted_idx[:n_bf16]] = 2
@@ -419,6 +436,7 @@ def evaluate_three_tier_ppl(
     tier_config: ThreeTierConfig,
     layer_batch_size: int,
     profiling_data: dict | None = None,
+    oracle_data: dict | None = None,
 ) -> float:
     store = exact_eval.WeightStore(exact_eval.MODEL_ID, snapshot_dir, weight_map)
     embed_key = "model.language_model.embed_tokens.weight"
@@ -491,6 +509,7 @@ def evaluate_three_tier_ppl(
                 layer_config,
                 model_config.num_experts,
                 routing_weights=layer_routing_weights,
+                oracle_data=oracle_data,
             )
 
             for sample_idx in range(nsamples):
@@ -574,6 +593,18 @@ def main() -> None:
         print(f"Loaded profiling data from {profiling_path}", flush=True)
     else:
         print(f"Warning: Profiling data not found at {profiling_path}", flush=True)
+    
+    # Load oracle data for oracle-based channel selection
+    oracle_path = SCRIPT_DIR / "profiling" / "oracle_data.json"
+    oracle_data = None
+    if oracle_path.exists():
+        with oracle_path.open("r") as f:
+            oracle_data = json.load(f)
+        # Convert string keys back to integers
+        oracle_data = {int(k): {int(ek): v for ek, v in experts.items()} for k, experts in oracle_data.items()}
+        print(f"Loaded oracle data from {oracle_path}", flush=True)
+    else:
+        print(f"Warning: Oracle data not found at {oracle_path}", flush=True)
 
 
     for run_config in baselines:
@@ -601,6 +632,7 @@ def main() -> None:
             eval_ids, nsamples, seqlen, model_config, weight_map, snapshot_dir,
             device, dtype, tier_config, args.layer_batch_size,
             profiling_data=profiling_data,
+            oracle_data=oracle_data,
         )
         elapsed = time.time() - start_time
         results[tier_config.label] = {
