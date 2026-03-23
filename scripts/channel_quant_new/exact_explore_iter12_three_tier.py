@@ -289,6 +289,25 @@ def _compute_expert_bf16_fraction(
     total_routing = sum(all_routing_weights.values())
     if total_routing < 1e-10:
         return base_fraction
+    if strategy == "proportional":
+        # More routing weight → more BF16 budget
+        # Scale BF16 fraction proportionally to routing weight
+        routing_fraction = expert_routing_weight / total_routing
+        # Map routing fraction to [0.8, 1.2] multiplier
+        scale = min(1.2, max(0.8, 0.8 + routing_fraction * 0.8))
+        return base_fraction * scale
+    elif strategy == "threshold":
+        # Only high-routing experts get extra BF16
+        avg_routing = total_routing / len(all_routing_weights)
+        if expert_routing_weight > avg_routing * 1.5:
+            return base_fraction * 1.2
+        elif expert_routing_weight < avg_routing * 0.5:
+            return base_fraction * 0.8
+        else:
+            return base_fraction
+    else:  # uniform
+        # All experts get same BF16 (no routing awareness)
+        return base_fraction
 
 
 def _compute_layer_bf16_fraction(
