@@ -196,6 +196,88 @@ def allocate_error_proportional(profiling_data):
     return alloc
 
 
+
+def allocate_routing_threshold(profiling_data, threshold_percentile=50):
+    """Threshold-based concentration: experts above threshold get high BF16, below get low."""
+    alloc = {}
+    for li in range(NUM_LAYERS):
+        experts = profiling_data[str(li)]["experts"]
+        rw_values = [e["routing_weight_sum"] for e in experts]
+        threshold = np.percentile(rw_values, threshold_percentile)
+        
+        alloc[li] = {}
+        for e in experts:
+            ei = e["expert"]
+            rw = e["routing_weight_sum"]
+            # High-traffic experts: 25%, low-traffic: 8%
+            frac = 0.25 if rw >= threshold else 0.08
+            alloc[li][ei] = (frac, frac)
+    
+    # Renormalize to maintain target average
+    total_frac = sum(sum(v.values()) for v in alloc.values()) / (NUM_LAYERS * NUM_EXPERTS)
+    scale = TARGET_BF16_FRACTION / total_frac if total_frac > 0 else 1.0
+    for li in alloc:
+        for ei in alloc[li]:
+            f = alloc[li][ei][0] * scale
+            alloc[li][ei] = (max(0.05, min(0.30, f)), max(0.05, min(0.30, f)))
+    
+    return alloc
+
+
+def allocate_routing_topk(profiling_data, k_fraction=0.25):
+    """Top-K concentration: top K% of experts get high BF16, rest get low."""
+    alloc = {}
+    for li in range(NUM_LAYERS):
+        experts = profiling_data[str(li)]["experts"]
+        n_experts = len(experts)
+        k = max(1, int(n_experts * k_fraction))
+        
+        # Sort by routing weight
+        sorted_experts = sorted(experts, key=lambda e: e["routing_weight_sum"], reverse=True)
+        top_k_set = {e["expert"] for e in sorted_experts[:k]}
+        
+        alloc[li] = {}
+        for e in experts:
+            ei = e["expert"]
+            # Top-K experts: 28%, rest: 5%
+            frac = 0.28 if ei in top_k_set else 0.05
+            alloc[li][ei] = (frac, frac)
+    
+    # Renormalize to maintain target average
+    total_frac = sum(sum(v.values()) for v in alloc.values()) / (NUM_LAYERS * NUM_EXPERTS)
+    scale = TARGET_BF16_FRACTION / total_frac if total_frac > 0 else 1.0
+    for li in alloc:
+        for ei in alloc[li]:
+            f = alloc[li][ei][0] * scale
+            alloc[li][ei] = (max(0.05, min(0.30, f)), max(0.05, min(0.30, f)))
+    
+    return alloc
+
+
+def allocate_routing_exponential(profiling_data):
+    """Exponential concentration: BF16 ∝ exp(routing_weight_sum), more aggressive than sqrt."""
+    alloc = {}
+    for li in range(NUM_LAYERS):
+        experts = profiling_data[str(li)]["experts"]
+        rw_values = {e["expert"]: e["routing_weight_sum"] for e in experts}
+        
+        # Exponential scaling: exp(rw / max_rw) - 1
+        max_rw = max(rw_values.values()) if rw_values else 1.0
+        exp_rw = {ei: math.exp((rw / max_rw) * 2) - 1 for ei, rw in rw_values.items()}
+        total_exp = sum(exp_rw.values())
+        
+        n_experts = len(experts)
+        raw_fracs = {ei: (v / total_exp) * n_experts * TARGET_BF16_FRACTION for ei, v in exp_rw.items()}
+        
+        clipped = {ei: max(0.05, min(0.30, f)) for ei, f in raw_fracs.items()}
+        clip_mean = sum(clipped.values()) / len(clipped)
+        scale = TARGET_BF16_FRACTION / clip_mean if clip_mean > 0 else 1.0
+        final = {ei: max(0.05, min(0.30, f * scale)) for ei, f in clipped.items()}
+        
+        alloc[li] = {ei: (final[ei], final[ei]) for ei in final}
+    return alloc
+
+
 ALL_STRATEGIES = [
     ("uniform", allocate_uniform),
     ("depth_ramp", allocate_depth_ramp),
@@ -204,6 +286,9 @@ ALL_STRATEGIES = [
     ("combined", allocate_combined),
     ("w2_heavy", allocate_w2_heavy),
     ("error_proportional", allocate_error_proportional),
+    ("routing_threshold", allocate_routing_threshold),
+    ("routing_topk", allocate_routing_topk),
+    ("routing_exponential", allocate_routing_exponential),
 ]
 
 
