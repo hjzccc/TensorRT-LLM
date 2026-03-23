@@ -131,6 +131,7 @@ def build_three_tier_masks(
     oracle_data: dict | None = None,
     profiling_data: dict | None = None,
     layer_idx: int = 0,
+    oracle_curves: dict | None = None,
 ) -> tuple[dict[int, torch.Tensor], dict[int, torch.Tensor]]:
     """Build per-expert channel tier assignments.
     
@@ -144,31 +145,55 @@ def build_three_tier_masks(
     for expert_idx in range(num_experts):
         # Compute per-expert BF16 fraction based on routing importance
         expert_bf16_fraction = config.bf16_fraction
+        
         if routing_weights is not None and expert_idx in routing_weights:
             expert_bf16_fraction = _compute_expert_bf16_fraction(
                 config.bf16_fraction,
                 routing_weights[expert_idx],
                 routing_weights,
             )
-            
-            # Apply expert-level error-aware adjustment
-            if expert_error_concentration is not None:
-                expert_bf16_fraction = _compute_expert_error_aware_bf16_fraction(
-                    expert_bf16_fraction, expert_error_concentration
-                )
-            
-            # Apply expert-level error-aware adjustment
-            if expert_error_concentration is not None:
-                expert_bf16_fraction = _compute_expert_error_aware_bf16_fraction(
-                    expert_bf16_fraction, expert_error_concentration
-                )
+        
+        # Apply expert-level error-aware adjustment
+        if profiling_data and str(layer_idx) in profiling_data:
+            layer_data = profiling_data[str(layer_idx)]
+            # Find this expert in the layer data
+            for expert_data in layer_data['experts']:
+                if expert_data['expert'] == expert_idx:
+                    # Compute expert-level error concentration
+                    w1_gini = expert_data['w1']['gini_unweighted']
+                    w2_gini = expert_data['w2']['gini_unweighted']
+                    expert_error_concentration = (w1_gini + w2_gini) / 2
+                    expert_bf16_fraction = _compute_expert_error_aware_bf16_fraction(
+                        expert_bf16_fraction, expert_error_concentration
+                    )
+                    break
         
         for proj, weights, n_channels, granularity, tiers_out in [
             ("w1", gate_up_weights[expert_idx], W1_CHANNELS, W1_GRANULARITY, w1_tiers),
             ("w2", down_weights[expert_idx], W2_CHANNELS, W2_GRANULARITY, w2_tiers),
         ]:
             sensitivity = compute_channel_sensitivity(weights)
-            n_bf16_raw = int(round(expert_bf16_fraction * n_channels))
+            
+            # Phase 6: Use cumulative curves to optimize BF16 fraction per expert/projection
+            proj_bf16_fraction = expert_bf16_fraction
+            if oracle_curves and layer_idx in oracle_curves and expert_idx in oracle_curves[layer_idx]:
+                expert_curves = oracle_curves[layer_idx][expert_idx]
+                if proj == "w1" and "w1" in expert_curves:
+                    proj_bf16_fraction = _compute_optimal_bf16_fraction_from_curves(
+                        expert_curves["w1"].get("cum_err_by_mag", []),
+                        expert_curves["w1"].get("cum_err_oracle", []),
+                        expert_bf16_fraction,
+                        strategy="oracle_guided",
+                    )
+                elif proj == "w2" and "w2" in expert_curves:
+                    proj_bf16_fraction = _compute_optimal_bf16_fraction_from_curves(
+                        expert_curves["w2"].get("cum_err_by_mag", []),
+                        expert_curves["w2"].get("cum_err_oracle", []),
+                        expert_bf16_fraction,
+                        strategy="oracle_guided",
+                    )
+            
+            n_bf16_raw = int(round(proj_bf16_fraction * n_channels))
             n_fp8_raw = int(round(config.fp8_fraction * n_channels))
             n_bf16 = _snap(n_bf16_raw, n_channels, granularity) if n_bf16_raw > 0 else 0
             n_fp8 = _snap(n_fp8_raw, n_channels - n_bf16, granularity) if n_fp8_raw > 0 else 0
@@ -213,6 +238,7 @@ def build_three_tier_masks(
             tiers_out[expert_idx] = tiers
 
     return w1_tiers, w2_tiers
+
 
 
 def _snap(n: int, total: int, granularity: int) -> int:
@@ -334,6 +360,52 @@ def _compute_expert_error_aware_bf16_fraction(
         return base_fraction * scale
     else:
         # No expert-level error-aware adjustment
+        return base_fraction
+
+
+def _compute_optimal_bf16_fraction_from_curves(
+    cum_err_by_mag: list,
+    cum_err_oracle: list,
+    base_fraction: float,
+    strategy: str = "oracle_guided",
+) -> float:
+    """Compute optimal BF16 fraction using cumulative error curves.
+    
+    Args:
+        cum_err_by_mag: Cumulative error by magnitude (0-100 scale)
+        cum_err_oracle: Cumulative error by oracle (0-100 scale)
+        base_fraction: Base BF16 fraction from config
+        strategy: Optimization strategy
+            - "oracle_guided": Use oracle curve to find optimal BF16%
+            - "magnitude_guided": Use magnitude curve to find optimal BF16%
+            - "uniform": Use base_fraction (no optimization)
+    
+    Returns:
+        Optimized BF16 fraction
+    """
+    if strategy == "oracle_guided" and cum_err_oracle:
+        # Find the BF16% that achieves 80% error reduction
+        target_error_reduction = 80.0
+        for i, cum_err in enumerate(cum_err_oracle):
+            if cum_err >= target_error_reduction:
+                # Interpolate to find exact percentage
+                optimal_pct = (i / len(cum_err_oracle)) * 100
+                # Scale to [0.5x, 1.5x] of base_fraction
+                scale = min(1.5, max(0.5, optimal_pct / 100))
+                return base_fraction * scale
+        # If we don't reach 80%, use maximum available
+        return base_fraction * 1.5
+    elif strategy == "magnitude_guided" and cum_err_by_mag:
+        # Find the BF16% that achieves 75% error reduction
+        target_error_reduction = 75.0
+        for i, cum_err in enumerate(cum_err_by_mag):
+            if cum_err >= target_error_reduction:
+                optimal_pct = (i / len(cum_err_by_mag)) * 100
+                scale = min(1.5, max(0.5, optimal_pct / 100))
+                return base_fraction * scale
+        return base_fraction * 1.5
+    else:
+        # No optimization
         return base_fraction
     
     routing_fraction = expert_routing_weight / total_routing
@@ -479,6 +551,7 @@ def evaluate_three_tier_ppl(
     layer_batch_size: int,
     profiling_data: dict | None = None,
     oracle_data: dict | None = None,
+    oracle_curves: dict | None = None,
 ) -> float:
     store = exact_eval.WeightStore(exact_eval.MODEL_ID, snapshot_dir, weight_map)
     embed_key = "model.language_model.embed_tokens.weight"
@@ -554,6 +627,7 @@ def evaluate_three_tier_ppl(
                 oracle_data=oracle_data,
                 profiling_data=profiling_data,
                 layer_idx=layer_idx,
+                oracle_curves=oracle_curves,
             )
 
             for sample_idx in range(nsamples):
@@ -649,6 +723,18 @@ def main() -> None:
         print(f"Loaded oracle data from {oracle_path}", flush=True)
     else:
         print(f"Warning: Oracle data not found at {oracle_path}", flush=True)
+    
+    # Load oracle_curves for cumulative curve optimization (Phase 6)
+    oracle_curves_path = SCRIPT_DIR / "profiling" / "oracle_curves.json"
+    oracle_curves = None
+    if oracle_curves_path.exists():
+        with oracle_curves_path.open("r") as f:
+            oracle_curves_raw = json.load(f)
+        # Convert string keys back to integers
+        oracle_curves = {int(k): {int(ek): v for ek, v in experts.items()} for k, experts in oracle_curves_raw.items()}
+        print(f"Loaded oracle_curves from {oracle_curves_path}", flush=True)
+    else:
+        print(f"Warning: Oracle curves not found at {oracle_curves_path}", flush=True)
 
 
     for run_config in baselines:
@@ -677,6 +763,7 @@ def main() -> None:
             device, dtype, tier_config, args.layer_batch_size,
             profiling_data=profiling_data,
             oracle_data=oracle_data,
+            oracle_curves=oracle_curves,
         )
         elapsed = time.time() - start_time
         results[tier_config.label] = {
