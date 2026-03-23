@@ -363,6 +363,70 @@ def _compute_expert_error_aware_bf16_fraction(
         return base_fraction
 
 
+
+def _compute_w1_bf16_fraction(
+    base_fraction: float,
+    w1_gini: float,
+    w1_mae: float,
+    strategy: str = "gini_mae_hybrid",
+) -> float:
+    """Compute W1-specific BF16 fraction.
+    
+    W1 characteristics:
+    - High Gini variability (0.0220-0.8554, 38x range)
+    - Negative Gini-MAE correlation (-0.1976)
+    - Needs more aggressive allocation for high-Gini experts
+    
+    Strategy:
+    - "gini_mae_hybrid": Use both Gini and MAE for allocation
+    - "gini_only": Use only Gini
+    - "mae_only": Use only MAE
+    """
+    if strategy == "gini_mae_hybrid":
+        # W1 has high Gini variability, use it as primary signal
+        gini_scale = min(1.5, max(0.5, 0.7 + w1_gini * 2.0))
+        mae_scale = min(1.2, max(0.8, 0.8 + (w1_mae / 0.0972) * 0.4))
+        combined_scale = 0.8 * gini_scale + 0.2 * mae_scale
+        return base_fraction * combined_scale
+    elif strategy == "gini_only":
+        scale = min(1.5, max(0.5, 0.7 + w1_gini * 2.0))
+        return base_fraction * scale
+    else:  # mae_only
+        mae_scale = min(1.2, max(0.8, 0.8 + (w1_mae / 0.0972) * 0.4))
+        return base_fraction * mae_scale
+
+
+def _compute_w2_bf16_fraction(
+    base_fraction: float,
+    w2_gini: float,
+    w2_mae: float,
+    strategy: str = "gini_mae_hybrid",
+) -> float:
+    """Compute W2-specific BF16 fraction.
+    
+    W2 characteristics:
+    - Low Gini variability (0.0288-0.2046, 7x range)
+    - Positive Gini-MAE correlation (0.4146)
+    - More stable, can use simpler allocation
+    
+    Strategy:
+    - "gini_mae_hybrid": Use both Gini and MAE for allocation
+    - "gini_only": Use only Gini
+    - "mae_only": Use only MAE
+    """
+    if strategy == "gini_mae_hybrid":
+        # W2 has low Gini variability, use MAE as primary signal
+        gini_scale = min(1.3, max(0.7, 0.7 + w2_gini * 2.0))
+        mae_scale = min(1.5, max(0.5, 0.5 + (w2_mae / 0.0441) * 1.0))
+        combined_scale = 0.4 * gini_scale + 0.6 * mae_scale
+        return base_fraction * combined_scale
+    elif strategy == "gini_only":
+        scale = min(1.3, max(0.7, 0.7 + w2_gini * 2.0))
+        return base_fraction * scale
+    else:  # mae_only
+        mae_scale = min(1.5, max(0.5, 0.5 + (w2_mae / 0.0441) * 1.0))
+        return base_fraction * mae_scale
+
 def _compute_optimal_bf16_fraction_from_curves(
     cum_err_by_mag: list,
     cum_err_oracle: list,
