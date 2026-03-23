@@ -174,8 +174,26 @@ def build_three_tier_masks(
         ]:
             sensitivity = compute_channel_sensitivity(weights)
             
-            # Phase 6: Use cumulative curves to optimize BF16 fraction per expert/projection
+            # Phase 8: Use per-projection BF16 allocation based on W1/W2 characteristics
             proj_bf16_fraction = expert_bf16_fraction
+            if profiling_data and str(layer_idx) in profiling_data:
+                for expert_data in profiling_data[str(layer_idx)]['experts']:
+                    if expert_data['expert'] == expert_idx:
+                        if proj == "w1":
+                            w1_gini = expert_data['w1']['gini_unweighted']
+                            w1_mae = expert_data['w1']['total_mae']
+                            proj_bf16_fraction = _compute_w1_bf16_fraction(
+                                expert_bf16_fraction, w1_gini, w1_mae
+                            )
+                        elif proj == "w2":
+                            w2_gini = expert_data['w2']['gini_unweighted']
+                            w2_mae = expert_data['w2']['total_mae']
+                            proj_bf16_fraction = _compute_w2_bf16_fraction(
+                                expert_bf16_fraction, w2_gini, w2_mae
+                            )
+                        break
+            
+            # Phase 6: Use cumulative curves to optimize BF16 fraction per expert/projection
             if oracle_curves and layer_idx in oracle_curves and expert_idx in oracle_curves[layer_idx]:
                 expert_curves = oracle_curves[layer_idx][expert_idx]
                 if proj == "w1" and "w1" in expert_curves:
