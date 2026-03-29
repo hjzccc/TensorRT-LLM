@@ -1,0 +1,6 @@
+{
+  "approach": "Residual Codebook + Adaptive Scaling + Entropy Coding",
+  "tested_weights": 3,
+  "avg_improvement_percent": 99.46204376220703,
+  "elapsed_seconds": 22.00285506248474
+}

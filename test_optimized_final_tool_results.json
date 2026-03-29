@@ -1,0 +1,679 @@
+{
+  "test": "optimized_compression_tool",
+  "num_layers": 95,
+  "layer_size": 1024,
+  "layers": {
+    "layer_0": {
+      "mse": 0.12359876930713654,
+      "improvement_percent": 98.50819396972656,
+      "baseline_mse": 8.28515625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_1": {
+      "mse": 0.12751561403274536,
+      "improvement_percent": 98.46204376220703,
+      "baseline_mse": 8.291259765625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_2": {
+      "mse": 0.12122385948896408,
+      "improvement_percent": 98.68826293945312,
+      "baseline_mse": 9.241455078125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_3": {
+      "mse": 0.12401338666677475,
+      "improvement_percent": 98.64225769042969,
+      "baseline_mse": 9.1337890625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_4": {
+      "mse": 0.1251707822084427,
+      "improvement_percent": 98.55926513671875,
+      "baseline_mse": 8.68798828125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_5": {
+      "mse": 0.1165933758020401,
+      "improvement_percent": 98.63615417480469,
+      "baseline_mse": 8.548828125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_6": {
+      "mse": 0.12311490625143051,
+      "improvement_percent": 98.59195709228516,
+      "baseline_mse": 8.74365234375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_7": {
+      "mse": 0.12433546036481857,
+      "improvement_percent": 98.63814544677734,
+      "baseline_mse": 9.1298828125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_8": {
+      "mse": 0.12089890986680984,
+      "improvement_percent": 98.60325622558594,
+      "baseline_mse": 8.65576171875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_9": {
+      "mse": 0.11731748282909393,
+      "improvement_percent": 98.66299438476562,
+      "baseline_mse": 8.774658203125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_10": {
+      "mse": 0.11195274442434311,
+      "improvement_percent": 98.73800659179688,
+      "baseline_mse": 8.87109375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_11": {
+      "mse": 0.12809684872627258,
+      "improvement_percent": 98.42005157470703,
+      "baseline_mse": 8.107666015625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_12": {
+      "mse": 0.12344825267791748,
+      "improvement_percent": 98.42606353759766,
+      "baseline_mse": 7.84326171875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_13": {
+      "mse": 0.11887041479349136,
+      "improvement_percent": 98.74479675292969,
+      "baseline_mse": 9.47021484375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_14": {
+      "mse": 0.1271854043006897,
+      "improvement_percent": 98.48233795166016,
+      "baseline_mse": 8.38037109375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_15": {
+      "mse": 0.12247613817453384,
+      "improvement_percent": 98.67739868164062,
+      "baseline_mse": 9.26025390625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_16": {
+      "mse": 0.12610593438148499,
+      "improvement_percent": 98.35137939453125,
+      "baseline_mse": 7.649169921875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_17": {
+      "mse": 0.12226372212171555,
+      "improvement_percent": 98.5169677734375,
+      "baseline_mse": 8.244140625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_18": {
+      "mse": 0.12170926481485367,
+      "improvement_percent": 98.58687591552734,
+      "baseline_mse": 8.61279296875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_19": {
+      "mse": 0.1223377138376236,
+      "improvement_percent": 98.61885070800781,
+      "baseline_mse": 8.857666015625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_20": {
+      "mse": 0.12011508643627167,
+      "improvement_percent": 98.7204360961914,
+      "baseline_mse": 9.38720703125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_21": {
+      "mse": 0.12535865604877472,
+      "improvement_percent": 98.44412994384766,
+      "baseline_mse": 8.05712890625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_22": {
+      "mse": 0.12217013537883759,
+      "improvement_percent": 98.63347625732422,
+      "baseline_mse": 8.940185546875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_23": {
+      "mse": 0.12450478971004486,
+      "improvement_percent": 98.52135467529297,
+      "baseline_mse": 8.420166015625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_24": {
+      "mse": 0.13042359054088593,
+      "improvement_percent": 98.5390396118164,
+      "baseline_mse": 8.92724609375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_25": {
+      "mse": 0.1285775601863861,
+      "improvement_percent": 98.43392944335938,
+      "baseline_mse": 8.210205078125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_26": {
+      "mse": 0.11989922821521759,
+      "improvement_percent": 98.61100006103516,
+      "baseline_mse": 8.632080078125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_27": {
+      "mse": 0.12640488147735596,
+      "improvement_percent": 98.39356231689453,
+      "baseline_mse": 7.86865234375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_28": {
+      "mse": 0.11689012497663498,
+      "improvement_percent": 98.63150024414062,
+      "baseline_mse": 8.54150390625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_29": {
+      "mse": 0.12797804176807404,
+      "improvement_percent": 98.54788970947266,
+      "baseline_mse": 8.813232421875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_30": {
+      "mse": 0.12328951060771942,
+      "improvement_percent": 98.56767272949219,
+      "baseline_mse": 8.607666015625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_31": {
+      "mse": 0.11977927386760712,
+      "improvement_percent": 98.62845611572266,
+      "baseline_mse": 8.733154296875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_32": {
+      "mse": 0.12453270703554153,
+      "improvement_percent": 98.59457397460938,
+      "baseline_mse": 8.86083984375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_33": {
+      "mse": 0.12183749675750732,
+      "improvement_percent": 98.69160461425781,
+      "baseline_mse": 9.31201171875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_34": {
+      "mse": 0.1223258376121521,
+      "improvement_percent": 98.60700225830078,
+      "baseline_mse": 8.781494140625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_35": {
+      "mse": 0.128123939037323,
+      "improvement_percent": 98.50506591796875,
+      "baseline_mse": 8.570556640625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_36": {
+      "mse": 0.12591370940208435,
+      "improvement_percent": 98.54367065429688,
+      "baseline_mse": 8.64599609375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_37": {
+      "mse": 0.1164887398481369,
+      "improvement_percent": 98.71795654296875,
+      "baseline_mse": 9.086181640625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_38": {
+      "mse": 0.12655293941497803,
+      "improvement_percent": 98.54097747802734,
+      "baseline_mse": 8.673828125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_39": {
+      "mse": 0.12337381392717361,
+      "improvement_percent": 98.49394989013672,
+      "baseline_mse": 8.19189453125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_40": {
+      "mse": 0.12305538356304169,
+      "improvement_percent": 98.58484649658203,
+      "baseline_mse": 8.695556640625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_41": {
+      "mse": 0.11325623095035553,
+      "improvement_percent": 98.63844299316406,
+      "baseline_mse": 8.318115234375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_42": {
+      "mse": 0.11932229995727539,
+      "improvement_percent": 98.74988555908203,
+      "baseline_mse": 9.544921875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_43": {
+      "mse": 0.12674406170845032,
+      "improvement_percent": 98.4879150390625,
+      "baseline_mse": 8.382080078125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_44": {
+      "mse": 0.13035009801387787,
+      "improvement_percent": 98.49432373046875,
+      "baseline_mse": 8.6572265625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_45": {
+      "mse": 0.12926828861236572,
+      "improvement_percent": 98.48116302490234,
+      "baseline_mse": 8.510986328125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_46": {
+      "mse": 0.1279778629541397,
+      "improvement_percent": 98.44599151611328,
+      "baseline_mse": 8.2353515625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_47": {
+      "mse": 0.12277694791555405,
+      "improvement_percent": 98.4939193725586,
+      "baseline_mse": 8.152099609375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_48": {
+      "mse": 0.12354142963886261,
+      "improvement_percent": 98.46918487548828,
+      "baseline_mse": 8.0703125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_49": {
+      "mse": 0.12735815346240997,
+      "improvement_percent": 98.58536529541016,
+      "baseline_mse": 9.0029296875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_50": {
+      "mse": 0.12342685461044312,
+      "improvement_percent": 98.57826232910156,
+      "baseline_mse": 8.681396484375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_51": {
+      "mse": 0.12735776603221893,
+      "improvement_percent": 98.48588562011719,
+      "baseline_mse": 8.411376953125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_52": {
+      "mse": 0.11687102168798447,
+      "improvement_percent": 98.611083984375,
+      "baseline_mse": 8.41455078125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_53": {
+      "mse": 0.1268666535615921,
+      "improvement_percent": 98.53636932373047,
+      "baseline_mse": 8.66796875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_54": {
+      "mse": 0.12236481159925461,
+      "improvement_percent": 98.6113510131836,
+      "baseline_mse": 8.811767578125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_55": {
+      "mse": 0.12768672406673431,
+      "improvement_percent": 98.58849334716797,
+      "baseline_mse": 9.046142578125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_56": {
+      "mse": 0.12728852033615112,
+      "improvement_percent": 98.42926788330078,
+      "baseline_mse": 8.103759765625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_57": {
+      "mse": 0.12316062301397324,
+      "improvement_percent": 98.59284210205078,
+      "baseline_mse": 8.75244140625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_58": {
+      "mse": 0.12370854616165161,
+      "improvement_percent": 98.46730041503906,
+      "baseline_mse": 8.0712890625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_59": {
+      "mse": 0.12500770390033722,
+      "improvement_percent": 98.47268676757812,
+      "baseline_mse": 8.184814453125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_60": {
+      "mse": 0.1262115091085434,
+      "improvement_percent": 98.49676513671875,
+      "baseline_mse": 8.39599609375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_61": {
+      "mse": 0.12356935441493988,
+      "improvement_percent": 98.64672088623047,
+      "baseline_mse": 9.131103515625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_62": {
+      "mse": 0.12449481338262558,
+      "improvement_percent": 98.55988311767578,
+      "baseline_mse": 8.644775390625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_63": {
+      "mse": 0.12728440761566162,
+      "improvement_percent": 98.50584411621094,
+      "baseline_mse": 8.518798828125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_64": {
+      "mse": 0.12665404379367828,
+      "improvement_percent": 98.43587493896484,
+      "baseline_mse": 8.097412109375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_65": {
+      "mse": 0.11979430168867111,
+      "improvement_percent": 98.62605285644531,
+      "baseline_mse": 8.718994140625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_66": {
+      "mse": 0.1323876529932022,
+      "improvement_percent": 98.35499572753906,
+      "baseline_mse": 8.0478515625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_67": {
+      "mse": 0.12396880984306335,
+      "improvement_percent": 98.49015808105469,
+      "baseline_mse": 8.210693359375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_68": {
+      "mse": 0.11803025752305984,
+      "improvement_percent": 98.67478942871094,
+      "baseline_mse": 8.906494140625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_69": {
+      "mse": 0.1202060654759407,
+      "improvement_percent": 98.65665435791016,
+      "baseline_mse": 8.9482421875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_70": {
+      "mse": 0.1261095255613327,
+      "improvement_percent": 98.516357421875,
+      "baseline_mse": 8.5,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_71": {
+      "mse": 0.12450087070465088,
+      "improvement_percent": 98.57007598876953,
+      "baseline_mse": 8.706787109375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_72": {
+      "mse": 0.1271320879459381,
+      "improvement_percent": 98.56874084472656,
+      "baseline_mse": 8.882568359375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_73": {
+      "mse": 0.11980858445167542,
+      "improvement_percent": 98.61416625976562,
+      "baseline_mse": 8.645263671875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_74": {
+      "mse": 0.11741450428962708,
+      "improvement_percent": 98.7020492553711,
+      "baseline_mse": 9.046142578125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_75": {
+      "mse": 0.12621760368347168,
+      "improvement_percent": 98.437255859375,
+      "baseline_mse": 8.07666015625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_76": {
+      "mse": 0.12439525872468948,
+      "improvement_percent": 98.47003936767578,
+      "baseline_mse": 8.130615234375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_77": {
+      "mse": 0.1289975345134735,
+      "improvement_percent": 98.4203109741211,
+      "baseline_mse": 8.166015625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_78": {
+      "mse": 0.1328004002571106,
+      "improvement_percent": 98.4389877319336,
+      "baseline_mse": 8.50732421875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_79": {
+      "mse": 0.12424753606319427,
+      "improvement_percent": 98.53282928466797,
+      "baseline_mse": 8.468505859375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_80": {
+      "mse": 0.12169253081083298,
+      "improvement_percent": 98.55780029296875,
+      "baseline_mse": 8.43798828125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_81": {
+      "mse": 0.12613342702388763,
+      "improvement_percent": 98.59619903564453,
+      "baseline_mse": 8.985107421875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_82": {
+      "mse": 0.11682992428541183,
+      "improvement_percent": 98.72827911376953,
+      "baseline_mse": 9.186767578125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_83": {
+      "mse": 0.12884145975112915,
+      "improvement_percent": 98.43597412109375,
+      "baseline_mse": 8.23779296875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_84": {
+      "mse": 0.12377762794494629,
+      "improvement_percent": 98.50753021240234,
+      "baseline_mse": 8.29345703125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_85": {
+      "mse": 0.13216432929039001,
+      "improvement_percent": 98.44633483886719,
+      "baseline_mse": 8.506591796875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_86": {
+      "mse": 0.12365920096635818,
+      "improvement_percent": 98.57442474365234,
+      "baseline_mse": 8.67431640625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_87": {
+      "mse": 0.12191048264503479,
+      "improvement_percent": 98.50312042236328,
+      "baseline_mse": 8.144287109375,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_88": {
+      "mse": 0.12942391633987427,
+      "improvement_percent": 98.34848022460938,
+      "baseline_mse": 7.836669921875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_89": {
+      "mse": 0.12885139882564545,
+      "improvement_percent": 98.37816619873047,
+      "baseline_mse": 7.94482421875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_90": {
+      "mse": 0.12635712325572968,
+      "improvement_percent": 98.48847961425781,
+      "baseline_mse": 8.359619140625,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_91": {
+      "mse": 0.1274566799402237,
+      "improvement_percent": 98.4982681274414,
+      "baseline_mse": 8.4873046875,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_92": {
+      "mse": 0.12844246625900269,
+      "improvement_percent": 98.46479034423828,
+      "baseline_mse": 8.366455078125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_93": {
+      "mse": 0.12768948078155518,
+      "improvement_percent": 98.57056427001953,
+      "baseline_mse": 8.932861328125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    },
+    "layer_94": {
+      "mse": 0.12337348610162735,
+      "improvement_percent": 98.65189361572266,
+      "baseline_mse": 9.151611328125,
+      "storage_fp32": 56,
+      "storage_fp16": 28
+    }
+  },
+  "aggregate": {
+    "mean_mse": 0.12411566078662872,
+    "mean_improvement_percent": 98.54942321777344,
+    "storage_fp32_bytes": 5320,
+    "storage_fp16_bytes": 2660,
+    "storage_reduction_percent": 50.0
+  }
+}
