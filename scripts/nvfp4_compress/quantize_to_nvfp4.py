@@ -255,6 +255,11 @@ def main():
                 del block_3d
             del proj_blocks
             gc.collect()
+            try:
+                with open("/proc/sys/vm/drop_caches", "w") as f:
+                    f.write("1")
+            except PermissionError:
+                pass
 
         elif should_quantize(key):
             q = quantize_weight(tensor)

@@ -1,0 +1,11 @@
+{
+  "analysis": "mixed_precision_codebooks",
+  "num_layers_analyzed": 1,
+  "layer_sensitivities": {
+    "layers.13": 3350707558.6952252
+  },
+  "uniform_bits": 3,
+  "mixed_bits": 4,
+  "potential_improvement_percent": -33.33333333333333,
+  "recommendation": "skip"
+}
