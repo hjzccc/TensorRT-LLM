@@ -1,0 +1,10 @@
+{
+  "test": "entropy_coding_real_weights",
+  "num_layers": 95,
+  "average_entropy_bits_per_symbol": 7.148351532961539,
+  "min_entropy": 6.855531907568196,
+  "max_entropy": 7.374737199299506,
+  "uncompressed_bytes": 97280,
+  "arithmetic_bytes": 86923,
+  "compression_percent": 10.645605837980765
+}

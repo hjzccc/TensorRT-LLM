@@ -1,0 +1,12 @@
+{
+  "test": "adaptive_codebook_size_fast",
+  "num_layers": 95,
+  "num_samples": 10,
+  "fixed_storage_bytes": 97280,
+  "adaptive_storage_bytes": 97280,
+  "storage_reduction_percent": 0.0,
+  "average_mse_increase_percent": 0.0,
+  "size_distribution": {
+    "256": 10
+  }
+}

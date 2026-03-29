@@ -1,0 +1,12 @@
+{
+  "test": "entropy_coding_indices",
+  "num_layers": 95,
+  "average_entropy_bits_per_symbol": 6.294222310472644,
+  "min_entropy": 3.8873080951673296,
+  "max_entropy": 7.841848929807764,
+  "uncompressed_bytes": 97280,
+  "huffman_bytes": 77753,
+  "arithmetic_bytes": 76537,
+  "huffman_reduction_percent": 20.07222111909198,
+  "arithmetic_reduction_percent": 21.322221119091957
+}

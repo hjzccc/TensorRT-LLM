@@ -1,0 +1,9 @@
+{
+  "test": "learned_initialization",
+  "num_layers": 95,
+  "avg_mse_random": 2.6886436899076216e-05,
+  "avg_mse_kmeans_pp": 1.5748898931633448e-06,
+  "avg_mse_quantile": 1.672467442404013e-05,
+  "improvement_kmeans_pp_percent": 94.14244079589844,
+  "improvement_quantile_percent": 37.795127868652344
+}

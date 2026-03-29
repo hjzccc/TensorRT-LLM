@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "method": "Block Size Optimization",
+    "block_sizes_tested": [
+      8,
+      16,
+      32,
+      64
+    ],
+    "num_tensors_tested": 0
+  },
+  "per_block_size_results": {},
+  "summary": {
+    "best_block_size": 16,
+    "best_compression": 0.0,
+    "baseline_compression": 0.932,
+    "improvement": -93.2
+  }
+}
