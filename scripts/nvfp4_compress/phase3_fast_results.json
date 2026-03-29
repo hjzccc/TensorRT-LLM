@@ -1,0 +1,18 @@
+{
+  "analysis": {
+    "mean_unique_codes": 9.23,
+    "mean_entropy": 3.006710555553436,
+    "mean_mse_3bit": 0.28109375,
+    "mean_mse_2bit": 2.10515625
+  },
+  "compression_estimates": {
+    "3bit": {
+      "bits_per_elem": 3.03125,
+      "mse": 0.28109375
+    },
+    "2bit": {
+      "bits_per_elem": 2.03125,
+      "mse": 2.10515625
+    }
+  }
+}
