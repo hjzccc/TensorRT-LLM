@@ -1,0 +1,34 @@
+{
+  "summary": {
+    "tested_weights": 3,
+    "avg_improvement_percent": 99.46229044596355,
+    "elapsed_seconds": 44.269166469573975,
+    "approach": "Residual Codebook + Adaptive Scaling"
+  },
+  "results": [
+    {
+      "key": "model.language_model.layers.0.mlp.shared_expert.down_proj.we",
+      "baseline_mse": 0.0001218659890582785,
+      "final_mse": 6.089180715207476e-07,
+      "improvement_percent": 99.5003433227539,
+      "num_scales": 65536,
+      "scale_overhead_bits": 524288
+    },
+    {
+      "key": "model.language_model.layers.0.mlp.shared_expert.gate_proj.we",
+      "baseline_mse": 0.00015636812895536423,
+      "final_mse": 1.0796132983159623e-06,
+      "improvement_percent": 99.30957794189453,
+      "num_scales": 65536,
+      "scale_overhead_bits": 524288
+    },
+    {
+      "key": "model.language_model.layers.0.mlp.shared_expert.up_proj.weig",
+      "baseline_mse": 0.00011800396168837324,
+      "final_mse": 4.992151048099913e-07,
+      "improvement_percent": 99.57695007324219,
+      "num_scales": 65536,
+      "scale_overhead_bits": 524288
+    }
+  ]
+}
