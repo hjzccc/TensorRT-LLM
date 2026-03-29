@@ -1,0 +1,273 @@
+{
+  "metadata": {
+    "checkpoint_dir": "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/nvfp4_compress/nvfp4_checkpoint",
+    "num_tensors_analyzed": 20,
+    "num_blocks_analyzed": 400,
+    "analysis_time_seconds": 105.826815366745,
+    "fp4_unpacking": "proper nibble unpacking from uint8 format"
+  },
+  "aggregate_stats": {
+    "mean_mse_3bit_kmeans": 0.028328776359558105,
+    "mean_mse_2bit_kmeans": 0.45438575744628906,
+    "mean_mse_3bit_greedy": 0.25945312499999995,
+    "mean_mse_2bit_greedy": 1.5442578125000002,
+    "improvement_3bit_percent": 89.08135087617151,
+    "improvement_2bit_percent": 70.57578379929427
+  },
+  "compression_estimates": {
+    "3bit": {
+      "bits_per_elem": 3.03125,
+      "mse_kmeans": 0.028328776359558105,
+      "mse_greedy": 0.25945312499999995,
+      "compression_percent": 24.21875
+    },
+    "2bit": {
+      "bits_per_elem": 2.03125,
+      "mse_kmeans": 0.45438575744628906,
+      "mse_greedy": 1.5442578125000002,
+      "compression_percent": 49.21875
+    }
+  },
+  "tensor_analyses": [
+    {
+      "name": "model.layers.13.mlp.experts.0.gate_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.02688801847398281,
+      "mean_mse_2bit_kmeans": 0.4278256893157959,
+      "mean_mse_3bit_greedy": 0.31328125,
+      "mean_mse_2bit_greedy": 1.73359375,
+      "improvement_3bit_percent": 91.41729086117257,
+      "improvement_2bit_percent": 75.3214564072006
+    },
+    {
+      "name": "model.layers.13.mlp.experts.0.up_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.02343749813735485,
+      "mean_mse_2bit_kmeans": 0.4255102574825287,
+      "mean_mse_3bit_greedy": 0.21171875,
+      "mean_mse_2bit_greedy": 1.1890625,
+      "improvement_3bit_percent": 88.92989017866635,
+      "improvement_2bit_percent": 64.21464326033924
+    },
+    {
+      "name": "model.layers.13.mlp.experts.1.gate_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.03496093675494194,
+      "mean_mse_2bit_kmeans": 0.530092716217041,
+      "mean_mse_3bit_greedy": 0.29765625,
+      "mean_mse_2bit_greedy": 1.49140625,
+      "improvement_3bit_percent": 88.25459342616125,
+      "improvement_2bit_percent": 64.45685297235137
+    },
+    {
+      "name": "model.layers.13.mlp.experts.1.up_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.02786458097398281,
+      "mean_mse_2bit_kmeans": 0.4917891025543213,
+      "mean_mse_3bit_greedy": 0.22578125,
+      "mean_mse_2bit_greedy": 1.57109375,
+      "improvement_3bit_percent": 87.65859389387613,
+      "improvement_2bit_percent": 68.69766030484678
+    },
+    {
+      "name": "model.layers.13.mlp.experts.10.gate_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.03617187589406967,
+      "mean_mse_2bit_kmeans": 0.47726312279701233,
+      "mean_mse_3bit_greedy": 0.40078125,
+      "mean_mse_2bit_greedy": 1.875,
+      "improvement_3bit_percent": 90.974658646314,
+      "improvement_2bit_percent": 74.54596678415935
+    },
+    {
+      "name": "model.layers.13.mlp.experts.10.up_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.02792968787252903,
+      "mean_mse_2bit_kmeans": 0.46532362699508667,
+      "mean_mse_3bit_greedy": 0.21875,
+      "mean_mse_2bit_greedy": 1.38515625,
+      "improvement_3bit_percent": 87.23214268684387,
+      "improvement_2bit_percent": 66.4064160996215
+    },
+    {
+      "name": "model.layers.13.mlp.experts.100.gate_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.02454427070915699,
+      "mean_mse_2bit_kmeans": 0.4424671232700348,
+      "mean_mse_3bit_greedy": 0.203125,
+      "mean_mse_2bit_greedy": 1.29609375,
+      "improvement_3bit_percent": 87.91666672779964,
+      "improvement_2bit_percent": 65.86148777663384
+    },
+    {
+      "name": "model.layers.13.mlp.experts.100.up_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.030755210667848587,
+      "mean_mse_2bit_kmeans": 0.4992426335811615,
+      "mean_mse_3bit_greedy": 0.43984375,
+      "mean_mse_2bit_greedy": 1.840625,
+      "improvement_3bit_percent": 93.00769633128843,
+      "improvement_2bit_percent": 72.87646133345133
+    },
+    {
+      "name": "model.layers.13.mlp.experts.101.gate_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.03101562336087227,
+      "mean_mse_2bit_kmeans": 0.46446093916893005,
+      "mean_mse_3bit_greedy": 0.2171875,
+      "mean_mse_2bit_greedy": 1.7734375,
+      "improvement_3bit_percent": 85.71942521513795,
+      "improvement_2bit_percent": 73.81013206448324
+    },
+    {
+      "name": "model.layers.13.mlp.experts.101.up_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.02688802219927311,
+      "mean_mse_2bit_kmeans": 0.44625839591026306,
+      "mean_mse_3bit_greedy": 0.1875,
+      "mean_mse_2bit_greedy": 1.69296875,
+      "improvement_3bit_percent": 85.65972149372101,
+      "improvement_2bit_percent": 73.64048238278096
+    },
+    {
+      "name": "model.layers.13.mlp.experts.102.gate_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.028255213052034378,
+      "mean_mse_2bit_kmeans": 0.431185781955719,
+      "mean_mse_3bit_greedy": 0.1828125,
+      "mean_mse_2bit_greedy": 1.44453125,
+      "improvement_3bit_percent": 84.54415696298973,
+      "improvement_2bit_percent": 70.15047047575337
+    },
+    {
+      "name": "model.layers.13.mlp.experts.102.up_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.026914063841104507,
+      "mean_mse_2bit_kmeans": 0.45140713453292847,
+      "mean_mse_3bit_greedy": 0.2390625,
+      "mean_mse_2bit_greedy": 1.46953125,
+      "improvement_3bit_percent": 88.74182950437458,
+      "improvement_2bit_percent": 69.28223645921592
+    },
+    {
+      "name": "model.layers.13.mlp.experts.103.gate_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.019960936158895493,
+      "mean_mse_2bit_kmeans": 0.4196661114692688,
+      "mean_mse_3bit_greedy": 0.16171875,
+      "mean_mse_2bit_greedy": 1.40546875,
+      "improvement_3bit_percent": 87.6570056601999,
+      "improvement_2bit_percent": 70.1404878999075
+    },
+    {
+      "name": "model.layers.13.mlp.experts.103.up_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.021523436531424522,
+      "mean_mse_2bit_kmeans": 0.4102683663368225,
+      "mean_mse_3bit_greedy": 0.25546875,
+      "mean_mse_2bit_greedy": 1.41328125,
+      "improvement_3bit_percent": 91.5749239265372,
+      "improvement_2bit_percent": 70.97050807566983
+    },
+    {
+      "name": "model.layers.13.mlp.experts.104.gate_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.019999999552965164,
+      "mean_mse_2bit_kmeans": 0.41629648208618164,
+      "mean_mse_3bit_greedy": 0.28828125,
+      "mean_mse_2bit_greedy": 1.2796875,
+      "improvement_3bit_percent": 93.06233077837523,
+      "improvement_2bit_percent": 67.4688951727526
+    },
+    {
+      "name": "model.layers.13.mlp.experts.104.up_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.01842447742819786,
+      "mean_mse_2bit_kmeans": 0.37752383947372437,
+      "mean_mse_3bit_greedy": 0.159375,
+      "mean_mse_2bit_greedy": 1.440625,
+      "improvement_3bit_percent": 88.43954357446408,
+      "improvement_2bit_percent": 73.79444064390633
+    },
+    {
+      "name": "model.layers.13.mlp.experts.105.gate_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.03324218839406967,
+      "mean_mse_2bit_kmeans": 0.4689676761627197,
+      "mean_mse_3bit_greedy": 0.2015625,
+      "mean_mse_2bit_greedy": 1.3125,
+      "improvement_3bit_percent": 83.50775149441505,
+      "improvement_2bit_percent": 64.26912943522134
+    },
+    {
+      "name": "model.layers.13.mlp.experts.105.up_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.03391927108168602,
+      "mean_mse_2bit_kmeans": 0.47343379259109497,
+      "mean_mse_3bit_greedy": 0.3390625,
+      "mean_mse_2bit_greedy": 1.9109375,
+      "improvement_3bit_percent": 89.9961596809774,
+      "improvement_2bit_percent": 75.22505091919045
+    },
+    {
+      "name": "model.layers.13.mlp.experts.106.gate_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.033710937947034836,
+      "mean_mse_2bit_kmeans": 0.47625964879989624,
+      "mean_mse_3bit_greedy": 0.29765625,
+      "mean_mse_2bit_greedy": 1.484375,
+      "improvement_3bit_percent": 88.67454053222976,
+      "improvement_2bit_percent": 67.91513944927014
+    },
+    {
+      "name": "model.layers.13.mlp.experts.106.up_proj.weight",
+      "shape": "torch.Size([512, 1024])",
+      "num_elements": 1048576,
+      "num_blocks": 65536,
+      "mean_mse_3bit_kmeans": 0.04016927257180214,
+      "mean_mse_2bit_kmeans": 0.49247366189956665,
+      "mean_mse_3bit_greedy": 0.3484375,
+      "mean_mse_2bit_greedy": 1.87578125,
+      "improvement_3bit_percent": 88.47159890315992,
+      "improvement_2bit_percent": 73.74567733313431
+    }
+  ]
+}

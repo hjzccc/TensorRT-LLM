@@ -307,3 +307,37 @@
 
 **Timeline:** 2-3 hours
 
+
+---
+
+## [Phase 2] Fixed Codebook Experiments — IN PROGRESS
+
+**Status**: DEBUGGING
+
+**Baseline Verification**: ✓ COMPLETE
+- Identity mapping (full NVFP4 codebook): PPL = 6.6974
+- Time: 618 seconds
+- Pipeline verified correct
+
+**Experiment 2.1: 3bit_uniform**
+- **Codebook**: [-6, -4, -2, 0, 2, 4, 6]
+- **Result**: PPL = 1817424.66 (FAILURE)
+- **Status**: ✗ CRITICAL FAILURE
+- **Diagnosis**: 
+  - Codebook LUT is valid (verified)
+  - Minimal test shows valid outputs
+  - Issue likely in full model evaluation (loss computation)
+  - Possible causes:
+    1. Logit normalization issue
+    2. Numerical instability in cross-entropy
+    3. Attention mask or position embedding issue
+    4. Expert routing issue with compressed weights
+
+**Next Steps**:
+1. Add detailed logging to identify where NaN/Inf appears
+2. Check if issue is specific to certain layers or experts
+3. Verify logits are in reasonable range before cross-entropy
+4. Test with smaller batch or fewer samples
+
+**Decision**: Do not proceed with other codebooks until root cause is found.
+
