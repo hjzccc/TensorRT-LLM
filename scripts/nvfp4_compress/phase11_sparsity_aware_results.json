@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "method": "Sparsity-Aware Quantization",
+    "block_size": 16,
+    "k_codes": 8
+  },
+  "per_tensor_results": [
+    {
+      "tensor_name": "model.layers.0.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.013461430207826197,
+      "sparsity": 0.0,
+      "is_sparse": false
+    },
+    {
+      "tensor_name": "model.layers.0.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.931640625,
+      "mse": 4.1978436343015346e-05,
+      "sparsity": 0.0,
+      "is_sparse": false
+    }
+  ],
+  "summary": {
+    "avg_compression": 0.837890625,
+    "avg_sparsity": 0.0,
+    "num_tensors_tested": 2,
+    "num_sparse_tensors": 0
+  }
+}

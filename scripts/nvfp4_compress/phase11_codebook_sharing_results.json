@@ -1,0 +1,14 @@
+{
+  "metadata": {
+    "method": "Codebook Sharing Across Layers",
+    "block_size": 16,
+    "k_codes": 8,
+    "similarity_threshold": 0.8
+  },
+  "layer_similarities": [],
+  "summary": {
+    "num_layers": 2,
+    "num_shareable_pairs": 0,
+    "potential_compression_improvement": 0.0
+  }
+}

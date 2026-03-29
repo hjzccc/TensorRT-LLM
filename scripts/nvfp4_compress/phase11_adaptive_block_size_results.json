@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "method": "Adaptive Block Size",
+    "block_sizes_tested": [
+      8,
+      16,
+      32,
+      64
+    ],
+    "k_codes": 8
+  },
+  "per_tensor_results": [
+    {
+      "tensor_name": "model.layers.0.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "results_by_size": {
+        "8": {
+          "compression": 0.73828125,
+          "mse": 0.0,
+          "bits_per_elem": 8.375
+        },
+        "16": {
+          "compression": 0.744140625,
+          "mse": 0.010695139644667506,
+          "bits_per_elem": 8.1875
+        },
+        "32": {
+          "compression": 0.7470703125,
+          "mse": 0.011120859533548355,
+          "bits_per_elem": 8.09375
+        }
+      }
+    },
+    {
+      "tensor_name": "model.layers.0.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "results_by_size": {
+        "8": {
+          "compression": 0.92578125,
+          "mse": 0.0,
+          "bits_per_elem": 2.375
+        },
+        "16": {
+          "compression": 0.931640625,
+          "mse": 4.412678015341953e-05,
+          "bits_per_elem": 2.1875
+        },
+        "32": {
+          "compression": 0.9345703125,
+          "mse": 1.8667035760699946e-05,
+          "bits_per_elem": 2.09375
+        },
+        "64": {
+          "compression": 0.93603515625,
+          "mse": 4.977126809535548e-05,
+          "bits_per_elem": 2.046875
+        }
+      }
+    }
+  ],
+  "summary": {
+    "best_block_size": 64,
+    "avg_compression_by_size": {
+      "8": 0.83203125,
+      "16": 0.837890625,
+      "32": 0.8408203125,
+      "64": 0.93603515625
+    },
+    "num_tensors_tested": 2
+  }
+}
