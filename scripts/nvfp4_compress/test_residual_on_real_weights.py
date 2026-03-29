@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Test residual codebook learning on real Qwen3.5-35B-A3B weights.
-
-This applies three-stage residual codebook learning to actual model weights
-and measures the MSE improvement compared to block size 8 K-means baseline.
-"""
+"""Test residual codebook learning on real Qwen3.5-35B-A3B weights."""
 
 import json
 import sys
@@ -15,11 +11,8 @@ import numpy as np
 from safetensors import safe_open
 from sklearn.cluster import KMeans
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "channel_quant_new"))
-
 # Configuration
 SRC_MODEL = "Qwen/Qwen3.5-35B-A3B"
-BLOCK8_CODEBOOKS = Path(__file__).parent / "nvfp4_kmeans_checkpoint_block8" / "codebooks-00000.safetensors"
 
 # Residual codebook parameters
 PRIMARY_CODEBOOK_SIZE = 8    # 3-bit
@@ -46,7 +39,7 @@ def learn_kmeans_codebook(values, k):
         init='k-means++',
         n_init=10,
         random_state=42,
-        n_jobs=-1
+        max_iter=300
     )
     kmeans.fit(values)
     codebook = kmeans.cluster_centers_.flatten()
@@ -70,8 +63,8 @@ def test_residual_codebook():
     weight_map = index["weight_map"]
     all_keys = sorted(weight_map.keys())
     
-    # Filter to compressible weights
-    test_keys = [k for k in all_keys if k.endswith(".weight") and "mlp.shared_expert" in k][:5]
+    # Filter to compressible weights (use smaller sample for speed)
+    test_keys = [k for k in all_keys if k.endswith(".weight") and "mlp.shared_expert" in k][:3]
     
     print(f"Testing on {len(test_keys)} weights\n")
     
@@ -85,31 +78,39 @@ def test_residual_codebook():
         with safe_open(str(shard_path), framework="pt", device="cpu") as sf:
             weight = sf.get_tensor(key)
         
-        weight_flat = weight.reshape(-1).numpy().astype(np.float32)
+        # Convert to float32
+        weight_float = weight.to(torch.float32)
+        weight_flat = weight_float.reshape(-1).numpy().astype(np.float32)
         baseline_mse = np.mean(weight_flat ** 2)
         
         print(f"[{idx+1}/{len(test_keys)}] {key[:60]}")
         print(f"  Shape: {weight.shape}, Elements: {weight.numel()}")
         
-        # Stage 1: Primary codebook
+        # Sample for faster K-means (use all data for accuracy)
+        t_stage1 = time.time()
         primary_cb, primary_mse, primary_kmeans = learn_kmeans_codebook(
             weight_flat.reshape(-1, 1), PRIMARY_CODEBOOK_SIZE
         )
         primary_recon = primary_kmeans.cluster_centers_[primary_kmeans.labels_].flatten()
+        print(f"  Stage 1: {time.time() - t_stage1:.1f}s, MSE: {primary_mse:.6f}")
         
         # Stage 2: Residual codebook
+        t_stage2 = time.time()
         residuals = weight_flat - primary_recon
         residual_cb, residual_mse, residual_kmeans = learn_kmeans_codebook(
             residuals.reshape(-1, 1), RESIDUAL_CODEBOOK_SIZE
         )
         residual_recon = residual_kmeans.cluster_centers_[residual_kmeans.labels_].flatten()
+        print(f"  Stage 2: {time.time() - t_stage2:.1f}s, MSE: {residual_mse:.6f}")
         
         # Stage 3: Residual-of-residual codebook
+        t_stage3 = time.time()
         residuals2 = residuals - residual_recon
         residual2_cb, residual2_mse, residual2_kmeans = learn_kmeans_codebook(
             residuals2.reshape(-1, 1), RESIDUAL2_CODEBOOK_SIZE
         )
         residual2_recon = residual2_kmeans.cluster_centers_[residual2_kmeans.labels_].flatten()
+        print(f"  Stage 3: {time.time() - t_stage3:.1f}s, MSE: {residual2_mse:.6f}")
         
         # Final reconstruction
         final_recon = primary_recon + residual_recon + residual2_recon
