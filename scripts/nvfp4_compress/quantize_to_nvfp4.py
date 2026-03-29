@@ -255,10 +255,11 @@ def main():
                 del block_3d
             del proj_blocks
             gc.collect()
+            import ctypes
             try:
-                with open("/proc/sys/vm/drop_caches", "w") as f:
-                    f.write("1")
-            except PermissionError:
+                libc = ctypes.CDLL("libc.so.6")
+                libc.malloc_trim(0)
+            except Exception:
                 pass
 
         elif should_quantize(key):
