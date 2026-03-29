@@ -1,0 +1,8 @@
+{
+  "test": "block_level_fast",
+  "num_layers": 10,
+  "avg_mse_per_layer": 0.3059713580397597,
+  "avg_mse_per_block": 0.08324869791666667,
+  "improvement_percent": 72.7919964633262,
+  "codebook_overhead_percent": 6300.0
+}
