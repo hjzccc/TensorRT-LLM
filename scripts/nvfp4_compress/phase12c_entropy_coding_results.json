@@ -1,0 +1,9 @@
+{
+  "method": "Entropy Coding on Indices",
+  "avg_entropy": 2.9952552363864298,
+  "avg_compression_ratio": 0.9984184121288102,
+  "additional_compression_pct": 0.15815878711897824,
+  "estimated_overall_impact_low": 0.04744763613569347,
+  "estimated_overall_impact_high": 0.0632635148475913,
+  "estimated_overall_impact_avg": 0.055355575491642384
+}

@@ -1,0 +1,13 @@
+{
+  "method": "Adaptive Temperature per Layer",
+  "global_temperature": 1.75,
+  "global_avg_improvement": 99.88353385120291,
+  "global_std_improvement": 0.004160780822627247,
+  "per_layer_avg_improvement": 99.90114550234411,
+  "per_layer_std_improvement": 0.004438848327891619,
+  "additional_improvement": 0.017611651141194784,
+  "temperature_distribution": {
+    "1.4": 72,
+    "1.3": 23
+  }
+}

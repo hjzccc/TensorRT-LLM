@@ -1,0 +1,6 @@
+{
+  "method": "Codebook Rotation & Orthogonal Transforms",
+  "status": "NOT APPLICABLE",
+  "reason": "Data is 1D, rotation is identity operation",
+  "additional_improvement": 0.0
+}
