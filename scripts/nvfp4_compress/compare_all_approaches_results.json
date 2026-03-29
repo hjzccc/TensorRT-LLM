@@ -1,0 +1,28 @@
+{
+  "test": "compare_all_approaches",
+  "num_layers": 95,
+  "baseline": {
+    "mse": 6.532256126403809
+  },
+  "global_3stage": {
+    "mse": 0.0049775331281125546,
+    "improvement_percent": 99.92379760742188,
+    "codebook_count": 1
+  },
+  "per_layer_3stage": {
+    "mse": 0.001045858021825552,
+    "improvement_percent": 99.98399353027344,
+    "codebook_count": 95
+  },
+  "grouped_3stage": {
+    "mse": 0.0010963620152324438,
+    "improvement_percent": 99.98321533203125,
+    "codebook_count": 7
+  },
+  "comparisons": {
+    "per_layer_vs_global_percent": 78.9884262084961,
+    "grouped_vs_global_percent": 77.97378540039062,
+    "per_layer_vs_grouped_percent": 4.606509208679199,
+    "storage_reduction_percent": 92.63157894736842
+  }
+}
