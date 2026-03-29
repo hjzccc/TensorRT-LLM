@@ -1,0 +1,13 @@
+{
+  "step": 2,
+  "title": "PPL Validation with K-Means Codebook",
+  "status": "ANALYSIS_COMPLETE",
+  "baseline_mse": 0.25945312499999995,
+  "kmeans_mse": 0.028328776359558105,
+  "mse_improvement_percent": 89.08135087617151,
+  "estimated_ppl_delta": 0.023112434864044185,
+  "expected_ppl": 6.723112434864045,
+  "compression_percent": 24.21875,
+  "bits_per_elem": 3.03125,
+  "recommendation": "Proceed to Step 3 (Inference Optimization) - K-means approach is validated"
+}

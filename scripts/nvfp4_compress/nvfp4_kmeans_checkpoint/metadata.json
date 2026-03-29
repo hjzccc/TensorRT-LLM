@@ -1,0 +1,12 @@
+{
+  "source_model": "Qwen/Qwen3.5-35B-A3B",
+  "total_weights": 1811,
+  "compressible_weights": 120,
+  "compressed_weights": 120,
+  "skipped_weights": 0,
+  "block_size": 16,
+  "codebook_size": 8,
+  "kmeans_iterations": 10,
+  "compression_ratio": 1.319696469811943,
+  "expected_size_reduction": "24.7%"
+}

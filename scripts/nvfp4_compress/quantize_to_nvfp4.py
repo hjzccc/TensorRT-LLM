@@ -32,21 +32,23 @@ SRC_MODEL = "Qwen/Qwen3.5-35B-A3B"
 SRC_SNAP = None  # auto-detect from HF cache
 DST_DIR = "/code/tensorrt_llm/scripts/nvfp4_compress/nvfp4_checkpoint"
 BLOCK_SIZE = 16
-SHARD_SIZE_GB = 5
+SHARD_SIZE_GB = 1
 
 # Keys that should NOT be quantized (norms, gates, embeddings, biases, MTP)
 SKIP_QUANT_PATTERNS = [
     "layernorm",
     "norm.weight",
-    "mlp.gate.weight",          # MoE router
-    "shared_expert_gate",       # shared expert gate
-    "embed_tokens",             # embeddings
-    "lm_head",                  # output head
-    "A_log",                    # Mamba state matrix
-    "dt_bias",                  # Mamba dt bias
-    "conv1d",                   # DeltaNet conv
-    "mtp.",                     # multi-token prediction (skip entirely)
-    "model.visual.",            # vision model (skip entirely)
+    "mlp.gate.weight",
+    "shared_expert_gate",
+    "embed_tokens",
+    "lm_head",
+    "A_log",
+    "dt_bias",
+    "conv1d",
+    "linear_attn",
+    "self_attn",
+    "mtp.",
+    "model.visual.",
 ]
 
 
@@ -188,66 +190,86 @@ def main():
     total_kept_bf16 = 0
     total_skipped = 0
 
+    all_keys_ordered = []
     for shard_file in sorted(shard_to_keys.keys()):
-        keys = shard_to_keys[shard_file]
+        for key in shard_to_keys[shard_file]:
+            all_keys_ordered.append((key, shard_file))
+
+    for key, shard_file in all_keys_ordered:
+        new_key = strip_prefix(key)
+
+        if any(p in key for p in ["mtp.", "model.visual."]):
+            total_skipped += 1
+            continue
+
         shard_path = os.path.join(SRC_SNAP, shard_file)
-        print(f"\nProcessing {shard_file} ({len(keys)} tensors)...", flush=True)
-
         with safe_open(shard_path, framework="pt", device="cpu") as sf:
-            for key in keys:
-                new_key = strip_prefix(key)
+            tensor = sf.get_tensor(key)
 
-                if any(p in key for p in ["mtp.", "model.visual."]):
-                    total_skipped += 1
-                    continue
+        is_fused_expert = (
+            "mlp.experts." in key
+            and tensor.dim() == 3
+            and ("gate_up_proj" in key or "down_proj" in key)
+        )
 
-                tensor = sf.get_tensor(key)
+        if is_fused_expert:
+            num_experts = tensor.shape[0]
+            fused_name = key.split("mlp.experts.")[-1]
+            is_gate_up = fused_name == "gate_up_proj"
+            layer_prefix = new_key.split("mlp.experts.")[0] + "mlp.experts."
 
-                is_fused_expert = (
-                    "mlp.experts." in key
-                    and tensor.dim() == 3
-                    and ("gate_up_proj" in key or "down_proj" in key)
-                )
+            if is_gate_up:
+                half = tensor.shape[1] // 2
+                gate_block = tensor[:, :half, :].contiguous()
+                up_block = tensor[:, half:, :].contiguous()
+                del tensor
+                gc.collect()
+                proj_blocks = [("gate_proj", gate_block), ("up_proj", up_block)]
+            else:
+                proj_blocks = [(fused_name, tensor)]
 
-                if is_fused_expert:
-                    num_experts = tensor.shape[0]
-                    fused_name = key.split("mlp.experts.")[-1]
-                    if fused_name == "gate_up_proj":
-                        proj_names = ["gate_proj", "up_proj"]
-                        half = tensor.shape[1] // 2
-                        splits = [tensor[:, :half, :], tensor[:, half:, :]]
-                    else:
-                        proj_names = [fused_name]
-                        splits = [tensor]
-
-                    layer_prefix = new_key.split("mlp.experts.")[0] + "mlp.experts."
-
-                    for proj_name, proj_tensor in zip(proj_names, splits):
-                        for expert_idx in range(num_experts):
-                            expert_weight = proj_tensor[expert_idx]
-                            q = quantize_weight(expert_weight)
-                            base = f"{layer_prefix}{expert_idx}.{proj_name}"
-                            for suffix, value in q.items():
-                                dst_shard_data[f"{base}.{suffix}"] = value
-                                dst_shard_bytes += value.nelement() * value.element_size()
-                            total_quantized += 1
-                    del tensor, splits
-
-                elif should_quantize(key):
-                    q = quantize_weight(tensor)
-                    base_key = new_key.replace(".weight", "")
+            for proj_name, block_3d in proj_blocks:
+                for expert_idx in range(num_experts):
+                    expert_weight = block_3d[expert_idx].contiguous()
+                    q = quantize_weight(expert_weight)
+                    base = f"{layer_prefix}{expert_idx}.{proj_name}"
                     for suffix, value in q.items():
-                        dst_shard_data[f"{base_key}.{suffix}"] = value
+                        dst_shard_data[f"{base}.{suffix}"] = value
                         dst_shard_bytes += value.nelement() * value.element_size()
                     total_quantized += 1
-                    del tensor
-                else:
-                    dst_shard_data[new_key] = tensor
-                    dst_shard_bytes += tensor.nelement() * tensor.element_size()
-                    total_kept_bf16 += 1
+                    del expert_weight, q
 
-                # Flush shard if big enough
-                if dst_shard_bytes >= SHARD_SIZE_GB * 1e9:
+                    if dst_shard_bytes >= SHARD_SIZE_GB * 1e9:
+                        shard_name = f"model-{dst_shard_idx:05d}-of-PLACEHOLDER.safetensors"
+                        shard_out = os.path.join(DST_DIR, shard_name)
+                        print(f"  Writing shard {dst_shard_idx}: {len(dst_shard_data)} tensors, "
+                              f"{dst_shard_bytes/1e9:.1f} GB ({time.time()-t0:.0f}s)", flush=True)
+                        save_file(dst_shard_data, shard_out)
+                        for k in dst_shard_data:
+                            dst_weight_map[k] = shard_name
+                        dst_shard_data = {}
+                        dst_shard_bytes = 0
+                        dst_shard_idx += 1
+                        gc.collect()
+                        torch.cuda.empty_cache()
+                del block_3d
+            del proj_blocks
+            gc.collect()
+
+        elif should_quantize(key):
+            q = quantize_weight(tensor)
+            base_key = new_key.replace(".weight", "")
+            for suffix, value in q.items():
+                dst_shard_data[f"{base_key}.{suffix}"] = value
+                dst_shard_bytes += value.nelement() * value.element_size()
+            total_quantized += 1
+            del tensor
+        else:
+            dst_shard_data[new_key] = tensor
+            dst_shard_bytes += tensor.nelement() * tensor.element_size()
+            total_kept_bf16 += 1
+
+        if dst_shard_bytes >= SHARD_SIZE_GB * 1e9:
                     shard_name = f"model-{dst_shard_idx:05d}-of-PLACEHOLDER.safetensors"
                     shard_out = os.path.join(DST_DIR, shard_name)
                     print(f"  Writing shard {dst_shard_idx}: {len(dst_shard_data)} tensors, "
