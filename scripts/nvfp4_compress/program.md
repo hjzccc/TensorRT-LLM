@@ -19,17 +19,21 @@ We measure **end-to-end accuracy** (zero-shot benchmarks), not just perplexity. 
 **Comparison**: Original NVFP4 model accuracy vs. compressed-then-decompressed model accuracy.
 
 **Setup**:
-- **Starting model**: `Sehyo/Qwen3.5-35B-A3B-NVFP4` — pre-quantized NVFP4 model in `compressed-tensors` format, calibrated with 512 samples (ultrachat + Nemotron), all experts calibrated. 75k+ downloads/month.
-- **Inference engine**: vLLM (nightly) — the model is designed for vLLM's compressed-tensors support.
-- **Evaluation harness**: `lm-evaluation-harness` (EleutherAI)
+- **Base model**: `Qwen/Qwen3.5-35B-A3B` (BF16, already downloaded in docker)
+- **Quantization**: We quantize BF16 → NVFP4 ourselves using `torch.ops.trtllm.fp4_quantize`, layer by layer (BF16 model is ~70GB, doesn't fit in 32GB GPU at once). The quantized result is repacked into a TRT-LLM-native NVFP4 checkpoint (~22GB) that fits entirely in GPU memory.
+- **Inference engine**: TRT-LLM with the NVFP4 checkpoint (auto_deploy or engine build — whichever works first)
+- **Evaluation harness**: `lm-evaluation-harness` (EleutherAI), already installed
 - **Benchmarks**: MMLU (zero-shot), GSM8K (zero-shot)
-- **GPU**: RTX 5090 (32GB, Blackwell) — fits the entire NVFP4 model in memory, no layer-by-layer needed
+- **GPU**: RTX 5090 (32GB, Blackwell) — fits the entire NVFP4 model in memory
+- **Docker container**: `trtllm-dual-tile` with TRT-LLM 1.3.0rc3, lm-eval pre-installed
 
 **Workflow**:
-1. Run baseline: `Sehyo/Qwen3.5-35B-A3B-NVFP4` → vLLM → lm-eval → MMLU/GSM8K scores
-2. Compress: Load NVFP4 safetensors → unpack FP4 codes → apply sub-codebook mapping → repack → save modified checkpoint
-3. Run experiment: Modified checkpoint → vLLM → lm-eval → MMLU/GSM8K scores
-4. Compare: Accuracy delta from compression
+1. Quantize: Load BF16 model layer by layer → `fp4_quantize` each weight → save packed FP4 codes + scales → repack as TRT-LLM-native NVFP4 checkpoint
+2. Run baseline: Load NVFP4 checkpoint → TRT-LLM → lm-eval → MMLU/GSM8K scores
+3. Compress: Load NVFP4 checkpoint → compress to sub-4-bit format (per-element indices + per-block codebook identity)
+4. Decompress: Expand compressed format back to standard NVFP4 checkpoint (valid FP4 codes + original scales)
+5. Run experiment: Load decompressed checkpoint → TRT-LLM → lm-eval → MMLU/GSM8K scores
+6. Compare: Accuracy delta from compression
 
 ## Constraints
 
@@ -37,9 +41,9 @@ Things that are **fixed** (do not change these):
 - Decompressed values must be valid FP4 E2M1 codes from the set {-6, -4, -3, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 3, 4, 6}
 - Block scales (FP8 E4M3, one per 16 elements) are preserved from original NVFP4, never recomputed
 - Global scale (FP32, one per tensor) is preserved from original NVFP4, never recomputed
-- Starting model: `Sehyo/Qwen3.5-35B-A3B-NVFP4` (compressed-tensors format)
+- Starting model: `Qwen/Qwen3.5-35B-A3B` (BF16), quantized to NVFP4 by us using `fp4_quantize`
 - Evaluation: MMLU and GSM8K, zero-shot, via lm-evaluation-harness
-- Inference: vLLM with compressed-tensors support
+- Inference: TRT-LLM with our NVFP4 checkpoint (auto_deploy or engine build — whichever works first)
 - No retraining or fine-tuning — strictly post-training compression
 - Compute pipeline: compressed codes → decompress to FP4 → feed to NVFP4 tensor cores on Blackwell
 
@@ -77,73 +81,36 @@ How you know an approach is working (in rough priority order):
    - `scripts/nvfp4_compress/exploration.md` — exploration log (create when starting)
    - `scripts/nvfp4_compress/per_block_entropy.py` — per-block Shannon entropy analysis (verified, fast)
    - `scripts/nvfp4_compress/code_entropy_fast.py` — global marginal + pairwise entropy (verified)
-   - `scripts/nvfp4_compress/sub_fp4_compress.py` — code-space FP4 compression pipeline (pack/unpack verified)
+   - `scripts/nvfp4_compress/sub_fp4_compress.py` — FP4 pack/unpack utilities (round-trip verified)
    Docker mount: host `/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/` → docker `/code/tensorrt_llm/`
-3. **Install prerequisites**:
-   - vLLM nightly: `pip install vllm --pre` (or whatever version supports Qwen3.5 MoE + compressed-tensors)
-   - lm-evaluation-harness: `pip install lm-eval`
-   - Download model: `huggingface-cli download Sehyo/Qwen3.5-35B-A3B-NVFP4`
-4. **Run baseline**: Get MMLU/GSM8K scores for the unmodified NVFP4 model.
+3. **Quantize and repack**: Write a script that loads the BF16 model layer by layer, quantizes each weight tensor with `torch.ops.trtllm.fp4_quantize`, and saves the packed FP4 codes + block scales + global scales as a TRT-LLM-native NVFP4 checkpoint. The output checkpoint (~22GB) should be loadable by TRT-LLM auto_deploy as a whole model.
+   - **Reference**: Study [`nvidia/Qwen3-30B-A3B-NVFP4`](https://huggingface.co/nvidia/Qwen3-30B-A3B-NVFP4) — NVIDIA's official NVFP4 quantization of a similar Qwen3 MoE model. Replicate its safetensors layout (weight keys, scale keys, dtypes, config.json) so TRT-LLM loads it natively via `LLM(model=...)`. Key details: quantized with `nvidia-modelopt v0.31.0`, only linear weights in transformer blocks are quantized, deploys with `tensorrt_llm.LLM(model="nvidia/Qwen3-30B-A3B-FP4")`. Note: that model uses `model_type: qwen3_moe` (Qwen3, in transformers 4.57.1); our model `Qwen/Qwen3.5-35B-A3B` uses `model_type: qwen3_5_moe` (Qwen3.5, NOT in transformers 4.57.1) — use the reference for checkpoint format only, the model_type will need to be resolved separately.
+   - Strip the `model.language_model.` prefix from weight keys (the BF16 model is a multimodal wrapper; we only want the text model).
+4. **Run baseline**: Load the NVFP4 checkpoint with TRT-LLM, run lm-eval MMLU/GSM8K, record baseline scores.
 5. **Confirm and go**: Confirm baseline scores, then begin exploring compression.
 
 ## How to explore
 
 You are an autonomous researcher/engineer. Your job is to try things, learn from what works, and converge on the best approach. Here's how:
 
-### Phase 1: Establish baselines
+### Phase 1: Build the compression / decompression pipeline
 
-1. Install vLLM + lm-eval-harness in the docker container
-2. Download `Sehyo/Qwen3.5-35B-A3B-NVFP4`
-3. Run baseline evaluation:
-   ```bash
-   lm_eval --model vllm \
-     --model_args pretrained=Sehyo/Qwen3.5-35B-A3B-NVFP4,trust_remote_code=True,gpu_memory_utilization=0.9 \
-     --tasks mmlu,gsm8k \
-     --num_fewshot 0 \
-     --batch_size auto
-   ```
-4. Record MMLU and GSM8K scores as the baseline to beat.
+The goal is to produce a **sub-4-bit compressed format** on disk, and a decompressor that reconstructs valid 4-bit FP4 codes at inference time.
 
-### Phase 2: Build the compression pipeline
+1. **Compress** (`compress_checkpoint.py`):
+   - Loads the NVFP4 checkpoint's packed FP4 codes (4 bits/element)
+   - For each block of 16 elements, finds the best sub-codebook (subset of the 16 FP4 values) and encodes each element as an index into that sub-codebook
+   - Saves the compressed representation: per-element indices (e.g., 2 bits each) + per-block codebook identity (e.g., 1 bit selecting from a small library of codebooks)
+   - Example: 3-bit format = 2-bit index per element + 1-bit codebook selector per 16-element block → 2 + 1/16 = 2.0625 bits/element
+   - All original scales (block scales, global scale) are preserved unchanged
 
-1. Understand the `compressed-tensors` format: figure out how FP4 weights are stored in the safetensors files, what keys hold quantized weights vs scales, what metadata is needed.
-2. Write a script that:
-   - Loads the NVFP4 checkpoint
-   - Unpacks all FP4 codes (reuse `unpack_fp4_codes` / `repack_fp4_codes` from `sub_fp4_compress.py`)
-   - Applies a code-space LUT (sub-codebook mapping)
-   - Repacks and saves as a new checkpoint
-3. Verify: identity mapping (full codebook) → modified model scores match baseline exactly.
+2. **Decompress** (`decompress_checkpoint.py`):
+   - Reads the compressed checkpoint
+   - For each block: look up the codebook, expand indices back to 4-bit FP4 codes
+   - Repacks as standard NVFP4 (4 bits/element) that tensor cores can consume
+   - Output is a normal NVFP4 checkpoint loadable by TRT-LLM
 
-### Phase 3: Run compression experiments
-
-Start with the simplest codebooks and measure accuracy impact:
-
-- **3-bit uniform ±{0,2,4,6}**: 7 unique values → 3 bits/code. Simplest, proven nearly lossless on PPL.
-- **3-bit dense ±{0,1,2,6}**: Keeps fine-grained codes near zero.
-- **2-bit experiments**: ±{0,2,4,6}, ±{0,3,6}, etc.
-- **Per-block optimal 8-code** (3-bit): Best 8 of 15 per block (C(15,8)=6435 search).
-- **Shared codebook library**: Pre-compute K codebooks, per-block selector.
-
-For each experiment:
-```bash
-python3 scripts/nvfp4_compress/compress_checkpoint.py \
-  --input Sehyo/Qwen3.5-35B-A3B-NVFP4 \
-  --output /path/to/modified_checkpoint \
-  --codebook 3bit_uniform
-
-lm_eval --model vllm \
-  --model_args pretrained=/path/to/modified_checkpoint,trust_remote_code=True \
-  --tasks mmlu,gsm8k \
-  --num_fewshot 0
-```
-
-### Phase 4: Quantized compression & optimization
-
-Apply secondary quantization techniques constrained to valid FP4 output:
-- Lattice VQ on FP4 codes
-- Product quantization with FP4 constraint
-- GPTQ-style compensation in code space
-- Adaptive block scaling (Four-Over-Six style) at sub-codebook level
+3. **Verify**: compress → decompress → load with TRT-LLM → scores match the original NVFP4 baseline (for identity/lossless codebook).
 
 ## The exploration loop
 
@@ -153,12 +120,7 @@ LOOP FOREVER:
 
 2. **Do the work.** Write code, modify checkpoints, run experiments.
 
-3. **Test it.** Run lm-eval:
-   ```bash
-   lm_eval --model vllm \
-     --model_args pretrained=/path/to/checkpoint,trust_remote_code=True \
-     --tasks mmlu,gsm8k --num_fewshot 0
-   ```
+3. **Test it.** Load the compressed checkpoint with TRT-LLM and run lm-eval MMLU/GSM8K.
 
 4. **Log what happened.** Append to `exploration.md`:
    ```
@@ -177,11 +139,10 @@ LOOP FOREVER:
 ### Decision-making guidelines
 
 - **When in doubt, try it.** A quick experiment beats speculation.
-- **Simpler is always better.** Our 3-bit uniform ±{0,2,4,6} is embarrassingly simple and nearly lossless. Beat it with something equally clean.
-- **Fail fast.** If an approach isn't working after one eval run, log and move on.
 - **The pipeline must be correct.** Always operate on actual FP4 codes with preserved scales. Never re-quantize.
 - **Accuracy > proxy metrics.** Always evaluate with MMLU/GSM8K, not just MSE or PPL.
 - **Coherent error > random error.** Deterministic, consistent rounding decisions are better than "optimal" per-element choices that break error coherence.
+- **When stuck, read the papers.** 25 related work PDFs are in `scripts/channel_quant_new/papers/`. Key papers for codebook design: GLVQ (per-group learned lattice), AQLM (additive multi-codebook), BOF4 (EM-optimized codebook), QuIP# (lattice codebook), Four Over Six (adaptive block scaling). Read the actual methods sections — the ideas often transfer even when the format differs.
 
 ### Autonomy rules
 
@@ -189,24 +150,19 @@ LOOP FOREVER:
 
 ## Reference material
 
-### FP4 packed format (verified)
-- Two 4-bit codes per byte: `[HIGH_NIBBLE (bits 7-4) | LOW_NIBBLE (bits 3-0)]`
-- Even index → LOW nibble, Odd index → HIGH nibble
-- E2M1 lookup: `{0:0, 1:0.5, 2:1, 3:1.5, 4:2, 5:3, 6:4, 7:6}` + sign bit (bit 3)
-- No interleaving, row-major layout
-- Pack/unpack round-trip verified in `sub_fp4_compress.py`
-
-### Key experimental findings (from PPL evaluation)
+### Key findings from entropy analysis (verified, from `per_block_entropy.py` and `code_entropy_fast.py`)
 - Per-block entropy at block-16: 3.095 bits/elem (19.8% below global marginal of 3.857)
 - Per-block entropy at block-32: 3.463 bits/elem (worse — crosses block scale boundaries)
 - Pairwise MI between adjacent elements: 0.0075 bits (negligible)
-- 3-bit uniform ±{0,2,4,6}: +0.017 PPL at 3.31 bits/elem
-- Adaptive 3-bit (4/6): -0.009 PPL (beats NVFP4!) at 3.37 bits/elem
-- 2-bit hard floor at +0.6 PPL
-- Stochastic rounding: 3x lower MSE → 25x worse PPL
-- MoE-only NVFP4 baseline (code-space pipeline, identity mapping): PPL = 6.6974
+- Average block uses only 9.72 of 15 codes; 16% of blocks use ≤8 codes (3-bit representable)
 
-### Papers (in scripts/channel_quant_new/papers/)
+### Earlier PPL experiments (unreliable — used buggy BF16-roundtrip pipeline, treat as directional only)
+- 3-bit uniform ±{0,2,4,6}: +0.017 PPL (BF16-roundtrip with adapted scales — NOT frozen scales)
+- Code-space pipeline with frozen scales: 3-bit uniform causes ~20% relative error per linear, compounds to garbage across 40 layers
+- Stochastic rounding: 3x lower MSE → 25x worse PPL
+- Lesson: frozen block scales + aggressive sub-codebook = unusable. The compress/decompress approach avoids this by preserving exact codes within each sub-codebook.
+
+### Papers (in `scripts/channel_quant_new/papers/`)
 - **Four Over Six** (2512.02010): Adaptive block scaling for NVFP4
 - **BOF4** (2505.06653): EM-optimized codebook + outlier-preserving quantization
 - **GLVQ** (2510.20984): Per-group learned lattice codebooks

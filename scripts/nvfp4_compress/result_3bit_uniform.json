@@ -1,8 +1,0 @@
-{
-  "approach": "codespace_3bit_uniform",
-  "ppl": 1817424.6590855294,
-  "bits": 2.807354922057604,
-  "effective_bpe": 3.307354922057604,
-  "time": 1248.7763831615448,
-  "codebook": "3bit_uniform"
-}
