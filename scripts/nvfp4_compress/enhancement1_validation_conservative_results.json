@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "validation": "Conservative Adaptive Block Scaling",
+    "baseline_mse": 0.028328776359558105,
+    "baseline_bits_per_elem": 3.03125
+  },
+  "scenarios": [
+    {
+      "scenario": "Very Conservative (2.5% MSE improvement)",
+      "mse_improvement_percent": 2.5,
+      "actual_mse_improvement_percent": 2.5000000000000138,
+      "compression_percent": 23.769531250000014,
+      "bits_per_elem": 3.0492187499999996,
+      "estimated_ppl_delta": 0.014164388176061277,
+      "ppl_target_met": false
+    },
+    {
+      "scenario": "Conservative (5% MSE improvement)",
+      "mse_improvement_percent": 5.0,
+      "actual_mse_improvement_percent": 4.999999999999661,
+      "compression_percent": 25.664062499999744,
+      "bits_per_elem": 2.9734375000000104,
+      "estimated_ppl_delta": 0.02832877635212047,
+      "ppl_target_met": false
+    },
+    {
+      "scenario": "Moderate (7.5% MSE improvement)",
+      "mse_improvement_percent": 7.5,
+      "actual_mse_improvement_percent": 7.500000000000348,
+      "compression_percent": 27.55859375000027,
+      "bits_per_elem": 2.897656249999989,
+      "estimated_ppl_delta": 0.042493164528185565,
+      "ppl_target_met": false
+    },
+    {
+      "scenario": "Optimistic (10% MSE improvement)",
+      "mse_improvement_percent": 10.0,
+      "actual_mse_improvement_percent": 10.00000000000014,
+      "compression_percent": 29.4531250000001,
+      "bits_per_elem": 2.821874999999996,
+      "estimated_ppl_delta": 0.05665755270424559,
+      "ppl_target_met": false
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
-  "timestamp": 1774777008.7221534,
-  "method": "three-stage-residual-codebook",
+  "timestamp": 1774776994.2995894,
+  "method": "per-layer-three-stage-residual-codebook",
   "stages": {
     "primary": {
       "clusters": 8,
@@ -17,7 +17,8 @@
   },
   "aggregate": {
     "mean_mse": 0,
-    "mean_improvement_percent": 0
+    "mean_improvement_percent": 0,
+    "layer_count": 0
   },
-  "tensors": {}
+  "layers": {}
 }

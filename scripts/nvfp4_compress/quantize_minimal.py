@@ -37,13 +37,21 @@ def quantize_expert_block(block_3d, proj_name, layer_prefix, shard_idx, weight_m
     torch.cuda.empty_cache()
 
     sn = f"model-{shard_idx:05d}-of-PLACEHOLDER.safetensors"
-    save_file(shard_data, f"{CKPT}/{sn}")
+    shard_path = f"{CKPT}/{sn}"
+    save_file(shard_data, shard_path)
     for k in shard_data:
         weight_map[k] = sn
     count = len(shard_data) // 4
     del shard_data
     gc.collect()
     libc.malloc_trim(0)
+    os.sync()
+    try:
+        fd = os.open(shard_path, os.O_RDONLY)
+        os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
+        os.close(fd)
+    except Exception:
+        pass
     return count
 
 

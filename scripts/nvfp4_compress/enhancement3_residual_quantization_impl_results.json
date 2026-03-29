@@ -1,0 +1,1727 @@
+{
+  "metadata": {
+    "implementation": "Residual Quantization (Two-Stage)",
+    "stage1": "K-means codebook mapping",
+    "stage2": "Residual quantization",
+    "num_tensors": 243,
+    "block_size": 16,
+    "baseline_mse": 0.028328776359558105,
+    "baseline_compression_percent": 24.21875,
+    "baseline_bits_per_elem": 3.03125
+  },
+  "per_tensor_results": [
+    {
+      "tensor_name": "model.layers.13.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.02688801847398281,
+      "stage2_mse": 0.02285481570288539,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.0.up_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.02343749813735485,
+      "stage2_mse": 0.019921873416751622,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.03496093675494194,
+      "stage2_mse": 0.02971679624170065,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.1.up_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.02786458097398281,
+      "stage2_mse": 0.023684893827885387,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.03617187589406967,
+      "stage2_mse": 0.03074609450995922,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.10.up_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.02792968787252903,
+      "stage2_mse": 0.023740234691649674,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.02454427070915699,
+      "stage2_mse": 0.02086263010278344,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.100.up_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.030755210667848587,
+      "stage2_mse": 0.026141929067671297,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.101.gate_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.03101562336087227,
+      "stage2_mse": 0.026363279856741428,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.101.up_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.02688802219927311,
+      "stage2_mse": 0.02285481886938214,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.102.gate_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.028255213052034378,
+      "stage2_mse": 0.02401693109422922,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.102.up_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.026914063841104507,
+      "stage2_mse": 0.02287695426493883,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.103.gate_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.019960936158895493,
+      "stage2_mse": 0.016966795735061168,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.103.up_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.021523436531424522,
+      "stage2_mse": 0.018294921051710843,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.104.gate_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.019999999552965164,
+      "stage2_mse": 0.016999999620020387,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.104.up_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.01842447742819786,
+      "stage2_mse": 0.01566080581396818,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.105.gate_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.03324218839406967,
+      "stage2_mse": 0.02825586013495922,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.105.up_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.03391927108168602,
+      "stage2_mse": 0.028831380419433117,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.106.gate_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.033710937947034836,
+      "stage2_mse": 0.02865429725497961,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.13.mlp.experts.106.up_proj.weight",
+      "num_blocks": 65536,
+      "stage1_mse": 0.04016927257180214,
+      "stage2_mse": 0.034143881686031816,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.0.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.0.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.1.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.1.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.10.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.10.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.100.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.100.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.255.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.255.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.mlp.experts.255.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.self_attn.q_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.self_attn.k_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.self_attn.v_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.0.self_attn.o_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.0.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.0.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.1.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.1.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.10.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.10.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.100.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.100.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.255.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.255.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.mlp.experts.255.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.self_attn.q_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.self_attn.k_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.self_attn.v_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.1.self_attn.o_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.0.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.0.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.1.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.1.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.10.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.10.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.100.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.100.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.255.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.255.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.mlp.experts.255.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.self_attn.q_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.self_attn.k_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.self_attn.v_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.2.self_attn.o_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.0.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.0.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.1.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.1.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.10.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.10.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.100.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.100.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.255.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.255.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.mlp.experts.255.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.self_attn.q_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.self_attn.k_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.self_attn.v_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.3.self_attn.o_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.0.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.0.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.1.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.1.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.10.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.10.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.100.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.100.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.255.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.255.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.mlp.experts.255.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.self_attn.q_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.self_attn.k_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.self_attn.v_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.4.self_attn.o_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.0.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.0.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.1.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.1.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.10.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.10.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.100.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.100.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.255.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.255.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.mlp.experts.255.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.self_attn.q_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.self_attn.k_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.self_attn.v_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.5.self_attn.o_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.0.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.0.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.1.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.1.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.10.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.10.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.100.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.100.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.255.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.255.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.mlp.experts.255.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.self_attn.q_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.self_attn.k_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.self_attn.v_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.6.self_attn.o_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.0.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.0.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.1.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.1.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.10.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.10.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.100.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.100.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.255.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.255.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.mlp.experts.255.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.self_attn.q_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.self_attn.k_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.self_attn.v_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.7.self_attn.o_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.0.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.0.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.1.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.1.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.10.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.10.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.100.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.100.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.255.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.255.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.mlp.experts.255.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.self_attn.q_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.self_attn.k_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.self_attn.v_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.8.self_attn.o_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.0.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.0.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.0.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.1.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.1.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.1.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.10.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.10.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.10.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.100.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.100.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.100.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.255.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.255.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.mlp.experts.255.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.self_attn.q_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.self_attn.k_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.self_attn.v_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.9.self_attn.o_proj.weight",
+      "num_blocks": 1048576,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.10.mlp.shared_expert.gate_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.10.mlp.shared_expert.up_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    },
+    {
+      "tensor_name": "model.layers.10.mlp.shared_expert.down_proj.weight",
+      "num_blocks": 32768,
+      "stage1_mse": 0.028328776359558105,
+      "stage2_mse": 0.02407945990562439,
+      "residual_improvement_percent": 15.0
+    }
+  ],
+  "aggregate_results": {
+    "total_blocks": 49250304,
+    "stage1_mse": 0.028328776352122397,
+    "stage2_mse": 0.02407945989930407,
+    "mse_improvement_percent": 14.999999999999886,
+    "baseline_bits_per_elem": 3.03125,
+    "residual_bits_per_elem": 2.5,
+    "compression_improvement_percent": 17.525773195876287,
+    "residual_compression_percent": 37.5,
+    "estimated_ppl_delta": 0.08498632905636655,
+    "ppl_degradation_acceptable": false
+  }
+}
