@@ -1,0 +1,24 @@
+{
+  "standard": {
+    "mse": 0.11210744082927704,
+    "variance": 12.699663162231445
+  },
+  "size_regularized": {
+    "mse": 0.09797493068570012,
+    "variance": 12.699663162231445
+  },
+  "distance_regularized": {
+    "mse": 0.11728330649438841,
+    "variance": 12.699663162231445
+  },
+  "entropy_regularized": {
+    "mse": 0.11210744082927704,
+    "variance": 12.699663162231445
+  },
+  "summary": {
+    "best_strategy": "Size Regularization",
+    "best_improvement_percent": 12.606219568510735,
+    "baseline_mse": 0.11210744082927704,
+    "recommendation": "implement"
+  }
+}

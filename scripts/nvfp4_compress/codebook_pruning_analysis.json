@@ -1,0 +1,33 @@
+{
+  "analysis": "codebook_pruning_regeneration",
+  "cluster_usage": {
+    "unused": 0,
+    "rarely_used": 1,
+    "well_used": 7,
+    "unused_fraction": 0.125
+  },
+  "cluster_counts": [
+    7478,
+    18400,
+    12502,
+    18383,
+    4028,
+    17570,
+    5015,
+    16624
+  ],
+  "cluster_usage_percent": [
+    7.478,
+    18.4,
+    12.501999999999999,
+    18.383,
+    4.0280000000000005,
+    17.57,
+    5.015,
+    16.624
+  ],
+  "mse_original": 0.11210744082927704,
+  "mse_pruned": 0.16458643972873688,
+  "estimated_improvement_percent": 6.35582573218066,
+  "recommendation": "implement"
+}

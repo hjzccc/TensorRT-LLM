@@ -1,0 +1,29 @@
+{
+  "random": {
+    "mse": 0.12194404006004333,
+    "inertia": 12194.4736328125,
+    "n_iter": 3
+  },
+  "kmeans_pp": {
+    "mse": 0.11210744827985764,
+    "inertia": 11210.73828125,
+    "n_iter": 3
+  },
+  "multi_init": {
+    "mse": 0.12194404006004333,
+    "inertia": 12194.474609375,
+    "n_iter": 3
+  },
+  "kmeans_pp_multi": {
+    "mse": 0.11210744082927704,
+    "inertia": 11210.76953125,
+    "n_iter": 3
+  },
+  "summary": {
+    "best_strategy": "K-means++ with n_init=20",
+    "best_improvement_percent": 8.066486358642578,
+    "baseline_mse": 0.12194404006004333,
+    "best_mse": 0.11210744082927704,
+    "recommendation": "implement"
+  }
+}
