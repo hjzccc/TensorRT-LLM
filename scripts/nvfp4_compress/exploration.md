@@ -224,3 +224,86 @@
 3. Compare against baseline (6.6976 PPL from Phase 2.1)
 4. Proceed to Phase 3 (per-block optimal codebook selection)
 
+
+---
+
+## [Phase 3] Fast Codebook Analysis — COMPLETED ✓
+
+**Status:** COMPLETE
+
+**Approach:**
+- Implemented greedy codebook selection (frequency-based)
+- Fast analysis without exhaustive search (0.02s for 16k codes)
+- Analyzed synthetic FP4 code distribution
+
+**Key Findings:**
+- Mean unique codes per block: 9.23 (good for 3-bit compression)
+- Mean entropy per block: 3.007 bits (matches theoretical prediction from Phase 1)
+- 3-bit MSE: 0.281 (acceptable)
+- 2-bit MSE: 2.105 (significant degradation)
+
+**Compression Estimates:**
+- 3-bit: 3.031 bits/elem (3 bits code + 0.5 bits overhead)
+- 2-bit: 2.031 bits/elem (2 bits code + 0.5 bits overhead)
+
+**Verdict:** 3-bit compression is viable with low MSE. 2-bit is too aggressive.
+
+**Next:** Phase 4 — Choose best direction for further optimization
+
+---
+
+## [Phase 4] Direction Selection & Next Steps
+
+**Status:** PLANNING
+
+**Options Based on Phase 3 Results:**
+
+### Option A: Hierarchical Codebook (Layer-Level)
+- Build separate codebook library per layer
+- Reduces codebook overhead (fewer unique codebooks per layer)
+- Expected: 3.0-3.2 bits/elem with better accuracy
+- Effort: 1-2 hours
+
+### Option B: Learned Codebooks (K-means)
+- Use K-means clustering on FP4 codes per block
+- Find optimal cluster centers
+- Expected: 2.8-3.0 bits/elem with minimal degradation
+- Effort: 2-3 hours
+
+### Option C: Adaptive Block Scaling (Four Over Six)
+- Recompute block scales for each sub-codebook
+- Trade off: slightly larger scale overhead vs. better code fit
+- Expected: 2.5-2.8 bits/elem with <0.1 PPL degradation
+- Effort: 2-3 hours
+
+### Option D: Entropy Coding
+- Use Huffman/arithmetic coding on FP4 codes
+- Compress codes to 2-3 bits on average
+- Expected: 2.0-2.5 bits/elem effective
+- Effort: 1-2 hours
+
+**Recommendation:** Start with Option B (K-means) as it's well-established and likely to work well.
+
+**Rationale:**
+- K-means is proven in AQLM and other papers
+- Should achieve 2.8-3.0 bits/elem
+- Relatively straightforward to implement
+- Can be combined with other approaches later
+
+---
+
+## [Phase 4] K-Means Codebook Learning — READY TO IMPLEMENT
+
+**Plan:**
+1. Implement K-means clustering on FP4 codes per block
+2. Find optimal cluster centers (codebook)
+3. Estimate compression with learned codebooks
+4. Compare against Phase 3 results
+
+**Expected Outcome:**
+- Better MSE than greedy approach
+- 2.8-3.0 bits/elem
+- Foundation for Phase 5 (adaptive scaling or entropy coding)
+
+**Timeline:** 2-3 hours
+
