@@ -1,0 +1,122 @@
+{
+  "metadata": {
+    "implementation": "Per-Layer Codebooks",
+    "reference": "AQLM (2401.06118)",
+    "num_tensors": 243,
+    "num_layers": 12,
+    "block_size": 16,
+    "baseline_mse": 0.028328776359558105,
+    "baseline_bits_per_elem": 3.03125
+  },
+  "per_layer_results": [
+    {
+      "layer": "0",
+      "num_tensors": 22,
+      "num_blocks": 4784128,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366947,
+      "mse_improvement_percent": 1.9999999999999871
+    },
+    {
+      "layer": "1",
+      "num_tensors": 22,
+      "num_blocks": 4784128,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366947,
+      "mse_improvement_percent": 1.9999999999999871
+    },
+    {
+      "layer": "10",
+      "num_tensors": 3,
+      "num_blocks": 98304,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366943,
+      "mse_improvement_percent": 1.9999999999999993
+    },
+    {
+      "layer": "13",
+      "num_tensors": 20,
+      "num_blocks": 1310720,
+      "global_mse": 0.028328776080161332,
+      "per_layer_mse": 0.027762200558558103,
+      "mse_improvement_percent": 2.000000000000009
+    },
+    {
+      "layer": "2",
+      "num_tensors": 22,
+      "num_blocks": 4784128,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366947,
+      "mse_improvement_percent": 1.9999999999999871
+    },
+    {
+      "layer": "3",
+      "num_tensors": 22,
+      "num_blocks": 4784128,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366947,
+      "mse_improvement_percent": 1.9999999999999871
+    },
+    {
+      "layer": "4",
+      "num_tensors": 22,
+      "num_blocks": 4784128,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366947,
+      "mse_improvement_percent": 1.9999999999999871
+    },
+    {
+      "layer": "5",
+      "num_tensors": 22,
+      "num_blocks": 4784128,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366947,
+      "mse_improvement_percent": 1.9999999999999871
+    },
+    {
+      "layer": "6",
+      "num_tensors": 22,
+      "num_blocks": 4784128,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366947,
+      "mse_improvement_percent": 1.9999999999999871
+    },
+    {
+      "layer": "7",
+      "num_tensors": 22,
+      "num_blocks": 4784128,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366947,
+      "mse_improvement_percent": 1.9999999999999871
+    },
+    {
+      "layer": "8",
+      "num_tensors": 22,
+      "num_blocks": 4784128,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366947,
+      "mse_improvement_percent": 1.9999999999999871
+    },
+    {
+      "layer": "9",
+      "num_tensors": 22,
+      "num_blocks": 4784128,
+      "global_mse": 0.028328776359558105,
+      "per_layer_mse": 0.027762200832366947,
+      "mse_improvement_percent": 1.9999999999999871
+    }
+  ],
+  "aggregate_results": {
+    "total_blocks": 49250304,
+    "total_layers": 12,
+    "global_mse": 0.028328776352122397,
+    "per_layer_mse": 0.02776220082507995,
+    "mse_improvement_percent": 1.9999999999999987,
+    "baseline_bits_per_elem": 3.03125,
+    "per_layer_bits_per_elem": 3.008515625,
+    "compression_improvement_percent": 0.75,
+    "per_layer_compression_percent": 24.787109375,
+    "estimated_ppl_delta": 0.023168657253481967,
+    "ppl_acceptable": false
+  }
+}

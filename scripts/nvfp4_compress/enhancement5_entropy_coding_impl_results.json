@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "implementation": "Entropy Coding (Huffman)",
+    "reference": "Float8@2bits (2601.22787)",
+    "num_tensors": 243,
+    "block_size": 16,
+    "baseline_mse": 0.028328776359558105,
+    "baseline_bits_per_elem": 3.03125
+  },
+  "entropy_analysis": {
+    "shannon_entropy": 3.0,
+    "huffman_bits_per_code": 3.0300000000000002,
+    "current_bits_per_code": 3.0,
+    "compression_improvement_percent": -1.0000000000000084
+  },
+  "aggregate_results": {
+    "total_blocks": 49250304,
+    "shannon_entropy": 3.0,
+    "huffman_bits_per_code": 3.0300000000000002,
+    "baseline_bits_per_elem": 3.03125,
+    "entropy_bits_per_elem": 3.0615625,
+    "compression_improvement_percent": -1.0000000000000084,
+    "entropy_compression_percent": 23.4609375,
+    "estimated_ppl_delta": 0.023112,
+    "ppl_acceptable": false
+  }
+}
