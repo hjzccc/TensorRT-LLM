@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "method": "Tensor Decomposition + Quantization",
+    "ranks_tested": [
+      2,
+      4,
+      8,
+      16
+    ],
+    "block_size": 16,
+    "k_codes": 8
+  },
+  "per_tensor_results": [
+    {
+      "tensor_name": "model.layers.0.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "results_by_rank": {
+        "2": {
+          "compression": -1.380859375,
+          "decomposition_error": 4.440892098500626e-14,
+          "quantization_mse": 0.012676244135946035
+        },
+        "4": {
+          "compression": -3.505859375,
+          "decomposition_error": 4.440892098500626e-14,
+          "quantization_mse": 0.011043551843613386
+        },
+        "8": {
+          "compression": -7.755859375,
+          "decomposition_error": 4.440892098500626e-14,
+          "quantization_mse": 0.0188420582562685
+        },
+        "16": {
+          "compression": -16.255859375,
+          "decomposition_error": 4.440892098500626e-14,
+          "quantization_mse": 0.012264256831258535
+        }
+      }
+    },
+    {
+      "tensor_name": "model.layers.0.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "results_by_rank": {
+        "2": {
+          "compression": -1.099609375,
+          "decomposition_error": 4.274358644806853e-15,
+          "quantization_mse": 4.931860792112275e-05
+        },
+        "4": {
+          "compression": -3.130859375,
+          "decomposition_error": 4.274358644806853e-15,
+          "quantization_mse": 4.2968519323949295e-05
+        },
+        "8": {
+          "compression": -7.193359375,
+          "decomposition_error": 4.274358644806853e-15,
+          "quantization_mse": 1.1569117816634389e-05
+        },
+        "16": {
+          "compression": -15.318359375,
+          "decomposition_error": 4.274358644806853e-15,
+          "quantization_mse": 9.191684966936009e-06
+        }
+      }
+    }
+  ],
+  "summary": {
+    "best_rank": 0,
+    "best_compression": 0.0,
+    "num_tensors_tested": 2
+  }
+}
