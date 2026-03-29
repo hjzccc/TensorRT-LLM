@@ -126,7 +126,7 @@ def test_residual_codebook():
             "residual_mse": float(residual_mse),
             "residual2_mse": float(residual2_mse),
             "final_mse": float(final_mse),
-            "improvement_percent": improvement,
+            "improvement_percent": float(improvement),
         }
         results.append(result)
         
