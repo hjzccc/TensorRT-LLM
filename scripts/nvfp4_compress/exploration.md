@@ -179,3 +179,48 @@
 - **AQLM** (2401.06118): Additive multi-codebook VQ
 - **QuIP#** (2402.04396): E8 lattice + Hadamard incoherence
 
+
+---
+
+## [Phase 2 Revised] Corrected Forward-Pass Codebook Mapping
+
+**Status:** IMPLEMENTATION COMPLETE, READY TO EXECUTE
+
+**Problem Identified:** Phase 2 results were invalid because:
+- Weights are stored as BF16 in safetensors
+- FP4 quantization happens in the forward pass via `torch.ops.trtllm.fp4_quantize()`
+- Previous approach tried to map BF16 weights, which had no effect
+
+**Solution Implemented:**
+1. Created `phase2_corrected_eval.py` with forward-pass codebook mapping
+2. Added `nvfp4_linear_with_codebook()` function that:
+   - Quantizes BF16 weights to FP4 codes
+   - Applies codebook mapping to the codes
+   - Repacks codes and continues with inference
+3. Added `moe_forward_exact_with_codebook()` to apply mapping in MOE forward pass
+4. Added `evaluate_ppl_with_codebook()` to run full evaluation with codebook
+
+**Key Implementation Details:**
+- Codebook LUT is built once per experiment using `build_code_lut()`
+- Mapping is applied only in NVFP4 mode (not BF16 or FP8)
+- All original scales (block scales, global scale) are preserved
+- Decompressed values are guaranteed to be valid FP4 codes
+
+**Experiments to Run (in order):**
+1. Identity (all 16 codes) - baseline validation
+2. 3-bit uniform {-6, -4, -2, 0, 2, 4, 6}
+3. 3-bit adaptive {-6, -2, -1, 0, 1, 2, 6}
+4. 2-bit uniform {-6, 0, 4, 6}
+5. 2-bit optimal {-4, -2, 0, 6}
+
+**Expected Timeline:**
+- Each experiment: ~12 minutes
+- Total: ~60 minutes for all 5 experiments
+- Execution: Ready to start immediately
+
+**Next Steps:**
+1. Execute phase2_corrected_eval.py in docker container
+2. Collect PPL results for all 5 codebooks
+3. Compare against baseline (6.6976 PPL from Phase 2.1)
+4. Proceed to Phase 3 (per-block optimal codebook selection)
+
