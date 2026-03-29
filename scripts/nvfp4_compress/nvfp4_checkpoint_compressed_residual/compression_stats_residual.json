@@ -1,0 +1,23 @@
+{
+  "timestamp": 1774776518.7962308,
+  "method": "three-stage-residual-codebook",
+  "stages": {
+    "primary": {
+      "clusters": 8,
+      "bits": 3
+    },
+    "residual": {
+      "clusters": 4,
+      "bits": 2
+    },
+    "residual2": {
+      "clusters": 2,
+      "bits": 1
+    }
+  },
+  "aggregate": {
+    "mean_mse": 0,
+    "mean_improvement_percent": 0
+  },
+  "tensors": {}
+}
