@@ -1,0 +1,7 @@
+{
+  "test": "soft_assignment",
+  "num_layers": 95,
+  "avg_mse_hard": 0.24799029586649765,
+  "avg_mse_soft": 0.10134000493080567,
+  "improvement_percent": 59.13549577546343
+}

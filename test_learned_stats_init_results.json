@@ -1,0 +1,14 @@
+{
+  "test": "learned_stats_initialization",
+  "num_layers": 95,
+  "avg_mse_by_method": {
+    "k-means++": 0.29046043688389134,
+    "quantile": 0.30993223287026,
+    "percentile": 0.30993223287026,
+    "uniform": 0.248077315785861,
+    "random": 0.29053714124045954
+  },
+  "best_method": "uniform",
+  "baseline_method": "k-means++",
+  "improvement_percent": 14.59170190361332
+}

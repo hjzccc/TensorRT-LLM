@@ -1,0 +1,17 @@
+{
+  "test": "sparse_codebooks_fast",
+  "num_layers": 10,
+  "avg_mse_by_sparsity": {
+    "0.0": 0.3105165508890728,
+    "0.2": 0.32293721292463584,
+    "0.4": 0.3601991990313246
+  },
+  "storage_by_sparsity": {
+    "0.0": 320,
+    "0.2": 240,
+    "0.4": 160
+  },
+  "baseline_sparsity": 0.0,
+  "baseline_mse": 0.3105165508890728,
+  "baseline_storage": 320
+}

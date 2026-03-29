@@ -1,0 +1,5 @@
+{
+  "test": "codebook_pruning",
+  "num_layers": 95,
+  "total_entries": 760,
+  "unused_entries": 

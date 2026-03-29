@@ -1,0 +1,7 @@
+{
+  "test": "three_stage_soft_assignment",
+  "num_layers": 95,
+  "avg_mse_hard": 0.24895078138311094,
+  "avg_mse_soft": 0.02751953396073506,
+  "improvement_percent": 88.94579329783858
+}

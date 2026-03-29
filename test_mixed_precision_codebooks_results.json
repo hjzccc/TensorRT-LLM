@@ -1,0 +1,19 @@
+{
+  "test": "mixed_precision_codebooks",
+  "num_layers": 95,
+  "avg_mse_by_config": {
+    "all_fp32": 0.2491142805472449,
+    "all_fp16": 0.2491142805472449,
+    "mixed_fp32_fp16_fp8": 0.2491142805472449,
+    "mixed_fp32_fp16_fp16": 0.2491142805472449
+  },
+  "storage_by_config": {
+    "all_fp32": 5320,
+    "all_fp16": 2660,
+    "mixed_fp32_fp16_fp8": 3990,
+    "mixed_fp32_fp16_fp16": 4180
+  },
+  "baseline_config": "all_fp32",
+  "baseline_mse": 0.2491142805472449,
+  "baseline_storage": 5320
+}

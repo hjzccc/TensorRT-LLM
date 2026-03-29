@@ -1,0 +1,21 @@
+{
+  "config": {
+    "primary_codebook_size": 8,
+    "residual_codebook_size": 4,
+    "residual2_codebook_size": 2,
+    "use_fp16": true,
+    "initialization": "uniform",
+    "use_adaptive_grouping": true
+  },
+  "aggregate": {
+    "mean_mse": 0,
+    "mean_improvement_percent": 0,
+    "layer_count": 0,
+    "total_baseline_mse": 0,
+    "codebook_storage_bytes_fp32": 0,
+    "codebook_storage_bytes_fp16": 0,
+    "storage_reduction_percent": 0
+  },
+  "layers": {},
+  "layer_types": {}
+}

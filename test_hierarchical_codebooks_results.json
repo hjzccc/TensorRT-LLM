@@ -1,0 +1,10 @@
+{
+  "test": "hierarchical_codebooks",
+  "num_layers": 95,
+  "avg_mse_flat": 2.8463217283365043e-33,
+  "avg_mse_hierarchical": 1.3850314376640223,
+  "improvement_percent": -4.86603964645095e+34,
+  "flat_codebooks": 1520,
+  "hierarchical_codebooks": 1900,
+  "codebook_increase_percent": 25.0
+}

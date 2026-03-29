@@ -1,0 +1,13 @@
+{
+  "test": "learned_step_size",
+  "num_layers": 95,
+  "avg_mse_fixed": 0.24797731935677425,
+  "avg_mse_learned": 0.24797731935677425,
+  "improvement_percent": 0.0,
+  "step_size_stats": {
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0,
+    "std": 0.0
+  }
+}
