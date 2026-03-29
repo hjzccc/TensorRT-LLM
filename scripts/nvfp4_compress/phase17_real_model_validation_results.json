@@ -1,0 +1,559 @@
+{
+  "metadata": {
+    "method": "Bit-Width Validation (3,1)",
+    "checkpoint_dir": "nvfp4_checkpoint",
+    "block_size": 16,
+    "high_bits": 3,
+    "low_bits": 1
+  },
+  "per_tensor_results": [
+    {
+      "tensor_name": "model.layers.0.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.020369211211800575
+    },
+    {
+      "tensor_name": "model.layers.0.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0003898012600984657
+    },
+    {
+      "tensor_name": "model.layers.1.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.012671773321926594
+    },
+    {
+      "tensor_name": "model.layers.1.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.00127151413471438
+    },
+    {
+      "tensor_name": "model.layers.10.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.47942057251930237
+    },
+    {
+      "tensor_name": "model.layers.10.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0008748386826482601
+    },
+    {
+      "tensor_name": "model.layers.12.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.0741598792374134
+    },
+    {
+      "tensor_name": "model.layers.12.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.001652318205742631
+    },
+    {
+      "tensor_name": "model.layers.13.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.05500253103673458
+    },
+    {
+      "tensor_name": "model.layers.13.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.001052493418683298
+    },
+    {
+      "tensor_name": "model.layers.14.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.031112942844629288
+    },
+    {
+      "tensor_name": "model.layers.14.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0018013094886555336
+    },
+    {
+      "tensor_name": "model.layers.16.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.04244654905050993
+    },
+    {
+      "tensor_name": "model.layers.16.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0015226341420202516
+    },
+    {
+      "tensor_name": "model.layers.17.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.026873071677982807
+    },
+    {
+      "tensor_name": "model.layers.17.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.002229635778348893
+    },
+    {
+      "tensor_name": "model.layers.18.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.015320510603487492
+    },
+    {
+      "tensor_name": "model.layers.18.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0014909040874044877
+    },
+    {
+      "tensor_name": "model.layers.2.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.03171920031309128
+    },
+    {
+      "tensor_name": "model.layers.2.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0017684368576738052
+    },
+    {
+      "tensor_name": "model.layers.20.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.030788039206527174
+    },
+    {
+      "tensor_name": "model.layers.20.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.002139343192538945
+    },
+    {
+      "tensor_name": "model.layers.21.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.15918895229697227
+    },
+    {
+      "tensor_name": "model.layers.21.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.002169415856769774
+    },
+    {
+      "tensor_name": "model.layers.22.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.18704401701688766
+    },
+    {
+      "tensor_name": "model.layers.22.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0010683690088626463
+    },
+    {
+      "tensor_name": "model.layers.24.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.16316961497068405
+    },
+    {
+      "tensor_name": "model.layers.24.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0020016666676383466
+    },
+    {
+      "tensor_name": "model.layers.25.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.02540465584024787
+    },
+    {
+      "tensor_name": "model.layers.25.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.001706776318314951
+    },
+    {
+      "tensor_name": "model.layers.26.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.2916988134384155
+    },
+    {
+      "tensor_name": "model.layers.26.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0027157298900419846
+    },
+    {
+      "tensor_name": "model.layers.28.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.28019825369119644
+    },
+    {
+      "tensor_name": "model.layers.28.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0028643526893574744
+    },
+    {
+      "tensor_name": "model.layers.29.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.38225677609443665
+    },
+    {
+      "tensor_name": "model.layers.29.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0018006065438385122
+    },
+    {
+      "tensor_name": "model.layers.30.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.15714944899082184
+    },
+    {
+      "tensor_name": "model.layers.30.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0034867567410401534
+    },
+    {
+      "tensor_name": "model.layers.32.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.1244785338640213
+    },
+    {
+      "tensor_name": "model.layers.32.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0016857709997566417
+    },
+    {
+      "tensor_name": "model.layers.33.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.234833762049675
+    },
+    {
+      "tensor_name": "model.layers.33.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0021039043786004186
+    },
+    {
+      "tensor_name": "model.layers.34.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.09962764382362366
+    },
+    {
+      "tensor_name": "model.layers.34.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.003913955355528742
+    },
+    {
+      "tensor_name": "model.layers.36.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.1944218873977661
+    },
+    {
+      "tensor_name": "model.layers.36.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.002120976088917814
+    },
+    {
+      "tensor_name": "model.layers.37.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.25151459127664566
+    },
+    {
+      "tensor_name": "model.layers.37.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.004015939572127536
+    },
+    {
+      "tensor_name": "model.layers.38.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.935546875,
+      "mse": 0.2766524851322174
+    },
+    {
+      "tensor_name": "model.layers.38.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0024826332737575285
+    },
+    {
+      "tensor_name": "model.layers.4.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.010920614935457706
+    },
+    {
+      "tensor_name": "model.layers.4.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0011431874881964177
+    },
+    {
+      "tensor_name": "model.layers.5.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.02463659644126892
+    },
+    {
+      "tensor_name": "model.layers.5.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0013930341810919344
+    },
+    {
+      "tensor_name": "model.layers.6.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.032489106990396976
+    },
+    {
+      "tensor_name": "model.layers.6.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0007808269583620131
+    },
+    {
+      "tensor_name": "model.layers.8.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.0033247630344703794
+    },
+    {
+      "tensor_name": "model.layers.8.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0016733263291826006
+    },
+    {
+      "tensor_name": "model.layers.9.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.02137859584763646
+    },
+    {
+      "tensor_name": "model.layers.9.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.982421875,
+      "mse": 0.0018365990108577535
+    }
+  ],
+  "summary": {
+    "total_tensors": 123853,
+    "tensors_quantized": 60,
+    "total_original_bits": 153600,
+    "total_compressed_bits": 7276,
+    "overall_compression": 0.9526302083333333,
+    "avg_mse": 0.06329050751261699
+  }
+}
