@@ -341,3 +341,63 @@
 
 **Decision**: Do not proceed with other codebooks until root cause is found.
 
+
+---
+
+## [Phase 2 Fixed] Correct Evaluation in trtllm-dual-tile — IN PROGRESS
+
+**Status:** RUNNING (Phase 2B with corrected codebooks)
+
+**Root Cause of Phase 2 Failure:**
+1. `trtllm-phase12` container has broken TRT-LLM installation (undefined symbol in `libth_common.so`)
+2. `torch.ops.trtllm.fp4_quantize` was unavailable → model ran in BF16 mode
+3. All 5 codebooks gave identical PPL=6.6976 (BF16 MoE-only baseline)
+
+**Fix:** Run in `trtllm-dual-tile` where TRT-LLM works correctly.
+
+**Phase 2A Results (first run with corrected pipeline):**
+- Identity: PPL=6.7017 ✓ (correct MoE-only NVFP4 baseline)
+- 3bit_uniform: PPL=1,775,416 ✗ CATASTROPHIC COLLAPSE
+- 3bit_adaptive: PPL=31,345,044 ✗ CATASTROPHIC COLLAPSE
+
+**Root Cause of Collapse:**
+- 3bit_uniform `{-6,-4,-2,0,2,4,6}` maps **26.3% of codes to 0** (zero)
+- Codes 0,1,8,9 (values 0,+0.5,0,-0.5) all map to nearest value in {-6,-4,-2,0,2,4,6} = 0
+- With 26% of weights zeroed, model completely collapses
+- Error compounds across 40 layers × 256 experts
+
+**Key Insight:** Codebooks MUST preserve small-value codes (±0.5, ±1.0, ±1.5).
+The earlier "expected" PPL values (+0.017) were from the buggy BF16-roundtrip pipeline.
+
+**Phase 2B Corrected Codebooks (pre-validated):**
+| Codebook | Values | MSE | zero_frac | bits/elem |
+|----------|--------|-----|-----------|-----------|
+| 3bit_sym8 | {-6,-3,-1.5,-0.5,0.5,1.5,3,6} | 0.226 | 0.000 | 3.0 |
+| 3bit_top8freq | top-8 by frequency | 0.522 | 0.000 | 3.0 |
+| 3bit_log7 | {-6,-2,-0.5,0,0.5,2,6} | 0.771 | 0.066 | 2.81 |
+| 3bit_dense7 | {-3,-1.5,-0.5,0,0.5,1.5,3} | 1.213 | 0.066 | 2.81 |
+| 2bit_small | {-0.5,0,0.5,2} | 0.978 | 0.066 | 2.0 |
+| 2bit_sym4 | {-3,-0.5,0.5,3} | 1.478 | 0.000 | 2.0 |
+
+**Phase 2B Running:** ~8 experiments × 12 min = ~96 min total
+
+---
+
+## [Research Insights] New Papers Found
+
+**EntQuant (arXiv 2601.22787, Jan 2026):**
+- Entropy coding of Float8/Int8 weights achieves 2.1 bits/param on LLaMA-2 70B
+- Key: optimize scale parameters to minimize entropy, then apply ANS coding
+- No calibration data needed, 30 min compression for 70B model
+- Directly applicable to FP4: optimize s_w2 to minimize entropy of FP4 codes
+
+**BOF4 (arXiv 2505.06653, May 2025):**
+- EM-optimized codebook for block-wise 4-bit quantization
+- Finds optimal float values for each codebook entry
+- Applicable: use EM to find optimal 8-code subset of E2M1 values
+
+**any4 (arXiv 2507.04610, Jul 2025, ICML 2025):**
+- Learned 4-bit numeric representation for LLMs
+- Optimizes the codebook values themselves (not just which E2M1 codes to use)
+- Could be adapted to find optimal 8-code subset
+
