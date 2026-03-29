@@ -1,0 +1,27 @@
+{
+  "test": "per_layer_final_validation",
+  "num_layers": 95,
+  "samples_per_layer": 2000,
+  "layer_types": {
+    "embedding": 10,
+    "attention_q": 15,
+    "attention_k": 15,
+    "attention_v": 15,
+    "attention_out": 15,
+    "ffn_up": 15,
+    "ffn_down": 10
+  },
+  "global_codebook": {
+    "mse": 0.004977530799806118
+  },
+  "per_layer_codebooks": {
+    "mse": 0.0010458577889949083,
+    "improvement_percent": 78.98841857910156
+  },
+  "adaptive_grouped": {
+    "mse": 0.001096359919756651,
+    "improvement_percent": 77.97381591796875,
+    "codebook_count": 7
+  },
+  "per_layer_vs_grouped": 4.606348037719727
+}
