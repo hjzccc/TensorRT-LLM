@@ -1,0 +1,37 @@
+{
+  "summary": {
+    "tested_weights": 3,
+    "avg_improvement_percent": 98.5853983561198,
+    "elapsed_seconds": 37.35154104232788,
+    "approach": "Residual Codebook with Refined K-means"
+  },
+  "results": [
+    {
+      "key": "model.language_model.layers.0.mlp.shared_expert.down_proj.we",
+      "baseline_mse": 0.0001218659890582785,
+      "primary_mse": 7.957592060847674e-06,
+      "residual_mse": 2.815317657223204e-06,
+      "residual2_mse": 2.0648219560825964e-06,
+      "final_mse": 2.0648219560825964e-06,
+      "improvement_percent": 98.3056640625
+    },
+    {
+      "key": "model.language_model.layers.0.mlp.shared_expert.gate_proj.we",
+      "baseline_mse": 0.00015636812895536423,
+      "primary_mse": 1.164463992608944e-05,
+      "residual_mse": 3.575895789253991e-06,
+      "residual2_mse": 2.6611985504132463e-06,
+      "final_mse": 2.6611985504132463e-06,
+      "improvement_percent": 98.2981185913086
+    },
+    {
+      "key": "model.language_model.layers.0.mlp.shared_expert.up_proj.weig",
+      "baseline_mse": 0.00011800396168837324,
+      "primary_mse": 5.787219379271846e-06,
+      "residual_mse": 1.4903628198226215e-06,
+      "residual2_mse": 1.000188944999536e-06,
+      "final_mse": 1.0001888313126983e-06,
+      "improvement_percent": 99.15241241455078
+    }
+  ]
+}
