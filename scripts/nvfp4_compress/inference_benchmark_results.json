@@ -1,0 +1,39 @@
+{
+  "metadata": {
+    "num_blocks": 10000,
+    "block_size": 16,
+    "total_codes": 160000,
+    "codebook": [
+      0,
+      2,
+      5,
+      7,
+      8,
+      10,
+      13,
+      15
+    ]
+  },
+  "decompression_latency": {
+    "numpy_cpu_us": 0.7700302987359464,
+    "torch_cpu_us": 6.077174504753202,
+    "torch_gpu_us": 28.51719349855557,
+    "batched_us": 0.7426635944284499
+  },
+  "decompression_throughput": {
+    "numpy_cpu_mcodes_sec": 20.77840316967399,
+    "torch_cpu_mcodes_sec": 2.632802462309706,
+    "torch_gpu_mcodes_sec": 0.5610650290958827,
+    "batched_mcodes_sec": 21.544074760138898
+  },
+  "memory_overhead": {
+    "codebook_bytes": 8,
+    "lut_bytes": 64,
+    "total_bytes": 72,
+    "overhead_percent_1m_tensor": 0.019200000000000002
+  },
+  "inference_overhead": {
+    "latency_overhead_percent": 77.00302987359464,
+    "memory_overhead_percent": 0.019200000000000002
+  }
+}
