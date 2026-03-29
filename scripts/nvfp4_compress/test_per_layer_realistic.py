@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """
-Test Per-Layer Codebook Learning
+Test Per-Layer Codebook Learning with More Realistic Distributions
 
-Build separate codebooks for different "layers" (simulated by different
-distributions) to see if layer-specific adaptation helps.
-Expected improvement: 1-2%
+Test with distributions that better match real neural network weights.
 """
 
 import json
 import numpy as np
 import torch
 from sklearn.cluster import KMeans
-from kmeans_size_regularization import KMeansWithSizeRegularization
 from pathlib import Path
 
 E2M1_TABLE = torch.tensor([
@@ -23,20 +20,37 @@ PRIMARY_CODEBOOK_SIZE = 8
 RESIDUAL_CODEBOOK_SIZE = 4
 RESIDUAL2_CODEBOOK_SIZE = 2
 
-def generate_layer_data(num_layers=10, samples_per_layer=1000, seed=42):
-    """Generate synthetic data with different distributions per layer."""
+def generate_realistic_layer_data(num_layers=20, samples_per_layer=1000, seed=42):
+    """Generate synthetic data with realistic layer distributions."""
     np.random.seed(seed)
     torch.manual_seed(seed)
     
     layers = []
     for layer_id in range(num_layers):
-        # Each layer has slightly different distribution
-        # (simulating different weight distributions in different layers)
-        scale = 1.0 + layer_id * 0.1
+        # Different layers have different sparsity and magnitude patterns
+        # Simulate: embedding layers (small), attention (medium), FFN (large)
+        if layer_id < 5:
+            # Embedding-like: small values, concentrated
+            scale = 0.5
+            concentration = 0.8
+        elif layer_id < 15:
+            # Attention-like: medium values, moderate spread
+            scale = 1.0
+            concentration = 0.5
+        else:
+            # FFN-like: larger values, more spread
+            scale = 2.0
+            concentration = 0.3
+        
+        # Generate codes with concentration bias
         codes = np.random.randint(0, 16, samples_per_layer)
+        # Bias towards zero (sparse)
+        zero_mask = np.random.random(samples_per_layer) < concentration
+        codes[zero_mask] = 0
+        
         values = E2M1_TABLE[codes].numpy() * scale
         values = values.reshape(-1, 1)
-        layers.append((layer_id, values))
+        layers.append((layer_id, values, scale, concentration))
     
     return layers
 
@@ -49,30 +63,23 @@ def learn_kmeans_codebook(values, k):
         random_state=42
     )
     kmeans.fit(values)
-    codebook = kmeans.cluster_centers_.flatten().tolist()
     mse = np.mean((values - kmeans.cluster_centers_[kmeans.labels_]) ** 2)
-    return codebook, mse, kmeans
+    return mse, kmeans
 
 def learn_three_stage_codebook(values):
-    """Learn three-stage residual codebook for given values."""
+    """Learn three-stage residual codebook."""
     # Stage 1
-    primary_codebook, primary_mse, primary_kmeans = learn_kmeans_codebook(
-        values, PRIMARY_CODEBOOK_SIZE
-    )
+    primary_mse, primary_kmeans = learn_kmeans_codebook(values, PRIMARY_CODEBOOK_SIZE)
     primary_reconstruction = primary_kmeans.cluster_centers_[primary_kmeans.labels_]
     
     # Stage 2
     residuals = values - primary_reconstruction
-    residual_codebook, residual_mse, residual_kmeans = learn_kmeans_codebook(
-        residuals, RESIDUAL_CODEBOOK_SIZE
-    )
+    residual_mse, residual_kmeans = learn_kmeans_codebook(residuals, RESIDUAL_CODEBOOK_SIZE)
     residual_reconstruction = residual_kmeans.cluster_centers_[residual_kmeans.labels_]
     
     # Stage 3
     residuals_2 = residuals - residual_reconstruction
-    residual2_codebook, residual2_mse, residual2_kmeans = learn_kmeans_codebook(
-        residuals_2, RESIDUAL2_CODEBOOK_SIZE
-    )
+    residual2_mse, residual2_kmeans = learn_kmeans_codebook(residuals_2, RESIDUAL2_CODEBOOK_SIZE)
     residual2_reconstruction = residual2_kmeans.cluster_centers_[residual2_kmeans.labels_]
     
     # Total
@@ -82,13 +89,9 @@ def learn_three_stage_codebook(values):
     return total_mse
 
 def test_global_codebook(layers):
-    """Test with single global codebook for all layers."""
-    # Combine all data
-    all_values = np.vstack([values for _, values in layers])
-    
-    # Learn single codebook
+    """Test with single global codebook."""
+    all_values = np.vstack([values for _, values, _, _ in layers])
     mse = learn_three_stage_codebook(all_values)
-    
     return mse
 
 def test_per_layer_codebooks(layers):
@@ -96,7 +99,7 @@ def test_per_layer_codebooks(layers):
     total_mse = 0
     total_samples = 0
     
-    for layer_id, values in layers:
+    for layer_id, values, _, _ in layers:
         mse = learn_three_stage_codebook(values)
         total_mse += mse * len(values)
         total_samples += len(values)
@@ -106,21 +109,24 @@ def test_per_layer_codebooks(layers):
 
 def main():
     print("\n" + "=" * 70)
-    print("PER-LAYER CODEBOOK LEARNING TEST")
+    print("PER-LAYER CODEBOOK LEARNING - REALISTIC TEST")
     print("=" * 70)
     
-    # Generate layer data
-    print("\nGenerating synthetic layer data...")
-    layers = generate_layer_data(num_layers=10, samples_per_layer=1000)
-    print(f"Generated {len(layers)} layers with 1000 samples each")
+    # Generate realistic layer data
+    print("\nGenerating realistic layer data...")
+    layers = generate_realistic_layer_data(num_layers=20, samples_per_layer=1000)
+    print(f"Generated {len(layers)} layers with realistic distributions:")
+    print(f"  - Layers 0-4: Embedding-like (small, concentrated)")
+    print(f"  - Layers 5-14: Attention-like (medium, moderate)")
+    print(f"  - Layers 15-19: FFN-like (large, spread)")
     
     # Test global codebook
-    print("\nTesting global codebook (single for all layers)...")
+    print("\nTesting global codebook...")
     global_mse = test_global_codebook(layers)
     print(f"  Global MSE: {global_mse:.6f}")
     
     # Test per-layer codebooks
-    print("\nTesting per-layer codebooks (separate for each layer)...")
+    print("\nTesting per-layer codebooks...")
     per_layer_mse = test_per_layer_codebooks(layers)
     print(f"  Per-layer MSE: {per_layer_mse:.6f}")
     
@@ -130,16 +136,17 @@ def main():
     print("\n" + "=" * 70)
     print("RESULTS")
     print("=" * 70)
-    print(f"Global codebook MSE:   {global_mse:.6f}")
+    print(f"Global codebook MSE:    {global_mse:.6f}")
     print(f"Per-layer codebook MSE: {per_layer_mse:.6f}")
     print(f"Improvement:            {improvement:.2f}%")
     print("=" * 70)
     
     # Save results
     results = {
-        "test": "per_layer_codebooks",
+        "test": "per_layer_codebooks_realistic",
         "num_layers": len(layers),
         "samples_per_layer": 1000,
+        "layer_types": ["embedding", "attention", "ffn"],
         "global_codebook": {
             "mse": float(global_mse),
         },
@@ -149,7 +156,7 @@ def main():
         "improvement_percent": float(improvement),
     }
     
-    output_file = Path(__file__).parent / "test_per_layer_results.json"
+    output_file = Path(__file__).parent / "test_per_layer_realistic_results.json"
     with open(output_file, "w") as f:
         json.dump(results, f, indent=2)
     
@@ -157,9 +164,10 @@ def main():
     
     # Decision
     if improvement > 0.1:
-        print("\n✅ PER-LAYER CODEBOOKS SHOW IMPROVEMENT - Worth exploring")
+        print("\n✅ PER-LAYER CODEBOOKS SHOW SIGNIFICANT IMPROVEMENT")
+        print("   This is a promising direction worth implementing!")
     else:
-        print("\n⚠️  PER-LAYER CODEBOOKS SHOW MINIMAL IMPROVEMENT - Global is sufficient")
+        print("\n⚠️  PER-LAYER CODEBOOKS SHOW MINIMAL IMPROVEMENT")
 
 if __name__ == "__main__":
     main()
