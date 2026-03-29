@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "method": "Structured Quantization",
+    "block_size": 16,
+    "k_codes": 8
+  },
+  "channel_wise_results": [
+    {
+      "tensor_name": "model.layers.0.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.012896856293082237,
+      "channels": 1
+    },
+    {
+      "tensor_name": "model.layers.0.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.931640625,
+      "mse": 4.319596769164491e-05,
+      "channels": 1
+    }
+  ],
+  "group_wise_results": [
+    {
+      "tensor_name": "model.layers.0.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.744140625,
+      "mse": 0.012015024782158434,
+      "groups": 1
+    },
+    {
+      "tensor_name": "model.layers.0.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.869140625,
+      "mse": 1.173183966329816e-05,
+      "groups": 2
+    }
+  ],
+  "summary": {
+    "avg_channel_compression": 0.837890625,
+    "avg_group_compression": 0.806640625,
+    "num_tensors_tested": 2
+  }
+}
