@@ -1,178 +1,121 @@
-#!/usr/bin/env python3
-"""Test codebook pruning - analyze if codewords can be removed.
+"""
+Test codebook pruning.
 
-Hypothesis: Some codewords might be unused or redundant.
+Hypothesis: Some codebook entries are never used. We can remove them
+to reduce codebook size without affecting MSE.
+
+Expected improvement: 2-5% storage reduction with zero MSE impact
+Complexity: Low
 """
 
-import sys
-from pathlib import Path
-
-import torch
+import json
 import numpy as np
+from sklearn.cluster import KMeans
+import warnings
+warnings.filterwarnings('ignore')
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "channel_quant_new"))
+def learn_kmeans_codebook_uniform(values, k):
+    """Learn K-means codebook with uniform initialization."""
+    min_val = values.min()
+    max_val = values.max()
+    
+    if min_val == max_val:
+        init_centers = np.full((k, 1), min_val)
+    else:
+        init_centers = np.linspace(min_val, max_val, k).reshape(-1, 1)
+    
+    kmeans = KMeans(n_clusters=k, init=init_centers, n_init=1, random_state=42, max_iter=300)
+    kmeans.fit(values)
+    mse = np.mean((values - kmeans.cluster_centers_[kmeans.labels_]) ** 2)
+    return kmeans.cluster_centers_.flatten(), mse, kmeans.labels_
 
-from kmeans_decompression_v2 import BLOCK_SIZE, CODEBOOK_SIZE
-
-
-def test_codeword_usage():
-    """Analyze codeword usage in K-means compression."""
+def test_codebook_pruning():
+    """Test codebook pruning."""
     print("=" * 70)
-    print("CODEWORD USAGE ANALYSIS")
+    print("CODEBOOK PRUNING")
+    print("=" * 70)
+    print()
+    
+    num_layers = 95
+    layer_size = 1024
+    
+    total_unused_entries = 0
+    total_entries = 0
+    
+    print("Analyzing codebook usage...\n")
+    
+    for i in range(num_layers):
+        # Generate synthetic data
+        codes = np.random.randint(0, 16, layer_size)
+        values = codes.astype(float).reshape(-1, 1)
+        
+        # Learn codebook
+        cb, mse, labels = learn_kmeans_codebook_uniform(values, 8)
+        
+        # Count usage
+        usage = np.bincount(labels, minlength=8)
+        unused = (usage == 0).sum()
+        
+        total_unused_entries += unused
+        total_entries += 8
+        
+        if (i + 1) % 20 == 0:
+            unused_percent = (usage == 0).sum() / 8 * 100
+            print(f"  Layer {i+1:2d}: {unused} unused entries ({unused_percent:.1f}%)")
+    
+    print()
+    print("=" * 70)
+    print("RESULTS")
     print("=" * 70)
     
-    # Create synthetic data
-    num_blocks = 10000
-    block_size = BLOCK_SIZE
-    data = torch.randn(num_blocks, block_size, dtype=torch.float32)
+    unused_percent = total_unused_entries / total_entries * 100
     
-    print(f"\nTest data: {num_blocks} blocks, {block_size} elements each")
-    print(f"Codebook size: {CODEBOOK_SIZE} codewords")
+    print(f"\nCodebook usage analysis:")
+    print(f"  Total entries:               {total_entries}")
+    print(f"  Unused entries:              {total_unused_entries}")
+    print(f"  Unused percentage:           {unused_percent:.1f}%")
     
-    # K-means
-    indices = torch.randperm(num_blocks)[:CODEBOOK_SIZE]
-    codebook = data[indices].clone()
+    # Storage analysis
+    storage_full = total_entries * 4  # 4 bytes per entry
+    storage_pruned = (total_entries - total_unused_entries) * 4
+    storage_reduction = (1 - storage_pruned / storage_full) * 100
     
-    # K-means iterations
-    for iteration in range(10):
-        distances = torch.cdist(data, codebook)
-        codes = torch.argmin(distances, dim=1)
-        
-        for i in range(CODEBOOK_SIZE):
-            mask = codes == i
-            if mask.sum() > 0:
-                codebook[i] = data[mask].mean(dim=0)
+    print(f"\nStorage analysis:")
+    print(f"  Full codebook:               {storage_full:,} bytes")
+    print(f"  Pruned codebook:             {storage_pruned:,} bytes")
+    print(f"  Storage reduction:           {storage_reduction:.1f}%")
     
-    # Final assignment
-    distances = torch.cdist(data, codebook)
-    codes = torch.argmin(distances, dim=1)
+    # Save results
+    results = {
+        'test': 'codebook_pruning',
+        'num_layers': num_layers,
+        'total_entries': total_entries,
+        'unused_entries': total_unused_entries,
+        'unused_percent': float(unused_percent),
+        'storage_full_bytes': storage_full,
+        'storage_pruned_bytes': storage_pruned,
+        'storage_reduction_percent': float(storage_reduction)
+    }
     
-    # Analyze codeword usage
-    print("\nCodeword Usage Statistics:")
-    print("-" * 70)
-    print(f"{'Codeword':>10} {'Count':>10} {'Percentage':>12} {'Avg Distance':>15}")
-    print("-" * 70)
+    with open('test_codebook_pruning_results.json', 'w') as f:
+        json.dump(results, f, indent=2)
     
-    usage_counts = {}
-    avg_distances = {}
+    print(f"\nResults saved to test_codebook_pruning_results.json")
     
-    for i in range(CODEBOOK_SIZE):
-        mask = codes == i
-        count = mask.sum().item()
-        percentage = count / num_blocks * 100
-        
-        if count > 0:
-            avg_dist = distances[mask, i].mean().item()
-        else:
-            avg_dist = 0
-        
-        usage_counts[i] = count
-        avg_distances[i] = avg_dist
-        
-        print(f"{i:10d} {count:10d} {percentage:12.2f}% {avg_dist:15.6f}")
-    
-    print("-" * 70)
-    
-    # Analysis
-    print("\nAnalysis:")
-    
-    # Find unused codewords
-    unused = [i for i, count in usage_counts.items() if count == 0]
-    if unused:
-        print(f"✓ Unused codewords: {unused}")
-    else:
-        print(f"✗ No unused codewords (all {CODEBOOK_SIZE} are used)")
-    
-    # Find rarely used codewords
-    total_usage = sum(usage_counts.values())
-    rare_threshold = total_usage / CODEBOOK_SIZE * 0.1  # 10% of average
-    rare = [i for i, count in usage_counts.items() if 0 < count < rare_threshold]
-    
-    if rare:
-        print(f"✓ Rarely used codewords: {rare}")
-        for i in rare:
-            print(f"  Codeword {i}: {usage_counts[i]} uses ({usage_counts[i]/total_usage*100:.2f}%)")
-    else:
-        print(f"✗ No rarely used codewords")
-    
-    # Calculate potential savings
-    if unused or rare:
-        removable = len(unused) + len(rare)
-        remaining = CODEBOOK_SIZE - removable
-        
-        print(f"\nPotential Pruning:")
-        print(f"  Removable codewords: {removable}")
-        print(f"  Remaining codewords: {remaining}")
-        print(f"  Bits reduction: {3} → {int(np.log2(remaining))} bits")
-        print(f"  Compression improvement: {3 - int(np.log2(remaining))} bits")
-        
-        return True
-    else:
-        print(f"\n✗ No pruning opportunity - all codewords are well-used")
-        return False
-
-
-def test_codeword_similarity():
-    """Analyze if codewords are similar and could be merged."""
+    # Recommendation
     print("\n" + "=" * 70)
-    print("CODEWORD SIMILARITY ANALYSIS")
-    print("=" * 70)
-    
-    # Create synthetic codebook
-    codebook = torch.randn(CODEBOOK_SIZE, BLOCK_SIZE, dtype=torch.float32)
-    
-    print(f"\nCodebook size: {CODEBOOK_SIZE} codewords, {BLOCK_SIZE} elements each")
-    
-    # Calculate pairwise distances
-    distances = torch.cdist(codebook, codebook)
-    
-    # Find similar pairs
-    print("\nCodeword Similarity (Euclidean distance):")
-    print("-" * 70)
-    
-    similar_pairs = []
-    for i in range(CODEBOOK_SIZE):
-        for j in range(i+1, CODEBOOK_SIZE):
-            dist = distances[i, j].item()
-            if dist < 0.5:  # Threshold for similarity
-                similar_pairs.append((i, j, dist))
-    
-    if similar_pairs:
-        similar_pairs.sort(key=lambda x: x[2])
-        print(f"Found {len(similar_pairs)} similar pairs:")
-        for i, j, dist in similar_pairs[:5]:
-            print(f"  Codeword {i} <-> {j}: distance {dist:.6f}")
-        
-        print(f"\n✓ Potential for merging {len(similar_pairs)} pairs")
-        print(f"  Could reduce codebook size by {len(similar_pairs)} codewords")
-        return True
+    if storage_reduction > 2:
+        print("✅ CODEBOOK PRUNING RECOMMENDED")
+        print(f"   - Storage reduction: {storage_reduction:.1f}%")
+        print(f"   - Zero MSE impact (unused entries removed)")
+    elif storage_reduction > 0.5:
+        print("⚠️  CODEBOOK PRUNING MARGINAL")
+        print(f"   - Storage reduction: {storage_reduction:.1f}%")
+        print(f"   - May not be worth the complexity")
     else:
-        print(f"✗ No similar codeword pairs found")
-        return False
+        print("❌ CODEBOOK PRUNING NOT RECOMMENDED")
+        print(f"   - Storage reduction: {storage_reduction:.1f}%")
+        print(f"   - Most entries are used")
 
-
-def main():
-    """Run analysis."""
-    print("\nCODEBOOK PRUNING ANALYSIS\n")
-    
-    test1 = test_codeword_usage()
-    test2 = test_codeword_similarity()
-    
-    print("\n" + "=" * 70)
-    print("CONCLUSION")
-    print("=" * 70)
-    
-    if test1 or test2:
-        print("✓ Codebook pruning opportunity identified")
-        print("  - Could reduce codebook size")
-        print("  - Could improve compression ratio")
-        return 0
-    else:
-        print("✗ No codebook pruning opportunity")
-        print("  - All codewords are well-used")
-        print("  - Codewords are sufficiently different")
-        return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+if __name__ == '__main__':
+    test_codebook_pruning()
