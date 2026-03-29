@@ -1,0 +1,8 @@
+{
+  "approach": "codespace_3bit_dense",
+  "ppl": 31365116.58513683,
+  "bits": 2.807354922057604,
+  "effective_bpe": 3.307354922057604,
+  "time": 502.05043148994446,
+  "codebook": "3bit_dense"
+}
