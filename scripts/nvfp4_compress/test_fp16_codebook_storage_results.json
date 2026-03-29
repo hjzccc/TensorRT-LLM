@@ -1,0 +1,14 @@
+{
+  "test": "fp16_codebook_storage",
+  "num_layers": 95,
+  "fp32": {
+    "mse": 0.001329229213297367,
+    "storage_kb": 5.1953125
+  },
+  "fp16": {
+    "mse": 0.0013289724010974169,
+    "storage_kb": 2.59765625
+  },
+  "mse_increase_percent": -0.0193178653717041,
+  "storage_reduction_percent": 50.0
+}
