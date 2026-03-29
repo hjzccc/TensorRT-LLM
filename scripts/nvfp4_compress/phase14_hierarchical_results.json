@@ -1,0 +1,32 @@
+{
+  "baseline_improvement": 99.71,
+  "results": {
+    "Coarse-2, Fine-8": {
+      "avg_improvement": 99.98816139132995,
+      "std_improvement": 0.001311067063416971,
+      "min_improvement": 99.98457956554701,
+      "max_improvement": 99.9911447687975
+    },
+    "Coarse-3, Fine-8": {
+      "avg_improvement": 99.96630658344787,
+      "std_improvement": 0.011701359751811063,
+      "min_improvement": 99.91404237653784,
+      "max_improvement": 99.97745606046344
+    },
+    "Coarse-4, Fine-8": {
+      "avg_improvement": 99.94891366876463,
+      "std_improvement": 0.009613994770483986,
+      "min_improvement": 99.9177509713607,
+      "max_improvement": 99.97300216057982
+    },
+    "Coarse-4, Fine-16": {
+      "avg_improvement": 99.91818624435545,
+      "std_improvement": 0.017432127123812754,
+      "min_improvement": 99.8630450621627,
+      "max_improvement": 99.95638531092807
+    }
+  },
+  "best_config": "Coarse-2, Fine-8",
+  "best_improvement": 99.98816139132995,
+  "additional_gain": 0.27816139132995943
+}

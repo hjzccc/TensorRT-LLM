@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "method": "Bit-Width Optimization for Hybrid",
+    "block_size": 16,
+    "allocations_tested": [
+      "(3,1)",
+      "(4,2)",
+      "(4,3)",
+      "(5,2)",
+      "(5,3)"
+    ]
+  },
+  "per_tensor_results": [
+    {
+      "tensor_name": "model.layers.0.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "importance": 3.298828125,
+      "results_by_allocation": {
+        "(3,1)": {
+          "compression": 0.744140625,
+          "mse": 0.0103193917311728
+        },
+        "(4,2)": {
+          "compression": 0.4921875,
+          "mse": 0.0
+        },
+        "(4,3)": {
+          "compression": 0.4921875,
+          "mse": 0.0
+        },
+        "(5,2)": {
+          "compression": 0.490234375,
+          "mse": 0.0
+        },
+        "(5,3)": {
+          "compression": 0.490234375,
+          "mse": 0.0
+        }
+      }
+    },
+    {
+      "tensor_name": "model.layers.0.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "importance": 0.8813552856445312,
+      "results_by_allocation": {
+        "(3,1)": {
+          "compression": 0.982421875,
+          "mse": 0.000910281487449538
+        },
+        "(4,2)": {
+          "compression": 0.96484375,
+          "mse": 0.00011064470936616999
+        },
+        "(4,3)": {
+          "compression": 0.931640625,
+          "mse": 4.615024454324157e-05
+        },
+        "(5,2)": {
+          "compression": 0.96484375,
+          "mse": 9.614998907636618e-05
+        },
+        "(5,3)": {
+          "compression": 0.931640625,
+          "mse": 1.043882241447136e-05
+        }
+      }
+    }
+  ],
+  "summary": {
+    "best_allocation": "(3,1)",
+    "best_compression": 0.982421875,
+    "num_tensors_tested": 2
+  }
+}
