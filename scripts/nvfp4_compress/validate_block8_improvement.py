@@ -14,7 +14,7 @@ from safetensors import safe_open
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "channel_quant_new"))
 
-from kmeans_decompression_v2 import create_kmeans_codebook_from_weights
+from kmeans_decompression_v2 import create_kmeans_codebook_from_weights, unpack_codes_from_uint8
 
 # Configuration
 SRC_MODEL = "Qwen/Qwen3.5-35B-A3B"
@@ -80,19 +80,20 @@ def validate_improvements():
             weight = sf.get_tensor(key)
         
         # Compress with both block sizes
-        decomp8, codes8 = create_kmeans_codebook_from_weights(
+        decomp8, codes8_packed = create_kmeans_codebook_from_weights(
             weight, block_size=8, codebook_size=8, num_iterations=10
         )
-        decomp16, codes16 = create_kmeans_codebook_from_weights(
+        decomp16, codes16_packed = create_kmeans_codebook_from_weights(
             weight, block_size=16, codebook_size=8, num_iterations=10
         )
         
-        # Decompress
-        codes8_reshaped = codes8.reshape(-1, 8)
-        codes16_reshaped = codes16.reshape(-1, 16)
+        # Unpack codes
+        codes8 = unpack_codes_from_uint8(codes8_packed)
+        codes16 = unpack_codes_from_uint8(codes16_packed)
         
-        recon8 = decomp8.decompress(codes8_reshaped)
-        recon16 = decomp16.decompress(codes16_reshaped)
+        # Decompress
+        recon8 = decomp8.decompress(codes8)
+        recon16 = decomp16.decompress(codes16)
         
         # Trim to original size
         recon8 = recon8.reshape(-1)[:weight.numel()]
