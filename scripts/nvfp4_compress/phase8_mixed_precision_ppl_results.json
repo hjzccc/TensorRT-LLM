@@ -1,0 +1,41 @@
+{
+  "metadata": {
+    "method": "Mixed-Precision Quantization (4/2)",
+    "high_bit_percent": 0.3,
+    "baseline_ppl_delta": 0.023112
+  },
+  "per_tensor_results": [
+    {
+      "tensor_name": "model.layers.0.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.9296875,
+      "mse": 0.084869384765625,
+      "bits_per_elem": 2.25,
+      "bits": 4,
+      "importance": 3.298828125
+    },
+    {
+      "tensor_name": "model.layers.0.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.9921875,
+      "mse": 0.01322708185762167,
+      "bits_per_elem": 0.25,
+      "bits": 2,
+      "importance": 0.8813552856445312
+    }
+  ],
+  "summary": {
+    "avg_compression": 0.9609375,
+    "avg_mse": 0.049048233311623335,
+    "avg_bits_per_elem": 1.25,
+    "num_tensors_tested": 2,
+    "estimated_ppl_delta": 0.008410139982923353,
+    "ppl_acceptable": true
+  }
+}

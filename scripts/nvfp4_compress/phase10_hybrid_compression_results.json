@@ -1,0 +1,51 @@
+{
+  "metadata": {
+    "method": "Hybrid Quantization (Mixed-Precision 4/2 + EM)",
+    "block_size": 16,
+    "k_codes_high": 16,
+    "k_codes_low": 4,
+    "timestamp": "2026-03-29 03:11:41"
+  },
+  "per_tensor_results": [
+    {
+      "tensor_name": "model.layers.0.linear_attn.A_log",
+      "shape": [
+        32
+      ],
+      "numel": 32,
+      "compression": 0.9296875,
+      "mse": 0.087799072265625,
+      "bits_per_elem": 2.25,
+      "bits": 4,
+      "importance": 3.298828125,
+      "original_bits": 1024,
+      "compressed_bits": 72
+    },
+    {
+      "tensor_name": "model.layers.0.linear_attn.norm.weight",
+      "shape": [
+        128
+      ],
+      "numel": 128,
+      "compression": 0.9921875,
+      "mse": 0.01516494806855917,
+      "bits_per_elem": 0.25,
+      "bits": 2,
+      "importance": 0.8813552856445312,
+      "original_bits": 4096,
+      "compressed_bits": 32
+    }
+  ],
+  "summary": {
+    "total_tensors": 3098,
+    "compressed_tensors": 2,
+    "avg_compression": 0.9609375,
+    "avg_mse": 0.051482010167092085,
+    "avg_bits_per_elem": 1.25,
+    "total_original_bits": 5120,
+    "total_compressed_bits": 104,
+    "overall_compression": 0.9796875,
+    "estimated_ppl_delta": 0.007546588485848865,
+    "ppl_acceptable": true
+  }
+}
