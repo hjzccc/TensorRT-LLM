@@ -1,0 +1,8 @@
+{
+  "approach": "mixed_rate_50pct_2bit",
+  "ppl": 7.0674214032611795,
+  "frac_2bit": 0.5,
+  "avg_bits_per_code": 2.5,
+  "effective_bpe": 3.0625,
+  "time": 1588.252943277359
+}

@@ -1,0 +1,13 @@
+{
+  "approach": "pq_2bit",
+  "ppl": 7.4417948941702345,
+  "bits_per_code": 2.0,
+  "effective_bpe": 2.5,
+  "time": 5233.843198060989,
+  "codebook": [
+    -4.0,
+    0.0,
+    3.0,
+    6.0
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "nsamples": 145,
+    "seqlen": 2048,
+    "target_bf16": 0.15
+  },
+  "results": {
+    "w1_w2_asymmetric_fixed": {
+      "ppl": 6.664,
+      "time_s": 3241.1,
+      "mean_bf16_fraction": 0.15
+    },
+    "w1_w2_asymmetric_error": {
+      "ppl": 6.6642,
+      "time_s": 1354.4,
+      "mean_bf16_fraction": 0.1658
+    },
+    "w1_w2_asymmetric_hybrid": {
+      "ppl": 6.6647,
+      "time_s": 1701.0,
+      "mean_bf16_fraction": 0.154
+    }
+  }
+}

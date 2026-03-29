@@ -63,10 +63,12 @@
 
 **Experiments to Run (in order):**
 
-### 2.1: Baseline Validation (Identity Mapping)
-- **Approach:** Run full model with identity codebook (all 16 codes)
-- **Expected:** PPL = 6.8431 (exact NVFP4 baseline)
-- **Purpose:** Confirm pipeline is correct before compression
+### 2.1: Baseline Validation (Identity Mapping) — COMPLETED ✓
+- **Approach:** Run full model with identity codebook (all 16 codes), code-space pipeline
+- **Result:** PPL = 6.6974 (MoE-only NVFP4; the 6.8431 baseline is full-model NVFP4 including attention)
+- **Time:** 620s
+- **Verdict:** Pipeline verified correct. MoE-only baseline = 6.6974 (57.5% recovery vs BF16)
+- **Note:** This pipeline keeps attention + shared expert in BF16, matches prior `moe_only` scope
 
 ### 2.2: 3-Bit Uniform Codebook
 - **Codebook:** {0, 2, 4, 5, 6, 7, 14, 15} (symmetric around zero)

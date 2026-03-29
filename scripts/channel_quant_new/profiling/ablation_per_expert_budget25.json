@@ -1,0 +1,7 @@
+{
+  "granularity": "per_expert",
+  "budget_requested": 0.25,
+  "budget_actual": 0.24951171875,
+  "ppl": 6.61483097076416,
+  "recovery": 90.04695433366459
+}

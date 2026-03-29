@@ -1,0 +1,24 @@
+{
+  "probe1": {
+    "nonzero_fraction": 0.645334021250407,
+    "sign_balance": 0.3079855902722959,
+    "mean_magnitude": 1.28702974319458,
+    "linear_probe_accuracy": 0.9343389036687999
+  },
+  "probe2": {
+    "deterministic_mse": 1.3363795161247254,
+    "stochastic_mse_mean": 0.45423601229985555,
+    "stochastic_mse_std": 2.1514082803964448e-05,
+    "ratio": 0.33990046002580404,
+    "verdict": "STOCHASTIC WINS: deterministic error has harmful coherent structure"
+  },
+  "probe3": {
+    "code_error_mse": 2.0339562979643233e-05,
+    "swap_error_mse": 4.138646909268573e-05,
+    "ratio": 2.0347766876220703,
+    "scale_cv": 0.2541769742965698,
+    "high_scale_mse": 1.50449538230896,
+    "low_scale_mse": 1.170804738998413,
+    "verdict": "MIXED: both scale and code contribute significantly"
+  }
+}

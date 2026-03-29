@@ -1,0 +1,8 @@
+{
+  "mode": "nvfp4",
+  "accuracy": 54.8,
+  "correct": 274,
+  "total": 500,
+  "max_seq_len": 256,
+  "time_s": 2480.5
+}

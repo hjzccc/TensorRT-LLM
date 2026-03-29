@@ -54,9 +54,42 @@ The BF16-matmul fake-quant experiments from the earlier exploration phase are st
 **BREAKTHROUGH #1 (Mar 22)**: budget_50pct (FP8+NVFP4, 145 chunks) = 6.6212, BEATS uniform FP8 (6.6257) by 0.005.
 **BREAKTHROUGH #2 (Mar 22)**: bf16_5_nvfp4_95 (BF16+NVFP4, 4 chunks) = 7.2371, MATCHES BF16 (7.2353, +0.002) with 95% FP4 compression. Demolishes FP8 by 0.056. Pending 145-chunk validation.
 
-BF16+NVFP4 is the most promising direction: 5% BF16 channels eliminate the most damaging quantization errors entirely, and NVFP4's per-16-block scaling handles the rest.
+### Value proposition and evaluation criteria
 
-The long-term target is stronger: close as much of the remaining gap to **exact BF16** as possible, not merely beat weaker quantized baselines.
+**The method's value is measured by how much of the NVFP4→BF16 gap it closes, not by absolute PPL alone.** If uniform NVFP4 is already close to BF16, then BF16+NVFP4 adds little value regardless of technique. The contribution is specifically:
+
+- **Exploit MoE's imbalanced routing** — hot experts and deep layers contribute disproportionately to quantization damage. A small BF16 budget targeted at these critical paths should recover most of the NVFP4→BF16 gap.
+- **Always report three baselines**: uniform BF16 (ceiling), uniform NVFP4 (floor), and our BF16+NVFP4 method. The metric is **gap recovery %** = (NVFP4_PPL - mixed_PPL) / (NVFP4_PPL - BF16_PPL) × 100.
+- **Target**: close to BF16 quality while keeping 85%+ of channels at NVFP4 compression.
+
+Every experiment must report: BF16 baseline, NVFP4 baseline, method PPL, and gap recovery %. Results where NVFP4 is already close to BF16 (small gap) are less interesting — the method matters most when the gap is large.
+
+**ACHIEVED: 99.1% recovery at 90% budget, 98.0% at 65%, 86.9% at 25%.**
+
+**Sensitivity metric**: `routing_weight × E[a²] × ||w||²` (activation-weighted, routing-aware).
+Proven equivalent to the Hessian-diagonal optimal metric for NVFP4 (correlation = 1.0 with
+H_diag × ||w - Q(w)||²). No backward pass needed — this IS the theoretically optimal
+first-order metric for NVFP4 channel selection.
+
+**Allocation**: Global greedy knapsack — rank all 31M channels across all layers/experts,
+assign top-B% to BF16. The BF16 fraction and its distribution across layers, experts,
+and W1/W2 all emerge from the ranking, not hand-tuned.
+
+**Critical implementation detail**: NVFP4 weight global scale must be computed from the
+FULL expert weight matrix BEFORE subsetting to the NVFP4 channels. Without this, removing
+channels to BF16 changes the quantization grid for remaining channels, breaking monotonicity.
+
+**Complete Pareto curve** (Qwen3.5-35B-A3B, WikiText-2, 145-chunk test, 128-sample train calibration):
+
+| Budget | PPL | Recovery | Compression |
+|--------|-----|----------|-------------|
+| 0% (NVFP4) | 6.8431 | 0% | 4× |
+| 25% | 6.6227 | 86.9% | 2.3× |
+| 65% | 6.5946 | 98.0% | 1.3× |
+| 90% | 6.5918 | 99.1% | 1.05× |
+| 100% (BF16) | 6.5896 | 100% | 1× |
+
+See explore.md for the full 18-point curve with cross-layer dip analysis.
 
 **Exploration-only results (use for ideas, not final claims):**
 - The strongest BF16-matmul fake-quant result was `MaCa calibration + all-layer correction = 6.5699`
@@ -91,7 +124,22 @@ The long-term target is stronger: close as much of the remaining gap to **exact 
 - BF16+FP8+NVFP4: Three tiers. Most sensitive → BF16, medium → FP8, cold → NVFP4.
 - Compare against the current two-tier FP8+NVFP4 results at equal memory budgets.
 
-**Phase 1c — Framework generalization:** Formalize the allocation algorithm into a general, model-agnostic framework. The algorithm should: (a) take calibration data + model weights as input, (b) compute per-channel sensitivity scores, (c) solve for the precision assignment across up to 3 tiers (BF16/FP8/NVFP4) that minimizes PPL under a given memory budget, (d) output channel masks ready for kernel execution. The framework should NOT hard-code any ratios or tier combinations — these emerge from the algorithm.
+**Phase 1c — Optimization-based allocation (the right approach):** The BF16 fraction should NOT be a hand-picked hyperparameter (e.g., "15%"). It should be the OUTPUT of a constrained optimization:
+
+- **Constraint**: total memory budget (e.g., average bits per MoE weight parameter)
+- **Objective**: minimize quantization loss (PPL proxy or total weighted error)
+- **Decision variables**: per-expert, per-layer, per-channel precision assignment (BF16 or NVFP4)
+- **Solver**: formulate as ILP/LP (like MxMoE, MC#) or submodular greedy (like ScaleBITS) or knapsack
+
+This matches how every related paper handles allocation: MxMoE uses ILP, HAWQ-V2 uses Pareto frontier, ScaleBITS uses submodular greedy, MC# uses LP, BAQ uses closed-form. Nobody hard-codes the percentage.
+
+The solver needs per-channel sensitivity scores as input. These come from calibration data (128 samples from WikiText-2 train, NOT test). Candidate metrics:
+- Weight magnitude (current, data-free, simple)
+- Activation-weighted: E[a²]×||w||² (needs calibration data)
+- Hessian trace (HAWQ-V2 style, expensive but principled)
+- Fisher information (FGMP style)
+
+The optimization produces the full assignment: which channels get BF16, which get NVFP4, for every expert in every layer. The total BF16 fraction and its distribution across depth/experts/projections are all emergent properties of the solution, not inputs.
 
 **Phase 2 — Speed optimization (separate, done later):** Deploy the winning assignment on SM120 tensor cores. Column permutation, 2-group CUTLASS grouped GEMM, output scatter, dual-tile scheduling. Benchmark tokens/s. This phase focuses on inference throughput, not quality.
 
@@ -119,7 +167,24 @@ The long-term target is stronger: close as much of the remaining gap to **exact 
 - Attention, shared expert, router, embeddings, LM head, norms all stay BF16
 - This differs from reference models which also quantize attention and shared expert (see Reference Models section)
 
-## Evaluation and Calibration Protocol
+## Evaluation and Profiling Protocol
+
+**All evaluations and profiling MUST use the full dataset. No partial runs for final numbers.**
+
+### Data requirements
+
+| Task | Dataset | Split | Size | Rule |
+|------|---------|-------|------|------|
+| **Calibration** | WikiText-2 (`wikitext-2-raw-v1`) | **train** | 128 samples × 2048 = 262,144 tokens | For sensitivity metrics, channel selection, and allocation optimization. NEVER use test split for calibration. |
+| **PPL evaluation** | WikiText-2 (`wikitext-2-raw-v1`) | **test** | 145 chunks × 2048 = 296,960 tokens | Always full 145 chunks. 4-chunk or 20-chunk only for debugging. |
+| **Error profiling** | WikiText-2 (`wikitext-2-raw-v1`) | **test** | 145 chunks | Same as PPL eval so profiling directly explains the PPL numbers. |
+| **Zero-shot benchmarks** | ARC-e, ARC-c, HellaSwag, WinoGrande, PIQA | test | ~16,700 examples / ~3.9M tokens | Required for paper. Run via lm-eval-harness. |
+
+**Calibration vs evaluation must use different splits.** Calibration on train, evaluation on test. This matches MxMoE (explicitly uses "WikiText2 training set") and avoids the ambiguity in EAQuant/MoEQuant/MixLLM which don't specify their calibration split. The calibration data is used to compute sensitivity metrics and solve the allocation optimization — the BF16/NVFP4 channel assignment is determined from calibration data, then evaluated on the held-out test set.
+
+**No partial-dataset figures or claims.** If a figure shows error profiles, activation distributions, or PPL curves, the underlying data must come from the full 145-chunk evaluation. Partial runs (4-chunk, 20-chunk) are only for fast iteration during debugging — never for figures or reported numbers.
+
+### Evaluation pipeline
 
 **Follow how the reference models (`Sehyo/Qwen3.5-35B-A3B-NVFP4` and `Qwen/Qwen3.5-35B-A3B-FP8`) actually work.**
 
@@ -461,10 +526,14 @@ Sort channels by s_j descending, promote top expert_budget_e fraction to FP8. Pe
 
 ## Exploration Loop
 
-**Two non-negotiable principles for this loop:**
-1. **Final target**: achieve accuracy that is as close as possible to exact BF16 under the exact TRT-LLM kernel path. Every promising idea should ultimately be judged by how much it closes the gap to exact BF16.
-2. **Open-ended exploration**: this loop does not have a natural stopping point. Keep exploring, keep learning, and keep improving until manually stopped. Never treat the current best as final.
-3. **Exact-path logging**: every exact-pipeline experiment MUST be written to `scripts/channel_quant_new/explore.md` with the same structure used in the older exploratory log, but focused only on the exact TRT-LLM kernel path.
+**Non-negotiable principles for this loop:**
+1. **Final target: 99% gap recovery.** Close the NVFP4→BF16 gap by exploiting MoE routing imbalance, depth-dependent error, and activation-aware sensitivity. Weight-magnitude baseline (77% recovery) is the floor, not the goal.
+2. **Always compare against both baselines**: uniform BF16 (ceiling) AND uniform NVFP4 (floor). A method that beats NVFP4 by 0.001 when the gap is 0.25 is useless (0.4% recovery). A method that recovers 80%+ of the gap is meaningful.
+3. **Solve, don't hand-pick**: the BF16 fraction and its distribution should be the OUTPUT of a constrained optimization (given memory budget → minimize loss), not a hand-tuned hyperparameter. This matches MxMoE (ILP), HAWQ-V2 (Pareto), ScaleBITS (submodular greedy), MC# (LP).
+4. **Open-ended exploration**: this loop does not have a natural stopping point. Keep exploring, keep learning, and keep improving until manually stopped. Never treat the current best as final.
+5. **Full dataset only**: all evaluations and profiling on the full 145-chunk WikiText-2 test set (296,960 tokens). No partial runs for reported numbers.
+6. **Separate calibration from evaluation**: sensitivity metrics should be computed on calibration data (WikiText-2 train, 128 samples). Evaluation on test set only. Never calibrate on the test set.
+7. **Exact-path logging**: every exact-pipeline experiment MUST be written to `scripts/channel_quant_new/explore.md`.
 
 ## Lessons Learned from Phase 1a (30 iterations, 200+ configs, BF16 simulation)
 
@@ -622,7 +691,7 @@ Exact-pipeline files currently in `scripts/channel_quant_new/`:
 | **Mean Bias in FP4** (arXiv:2603.10444) | Rank-one mean bias drives FP4 instability | Alternative NaN fix: mean subtraction |
 | **MicroMix** (arXiv:2508.02343) | MXFP4/MXFP6/MXFP8 mixed channels on RTX 5090 | Kernel approach for our method |
 | **Block Rotation for MXFP4** (arXiv:2511.04214) | Global rotation incompatible with NVFP4 PoT scaling | Confirms: don't use rotation |
-| **MR-GPTQ** (arXiv:2509.23202) | Block-wise Hadamard + GPTQ for NVFP4 | Potential accuracy improvement |
+| **MR-GPTQ** (arXiv:2509.23202) | Proves NVFP4 per-16-block scaling neutralizes outlier smoothing; block-local Hadamard + GPTQ; 4× e2e on RTX 5090 | Theoretically confirms our Gini ≈ 0.06 finding. Orthogonal approach: they improve NVFP4 quality (GPTQ+rotation), we avoid NVFP4 for critical channels (BF16 rescue) |
 | **FAQ** (arXiv:2601.11200) | Family-aware calibration data regeneration on Qwen3 | Better calibration data |
 | **VEQ** (arXiv:2602.01037) | Token-expert affinity in Hessian for MoE VLMs | Validates our router-affinity approach |
 

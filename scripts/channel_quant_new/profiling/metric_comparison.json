@@ -1,0 +1,31 @@
+{
+  "metadata": {
+    "nsamples": 145,
+    "seqlen": 2048,
+    "calibration": "wikitext2_train_128x2048",
+    "budget": 0.15,
+    "allocation": "depth_ramp"
+  },
+  "results": {
+    "weight_mag": {
+      "ppl": 6.6479,
+      "gap_recovery_pct": 77.0,
+      "time_s": 976.1
+    },
+    "act_weighted": {
+      "ppl": 6.6405,
+      "gap_recovery_pct": 79.9,
+      "time_s": 967.5
+    },
+    "output_sensitivity": {
+      "ppl": 6.6709,
+      "gap_recovery_pct": 67.9,
+      "time_s": 964.9
+    },
+    "routing_scaled_act": {
+      "ppl": 6.6405,
+      "gap_recovery_pct": 79.9,
+      "time_s": 966.0
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "metadata": {
+    "nsamples": 145,
+    "seqlen": 2048,
+    "target_bf16": 0.15
+  },
+  "results": {
+    "uniform": {
+      "ppl": 6.6515,
+      "time_s": 942.7,
+      "mean_bf16_fraction": 0.15
+    },
+    "depth_ramp": {
+      "ppl": 6.6457,
+      "time_s": 1195.4,
+      "mean_bf16_fraction": 0.1499
+    },
+    "depth_step": {
+      "ppl": 6.6467,
+      "time_s": 1183.5,
+      "mean_bf16_fraction": 0.15
+    },
+    "routing": {
+      "ppl": 6.6469,
+      "time_s": 1182.2,
+      "mean_bf16_fraction": 0.1493
+    },
+    "combined": {
+      "ppl": 6.6469,
+      "time_s": 962.7,
+      "mean_bf16_fraction": 0.1493
+    },
+    "w2_heavy": {
+      "ppl": 6.6505,
+      "time_s": 1525.4,
+      "mean_bf16_fraction": 0.1375
+    },
+    "error_proportional": {
+      "ppl": 6.6473,
+      "time_s": 1902.0,
+      "mean_bf16_fraction": 0.1493
+    }
+  }
+}

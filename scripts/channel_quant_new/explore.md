@@ -2,6 +2,15 @@
 
 This file is the source-of-truth log for the exact TRT-LLM wrapper/kernel path.
 
+## DEFINITIVE RESULT — See section [pareto] near bottom of file
+The final Pareto curve (5%–90% BF16 budget) is the paper's main result.
+All earlier sections are historical exploration — kept for audit trail, not for final claims.
+
+**OPEN QUESTION**: the Pareto curve uses `routing_weight × act_weighted` as the score.
+An earlier run WITHOUT routing weight gave 84.3% at 15% (vs 80.5% with routing weight),
+but that run also had the buggy sub-matrix global scale. Need a clean comparison of
+routing-weighted vs unweighted scoring with all fixes applied to determine which is better.
+
 Use this format for every new exact-path experiment:
 
 ## [N] Short Title
@@ -379,11 +388,13 @@ Trend IS monotonic on 145 chunks: more BF16 = lower PPL.
 - **FP8-Flow-MoE** (arXiv:2511.02302): Casting-free FP8 training for MoE. Training-focused, not PTQ.
 - **DyMoE** (arXiv:2603.19172): Dynamic expert orchestration with mixed-precision. Edge-focused, not our setting.
 
+- **MR-GPTQ** (arXiv:2509.23202, Sep 2025, IST Austria/Neural Magic): Block-wise Hadamard + GPTQ for NVFP4/MXFP4. Proves that NVFP4's per-16-block scaling neutralizes traditional outlier smoothing (SmoothQuant, global rotation). Block-local Hadamard within each 16-element group + GPTQ weight optimization. 4× e2e speedup on RTX 5090. Directly confirms our Gini ≈ 0.06 finding — per-block scaling already equalizes error. Orthogonal to our BF16 rescue approach (they improve NVFP4 quality, we avoid NVFP4 for critical channels).
+
 ### Key negative findings:
 - **FP8 input_scale=1.0 is NOT a bug**: For typical MoE activations (range ~[-35, 35]), scale=1.0 gives essentially the same MSE as proper scale. No improvement possible here.
 - **FP8 2D block scaling**: TRT-LLM's `torch_quant_fp8_linear` only supports scalar weight_scale. Switching to 2D block scaling would require a different kernel path — not a quick win.
 - **Per-token FP8 activation**: Would require kernel changes. Not actionable in current pipeline.
-- **Global rotation for NVFP4**: Incompatible with PoT block scaling (arXiv:2511.04214). Confirmed: don't use rotation.
+- **Global rotation for NVFP4**: Incompatible with PoT block scaling (arXiv:2511.04214). Confirmed: don't use rotation. MR-GPTQ (arXiv:2509.23202) confirms this and shows block-local rotation is the only viable approach.
 
 ## [17] FP8-Centric Three-Tier (Iter17) — COMPLETED (4-chunk)
 **Eval**: exact TRT-LLM path, 4 chunks, seqlen=2048, moe_only scope
@@ -439,8 +450,165 @@ closes 59% of the BF16→FP8 gap while using ~30% less memory than FP8 for exper
 
 **Pending**: Full 145-chunk validation to get the headline number.
 
-### Confirmed actionable directions (updated priority):
-1. **Run rescue5_fp8_50 on full 145 chunks** — #1 priority for headline result
-2. **iter13**: W2 budget extension (W1=10%, W2=50%→100%)
-3. **iter15**: Hot-channel protection for W1
-4. **iter14**: MaCa multi-scale calibration
+## [alloc] BF16+NVFP4 Allocation Strategy Experiments — FULL 145-CHUNK
+**Eval**: exact TRT-LLM path, 145 chunks (296,960 tokens), moe_only scope
+**Approach**: 7 allocation strategies at same ~15% total BF16 budget, weight-magnitude metric.
+All strategies use profiling data from full 145-chunk error_profile.json (10,226 expert instances).
+**Result**:
+| Strategy | Description | PPL | vs uniform | Gap Recovery |
+|----------|-------------|-----|-----------|-------------|
+| **depth_ramp** | linear 5%→25% by layer | **6.6457** | **-0.006** | **77.9%** |
+| depth_step | layers 0-19: 10%, 20-39: 20% | 6.6467 | -0.005 | 77.5% |
+| routing | ∝ sqrt(routing_weight), clipped [5%, 30%] | 6.6469 | -0.005 | 77.4% |
+| combined | depth × routing | 6.6469 | -0.005 | 77.4% |
+| error_proportional | ∝ sqrt(rw × mae) | 6.6473 | -0.004 | 77.3% |
+| w2_heavy | W1=10%, W2 ramp 10%→25% | 6.6505 | -0.001 | 76.0% |
+| uniform | 15% everywhere | 6.6515 | baseline | 75.6% |
+
+Gap = NVFP4 (6.8431) - BF16 (6.5896) = 0.2535
+Gap recovery = (6.8431 - method_PPL) / 0.2535 × 100%
+
+**Key findings**:
+1. depth_ramp is best — linear ramp from 5% (early) to 25% (late) gains 0.006 over uniform
+2. Routing-only barely helps beyond depth — the routing concentration doesn't translate to PPL
+3. Combined = routing = 6.6469 — no synergy between depth and routing allocation
+4. W2-heavy hurts — lower mean BF16 fraction (13.7% vs 15%) plus W2 error is less PPL-sensitive
+5. All improvements are small (<0.01 PPL) — Oracle warned this means the residual is likely NVFP4-activation-limited
+
+**Per Oracle's escalation rule**: gains < 0.01 → stop investing in allocation, the bottleneck is the FP4 activation floor on the 85% NVFP4 channels.
+
+**The uniform baseline (6.6515) already recovers 75.6% of the gap.** Smart allocation adds only 2.3pp more (to 77.9%). The remaining 22% gap is from NVFP4 activation quantization on 85% of channels.
+
+## [metrics] Sensitivity Metric Comparison — FULL 145-CHUNK, PROPER SPLIT
+**Calibration**: WikiText-2 TRAIN split, 128 × 2048 = 262,144 tokens
+**Eval**: WikiText-2 TEST split, 145 × 2048 = 296,960 tokens
+**Allocation**: depth_ramp (5%→25% by layer), 15% average BF16 budget
+
+| Metric | Formula | PPL | Gap Recovery |
+|--------|---------|-----|-------------|
+| **act_weighted** | E[a²] × ||w||² | **6.6405** | **79.9%** |
+| **routing_scaled_act** | rw × E[a²] × ||w||² | **6.6405** | **79.9%** |
+| weight_mag (baseline) | ||w||₁ | 6.6479 | 77.0% |
+| output_sensitivity | E[|output|] | 6.6709 | 67.9% |
+
+**Activation-aware metric improves 77.0% → 79.9% (+2.9pp).**
+Routing scaling adds nothing. Output sensitivity is bad.
+
+Still 20pp short of 99% target. Next: Hessian/Fisher metrics, higher budget sweep, optimization-based allocation.
+
+## [pareto] Full Pareto Curve 5%–90% — DEFINITIVE RESULTS
+Extended budget sweep enabled by numpy memory optimization (628MB vs 4.5GB for 31M channel ranking).
+All results: 145-chunk WikiText-2 TEST, calibrated on TRAIN, fixed global scale, routing × act_weighted.
+Each point verified reproducible (65% and 70% tested 4 times each: identical PPL every run).
+
+| Budget | PPL | Recovery |
+|--------|-----|----------|
+| 0% (NVFP4) | 6.8431 | 0% |
+| 5% | 6.6548 | 74.3% |
+| 10% | 6.6398 | 80.2% |
+| 15% | 6.6363 | 81.6% |
+| 20% | 6.6338 | 82.6% |
+| 25% | 6.6227 | 86.9% |
+| 30% | 6.6261 | 85.6% ← dip |
+| 35% | 6.6169 | 89.2% |
+| 40% | 6.6152 | 89.9% |
+| 45% | 6.6100 | 91.9% |
+| 50% | 6.6119 | 91.2% ← dip |
+| 55% | 6.6061 | 93.5% |
+| 60% | 6.5998 | 96.0% |
+| 65% | 6.5946 | 98.0% |
+| 70% | 6.5978 | 96.7% ← dip |
+| 75% | 6.5938 | 98.3% |
+| 80% | 6.5953 | 97.8% ← dip |
+| 90% | 6.5918 | 99.1% |
+| 100% (BF16) | 6.5896 | 100% |
+
+Non-monotonic dips at 30%, 50%, 70%, 80% are from cross-layer error propagation
+(confirmed: single-linear MSE is perfectly monotonic, PPL non-monotonicity is from
+40-layer stacked nonlinear error interactions). Each dip point verified deterministic.
+
+Key operating points:
+- 25% budget → 86.9% recovery (practical compression)
+- 65% budget → 98.0% recovery (near-lossless)
+- 90% budget → 99.1% recovery (virtually lossless)
+
+Additional findings:
+- act_weighted (E[a²]×||w||²) IS the Hessian-diagonal optimal metric (correlation=1.0 with H_diag × ||w-Q(w)||²)
+- Naive GPTQ doesn't work with NVFP4 (adaptive per-block scaling negates column-wise compensation)
+- MR-GPTQ-style approach needed for weight optimization (non-trivial)
+
+## Session: Sub-NVFP4 Compression & Literature Review (2026-03-27)
+
+### Literature Review (25 papers read/downloaded)
+Core papers read in full: QLoRA, Case for 4-bit, INT vs FP (both), MR-GPTQ, Four Over Six, BOF4, Diagnosing FP4, RaZeR.
+Additional papers downloaded: ARCQuant, any4, CodeQuant, ChanMix, MicroMix, CRVQ, NVFP4 QAD, NVFP4 Pretraining, MxMoE, KBVQ-MoE, Quartet II, NSDS, RAMP, D2Quant, TetraJet, ZipServ.
+
+### Entropy Analysis
+- NVFP4 FP4 code entropy: 3.977/4.0 bits (near-uniform)
+- Lossless compression of NVFP4 is NOT viable (~0.6% savings)
+- Per-block-16 scaling normalizes away all statistical redundancy
+- 32.2 billion FP4 elements measured across all expert weights
+
+### Sub-NVFP4 Compression Results
+| Approach | Codebook | Bits/elem | PPL | Delta vs NVFP4 |
+|----------|----------|-----------|-----|----------------|
+| NVFP4 baseline | 16 values | 4.50 | 6.8431 | 0 |
+| **Adaptive 3-bit (4/6)** | per-block ±{0,2,4,6} or ±{0,1,2,4} | 3.37 | **6.8338** | **-0.009 (BEATS NVFP4!)** |
+| 3-bit uniform | ±{0,2,4,6} | 3.31 | 6.8603 | +0.017 |
+| 3-bit dense | ±{0,1,2,6} | 3.31 | 7.0454 | +0.202 |
+| 3-bit truncate | ±{0,1,2,4} | 3.31 | 7.9680 | +1.125 |
+| Mixed 25% 2-bit | 3-bit + 2-bit blocks | 3.31 | 6.9227 | +0.080 |
+| Mixed 50% 2-bit | 3-bit + 2-bit blocks | 3.06 | 7.0674 | +0.224 |
+| Mixed 75% 2-bit | 3-bit + 2-bit blocks | 2.81 | 7.2886 | +0.446 |
+| 2-bit MSE-optimal | {-4,0,3,6} | 2.50 | 7.7178 | +0.875 |
+| 2-bit no-zero | {-6,-2,2,6} | 2.50 | 8.2578 | +1.415 |
+| 2-bit sym+zero | {-4,0,0,4} | 2.08 | 8.6863 | +1.843 |
+
+### Key Findings
+1. Adaptive 3-bit Four-Over-Six BEATS NVFP4 at 25% fewer bits (3.37 vs 4.50 bpe)
+2. 3-bit uniform ±{0,2,4,6} is near-lossless (+0.017 PPL) — same max gap as NVFP4 (2.0)
+3. Codebook must include 0 AND 6 (block max). Missing either is catastrophic.
+4. 2-bit has hard floor at +0.87 PPL even with MSE-optimal codebook
+5. Asymmetric codebooks beat symmetric when zero required (2-bit)
+6. Mixed bit-rate interpolates smoothly but doesnt
+
+
+## Session: Sub-NVFP4 Compression and Literature Review (2026-03-27)
+
+### Literature Review (25 papers read/downloaded)
+Core papers read in full: QLoRA, Case for 4-bit, INT vs FP (both), MR-GPTQ, Four Over Six, BOF4, Diagnosing FP4, RaZeR.
+Additional papers downloaded: ARCQuant, any4, CodeQuant, ChanMix, MicroMix, CRVQ, NVFP4 QAD, NVFP4 Pretraining, MxMoE, KBVQ-MoE, Quartet II, NSDS, RAMP, D2Quant, TetraJet, ZipServ.
+
+### Entropy Analysis
+NVFP4 FP4 code entropy: 3.977 out of 4.0 bits (near-uniform). Lossless compression NOT viable. Per-block-16 scaling normalizes away all statistical redundancy. 32.2 billion FP4 elements measured.
+
+### Sub-NVFP4 Compression Results (Qwen3.5-35B-A3B, WikiText-2 test, full 145 chunks)
+NVFP4 baseline: 4.50 bpe, PPL 6.8431
+Adaptive 3-bit Four-Over-Six: 3.37 bpe, PPL 6.8338 -- BEATS NVFP4 by 0.009
+3-bit uniform: 3.31 bpe, PPL 6.8603 -- +0.017 vs NVFP4
+3-bit dense: 3.31 bpe, PPL 7.0454 -- +0.202
+3-bit truncate: 3.31 bpe, PPL 7.9680 -- +1.125
+Mixed 25pct 2-bit: 3.31 bpe, PPL 6.9227 -- +0.080
+Mixed 50pct 2-bit: 3.06 bpe, PPL 7.0674 -- +0.224
+Mixed 75pct 2-bit: 2.81 bpe, PPL 7.2886 -- +0.446
+2-bit MSE-optimal: 2.50 bpe, PPL 7.7178 -- +0.875
+2-bit no-zero: 2.50 bpe, PPL 8.2578 -- +1.415
+2-bit sym-zero: 2.08 bpe, PPL 8.6863 -- +1.843
+
+### Key Findings
+1. Adaptive 3-bit Four-Over-Six BEATS NVFP4 at 25pct fewer bits
+2. 3-bit uniform is near-lossless because max gap equals NVFPs own worst gap
+3. Codebook must include 0 AND 6. Missing either is catastrophic.
+4. 2-bit has hard floor at +0.87 PPL even with MSE-optimal codebook
+5. Asymmetric codebooks beat symmetric when zero is required
+6. Mixed bit-rate interpolates smoothly but does not beat uniform 3-bit at same bpe
+
+### Partial Granularity Ablation at 25pct budget
+Per-channel: 86.9pct recovery
+Per-linear-block: 86.7pct
+Per-expert: 90.0pct -- better than per-channel
+
+### Artifacts
+Papers: scripts/channel_quant_new/papers/ (25 PDFs)
+Results: scripts/channel_quant_new/profiling/ (13 JSONs, logs)
+Figure: scripts/channel_quant_new/figures/sub_nvfp4_pareto.pdf

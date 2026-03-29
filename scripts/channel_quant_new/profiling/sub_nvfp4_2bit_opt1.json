@@ -1,0 +1,13 @@
+{
+  "approach": "2bit_opt1",
+  "ppl": 7.717839618872564,
+  "bits_per_code": 2.0,
+  "effective_bpe": 2.5,
+  "time": 1032.671625137329,
+  "codebook": [
+    -4.0,
+    0.0,
+    3.0,
+    6.0
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "mode": "bf16",
+  "accuracy": 55.4,
+  "correct": 277,
+  "total": 500,
+  "max_seq_len": 256,
+  "time_s": 617.3
+}

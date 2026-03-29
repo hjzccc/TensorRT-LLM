@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "metric": "act_weighted",
+    "allocation": "depth_ramp",
+    "calibration": "wikitext2_train_128x2048",
+    "eval": "wikitext2_test_145x2048"
+  },
+  "results": {
+    "act_weighted_5pct": {
+      "budget": 0.05,
+      "ppl": 6.685,
+      "gap_recovery_pct": 62.4,
+      "time_s": 968.9
+    },
+    "act_weighted_10pct": {
+      "budget": 0.1,
+      "ppl": 6.6729,
+      "gap_recovery_pct": 67.1,
+      "time_s": 968.7
+    },
+    "act_weighted_15pct": {
+      "budget": 0.15,
+      "ppl": 6.656,
+      "gap_recovery_pct": 73.8,
+      "time_s": 971.8
+    },
+    "act_weighted_20pct": {
+      "budget": 0.2,
+      "ppl": 6.6587,
+      "gap_recovery_pct": 72.8,
+      "time_s": 978.8
+    },
+    "act_weighted_25pct": {
+      "budget": 0.25,
+      "ppl": 6.6627,
+      "gap_recovery_pct": 71.2,
+      "time_s": 986.3
+    },
+    "act_weighted_30pct": {
+      "budget": 0.3,
+      "ppl": 6.6549,
+      "gap_recovery_pct": 74.3,
+      "time_s": 981.7
+    }
+  }
+}

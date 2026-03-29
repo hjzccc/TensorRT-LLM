@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "method": "global_greedy_knapsack",
+    "metric": "act_weighted",
+    "calibration": "wikitext2_train_128x2048",
+    "evaluation": "wikitext2_test_145x2048"
+  },
+  "results": {
+    "optimal_10pct": {
+      "budget": 0.1,
+      "ppl": 6.656,
+      "recovery_pct": 73.8,
+      "time_s": 818.0
+    },
+    "optimal_15pct": {
+      "budget": 0.15,
+      "ppl": 6.6489,
+      "recovery_pct": 76.6,
+      "time_s": 810.8
+    },
+    "optimal_20pct": {
+      "budget": 0.2,
+      "ppl": 6.6311,
+      "recovery_pct": 83.6,
+      "time_s": 773.6
+    },
+    "optimal_25pct": {
+      "budget": 0.25,
+      "ppl": 6.6449,
+      "recovery_pct": 78.2,
+      "time_s": 716.3
+    },
+    "optimal_30pct": {
+      "budget": 0.3,
+      "ppl": 6.6393,
+      "recovery_pct": 80.4,
+      "time_s": 659.0
+    },
+    "optimal_50pct": {
+      "budget": 0.5,
+      "ppl": 6.6061,
+      "recovery_pct": 93.5,
+      "time_s": 617.3
+    },
+    "optimal_65pct": {
+      "budget": 0.65,
+      "ppl": 6.6004,
+      "recovery_pct": 95.7,
+      "time_s": 609.5
+    }
+  }
+}

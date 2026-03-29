@@ -1,0 +1,7 @@
+{
+  "granularity": "per_linear_block",
+  "budget_requested": 0.25,
+  "budget_actual": 0.24957682291666666,
+  "ppl": 6.623391628265381,
+  "recovery": 86.66996912608246
+}
