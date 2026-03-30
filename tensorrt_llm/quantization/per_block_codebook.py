@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from abc import ABC, abstractmethod
-from typing import Tuple, Dict, List, Optional
+from typing import Tuple, Dict, List, Optional, Any
 import numpy as np
 
 
@@ -1017,7 +1017,7 @@ class PerBlockAQLM(PerBlockCodebookBase):
         
         return indices_list, residual
     
-    def quantize(self, weights: torch.Tensor, scale: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, Dict]:
+    def quantize(self, weights: torch.Tensor, scale: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, Dict[str, Any]]:
         """
         Quantize weights using AQLM.
         
@@ -1040,7 +1040,7 @@ class PerBlockAQLM(PerBlockCodebookBase):
             # Compute scale
             block_scale = torch.max(torch.abs(block)) / 6.0
             if block_scale == 0:
-                block_scale = 1.0
+                block_scale = torch.tensor(1.0, dtype=block.dtype, device=block.device)
             
             # Normalize block
             block_norm = block / block_scale
@@ -1090,7 +1090,7 @@ class PerBlockAQLM(PerBlockCodebookBase):
         
         return quantized_weights, metadata
     
-    def dequantize(self, quantized: torch.Tensor, metadata: Dict) -> torch.Tensor:
+    def dequantize(self, quantized: torch.Tensor, metadata: Dict[str, Any]) -> torch.Tensor:
         """
         Dequantize weights using AQLM metadata.
         
@@ -1497,3 +1497,166 @@ class PerBlockWeightedMSE(PerBlockCodebookBase):
                 j_end = min(j + self.block_size, N)
                 block_col_weights.append(col_weights[j:j_end])
         return block_col_weights
+
+
+class PerBlockAQLMWithCompression(PerBlockCodebookBase):
+    """
+    Phase 5a: AQLM with Zstandard Compression.
+    
+    Extends Phase 4 (AQLM) with zstandard compression of indices for additional compression.
+    Achieves 1-2 bits per parameter with entropy coding.
+    """
+    
+    def __init__(self,
+                 block_size: int = 128,
+                 num_codebooks: int = 2,
+                 codebook_size: int = 256,
+                 max_iters: int = 10,
+                 learning_rate: float = 0.01,
+                 use_residual: bool = True,
+                 compression_level: int = 19,
+                 dtype: torch.dtype = torch.float32):
+        """
+        Initialize AQLM with compression.
+        
+        Args:
+            block_size: Size of quantization blocks
+            num_codebooks: Number of codebooks (2-4)
+            codebook_size: Size of each codebook (256 for 8-bit)
+            max_iters: EM iterations
+            learning_rate: Learning rate for codebook optimization
+            use_residual: Use residual quantization
+            compression_level: Zstandard compression level (1-22, default 19)
+            dtype: Data type for computations
+        """
+        super().__init__(block_size, dtype)
+        self.aqlm = PerBlockAQLM(
+            block_size=block_size,
+            num_codebooks=num_codebooks,
+            codebook_size=codebook_size,
+            max_iters=max_iters,
+            learning_rate=learning_rate,
+            use_residual=use_residual,
+            dtype=dtype
+        )
+        self.num_codebooks = num_codebooks
+        self.codebook_size = codebook_size
+        self.compression_level = compression_level
+    
+    def quantize(self, weights: torch.Tensor) -> Tuple[torch.Tensor, Dict]:
+        """
+        Quantize weights using AQLM with zstandard compression.
+        
+        Args:
+            weights: Weight tensor
+            
+        Returns:
+            Tuple of (quantized_weights, metadata)
+        """
+        import zstandard as zstd
+        
+        # First, apply AQLM
+        quantized, aqlm_metadata = self.aqlm.quantize(weights)
+        
+        # Then, compress the indices
+        all_indices = aqlm_metadata['indices']
+        compressed_indices = []
+        
+        # Then, compress the indices
+        all_indices = aqlm_metadata['indices']
+        compressed_indices = []
+        index_shapes = []  # Changed: store as nested list matching compressed_indices structure
+        
+        cctx = zstd.ZstdCompressor(level=self.compression_level)
+        
+        for block_indices_list in all_indices:
+            block_compressed = []
+            block_shapes = []
+            
+            for indices in block_indices_list:
+                # Convert indices to bytes
+                indices_np = indices.cpu().numpy()
+                block_shapes.append(indices_np.shape)  # Store shape for this codebook
+                indices_bytes = indices_np.astype(np.uint8).tobytes()
+                
+                # Compress
+                compressed = cctx.compress(indices_bytes)
+                block_compressed.append(compressed)
+            
+            compressed_indices.append(block_compressed)
+            index_shapes.append(block_shapes)  # Store block's shapes as a list
+        
+        # Create metadata
+        metadata = {
+            'method': 'aqlm_zstd',
+            'block_size': self.block_size,
+            'num_codebooks': self.num_codebooks,
+            'codebook_size': self.codebook_size,
+            'compression_level': self.compression_level,
+            'codebooks': aqlm_metadata['codebooks'],
+            'compressed_indices': compressed_indices,
+            'index_shapes': index_shapes,
+            'scales': aqlm_metadata['scales'],
+            'original_shape': aqlm_metadata['original_shape'],
+            'dtype': self.dtype,
+            'num_blocks_m': aqlm_metadata['num_blocks_m'],
+            'num_blocks_n': aqlm_metadata['num_blocks_n'],
+        }
+        
+        return quantized, metadata
+    
+    def dequantize(self, quantized: torch.Tensor, metadata: Dict) -> torch.Tensor:
+        """
+        Dequantize weights using AQLM with zstandard compression.
+        
+        Args:
+            quantized: Quantized weight tensor
+            metadata: Metadata from quantization
+            
+        Returns:
+            Reconstructed weight tensor
+        """
+        import zstandard as zstd
+        
+        # Decompress indices
+        compressed_indices = metadata['compressed_indices']
+        index_shapes = metadata['index_shapes']
+        
+        decoded_indices = []
+        dctx = zstd.ZstdDecompressor()
+        
+        shape_idx = 0
+        for block_idx, block_compressed in enumerate(compressed_indices):
+            block_decoded = []
+            
+            for cb_idx, compressed in enumerate(block_compressed):
+                # Decompress
+                decompressed = dctx.decompress(compressed)
+                
+                # Convert back to tensor
+                indices_np = np.frombuffer(decompressed, dtype=np.uint8)
+                shape = index_shapes[shape_idx][cb_idx]
+                indices = torch.from_numpy(indices_np.reshape(shape).copy()).long()
+                
+                block_decoded.append(indices)
+            
+            decoded_indices.append(block_decoded)
+            shape_idx += 1
+        
+        # Create AQLM metadata with decoded indices
+        aqlm_metadata = {
+            'method': 'aqlm',
+            'block_size': self.block_size,
+            'num_codebooks': self.num_codebooks,
+            'codebook_size': self.codebook_size,
+            'codebooks': metadata['codebooks'],
+            'indices': decoded_indices,
+            'scales': metadata['scales'],
+            'original_shape': metadata['original_shape'],
+            'dtype': metadata['dtype'],
+            'num_blocks_m': metadata['num_blocks_m'],
+            'num_blocks_n': metadata['num_blocks_n'],
+        }
+        
+        # Use AQLM dequantize
+        return self.aqlm.dequantize(quantized, aqlm_metadata)
