@@ -116,6 +116,14 @@ SCHEMES: dict[str, dict[str, object]] = {
         "fixed_codes": [],
         "loss_mode": "weighted_abs",
     },
+    "2b075b_zero_fixed_grouped_fisher": {
+        "description": "Per-block MSE with grouped-diagonal Fisher weighting (magnitude-based grouping)",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [0],
+        "loss_mode": "grouped_fisher",
+    },
+
 }
 
 
@@ -305,6 +313,25 @@ def compress_codes(
                 freq = counts / counts.sum(dim=1, keepdim=True).clamp(min=1)
                 weighted_counts = counts * freq
                 costs = weighted_counts @ candidate_mse_luts.T
+            elif loss_mode == "grouped_fisher":
+                # Weight by grouped Fisher: magnitude-based grouping
+                # High-magnitude elements get 3x weight, medium 1x, low 0.3x
+                magnitudes = chunk.float().abs()
+                high_threshold = torch.quantile(magnitudes, 0.66)
+                low_threshold = torch.quantile(magnitudes, 0.33)
+                
+                weights = torch.ones_like(magnitudes)
+                weights[magnitudes >= high_threshold] = 3.0
+                weights[(magnitudes > low_threshold) & (magnitudes < high_threshold)] = 1.0
+                weights[magnitudes <= low_threshold] = 0.3
+                
+                # Normalize weights per block
+                weights = weights / (weights.sum(dim=1, keepdim=True) + 1e-8)
+                
+                # Compute weighted costs
+                weighted_counts = counts * weights
+                costs = weighted_counts @ candidate_mse_luts.T
+
             else:
                 costs = counts @ candidate_mse_luts.T
             chosen = costs.argmin(dim=1)
