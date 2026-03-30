@@ -631,7 +631,8 @@ class PerBlockGLVQ(PerBlockCodebookBase):
                  block_size: int = 128,
                  dtype: torch.dtype = torch.float32,
                  max_iters: int = 100,
-                 learning_rate: float = 0.01):
+                 learning_rate: float = 0.01,
+                 num_levels: int = 8):
         """
         Initialize GLVQ quantizer.
         
@@ -640,10 +641,15 @@ class PerBlockGLVQ(PerBlockCodebookBase):
             dtype: Data type for computations
             max_iters: Maximum iterations for lattice learning
             learning_rate: Learning rate for gradient descent
+            num_levels: Number of quantization levels per side (default 8 → 17 values)
+                        Scales normalized block by num_levels before Babai rounding,
+                        giving values in {-num_levels, ..., 0, ..., num_levels}.
+                        Equivalent to 4-bit precision when num_levels=8.
         """
         super().__init__(block_size, dtype)
         self.max_iters = max_iters
         self.learning_rate = learning_rate
+        self.num_levels = num_levels
     
     def _learn_lattice_basis(self, block: torch.Tensor) -> torch.Tensor:
         """
@@ -713,8 +719,11 @@ class PerBlockGLVQ(PerBlockCodebookBase):
         except RuntimeError:
             z = torch.linalg.pinv(A) @ block
         
-        # Round to nearest integer
-        z_rounded = torch.round(z)
+        # Scale by num_levels before rounding to get proper quantization resolution.
+        # Without scaling, normalized values in [-1,1] round to only {-1,0,1} (3 values).
+        # With num_levels=8: values in [-8,8] round to 17 distinct integers.
+        z_scaled = z * self.num_levels
+        z_rounded = torch.round(z_scaled) / self.num_levels
         
         # Reconstruct: block_quant = A @ z_rounded
         block_quant = A @ z_rounded
