@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "test_name": "Phase 30 + Phase 32 Production",
+    "baseline_mse": 0.002482630545273423,
+    "baseline_mae": 0.04254288971424103,
+    "corrected_mse": 0.0024495250545442104,
+    "corrected_mae": 0.04225955531001091,
+    "improvement_percent": 1.333484411239624,
+    "num_layers": 50
+  },
+  {
+    "test_name": "Phase 33 (Phase 30 + Phase 32 + Residual)",
+    "baseline_mse": 0.002482630545273423,
+    "baseline_mae": 0.04254288971424103,
+    "corrected_mse": 0.0003300677635706961,
+    "corrected_mae": 0.015851909294724464,
+    "improvement_percent": 86.70492553710938,
+    "num_layers": 50
+  }
+]
