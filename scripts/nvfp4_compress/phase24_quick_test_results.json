@@ -1,0 +1,121 @@
+{
+  "phase": 24,
+  "step": "quick_test",
+  "timestamp": "2026-03-30 05:42:58",
+  "num_experts": 10,
+  "metrics": [
+    {
+      "mse_stage1": 0.023010749369859695,
+      "mse_final": 0.02183668687939644,
+      "mse_improvement_percent": 5.102234840393066,
+      "stage1_bits": 4,
+      "residual_bits": 3,
+      "total_bits": 7,
+      "original_bits": 32,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    },
+    {
+      "mse_stage1": 0.023187773302197456,
+      "mse_final": 0.022075779736042023,
+      "mse_improvement_percent": 4.795603275299072,
+      "stage1_bits": 4,
+      "residual_bits": 3,
+      "total_bits": 7,
+      "original_bits": 32,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    },
+    {
+      "mse_stage1": 0.023159578442573547,
+      "mse_final": 0.021958671510219574,
+      "mse_improvement_percent": 5.185357570648193,
+      "stage1_bits": 4,
+      "residual_bits": 3,
+      "total_bits": 7,
+      "original_bits": 32,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    },
+    {
+      "mse_stage1": 0.023226182907819748,
+      "mse_final": 0.02179088443517685,
+      "mse_improvement_percent": 6.179656982421875,
+      "stage1_bits": 4,
+      "residual_bits": 3,
+      "total_bits": 7,
+      "original_bits": 32,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    },
+    {
+      "mse_stage1": 0.0229652039706707,
+      "mse_final": 0.021853450685739517,
+      "mse_improvement_percent": 4.841033935546875,
+      "stage1_bits": 4,
+      "residual_bits": 3,
+      "total_bits": 7,
+      "original_bits": 32,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    },
+    {
+      "mse_stage1": 0.023028649389743805,
+      "mse_final": 0.021934136748313904,
+      "mse_improvement_percent": 4.752830505371094,
+      "stage1_bits": 4,
+      "residual_bits": 3,
+      "total_bits": 7,
+      "original_bits": 32,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    },
+    {
+      "mse_stage1": 0.023394538089632988,
+      "mse_final": 0.021928295493125916,
+      "mse_improvement_percent": 6.267456531524658,
+      "stage1_bits": 4,
+      "residual_bits": 3,
+      "total_bits": 7,
+      "original_bits": 32,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    },
+    {
+      "mse_stage1": 0.02284790202975273,
+      "mse_final": 0.021796856075525284,
+      "mse_improvement_percent": 4.600185871124268,
+      "stage1_bits": 4,
+      "residual_bits": 3,
+      "total_bits": 7,
+      "original_bits": 32,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    },
+    {
+      "mse_stage1": 0.023070547729730606,
+      "mse_final": 0.02179502323269844,
+      "mse_improvement_percent": 5.528800010681152,
+      "stage1_bits": 4,
+      "residual_bits": 3,
+      "total_bits": 7,
+      "original_bits": 32,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    },
+    {
+      "mse_stage1": 0.02311461605131626,
+      "mse_final": 0.021843131631612778,
+      "mse_improvement_percent": 5.500781059265137,
+      "stage1_bits": 4,
+      "residual_bits": 3,
+      "total_bits": 7,
+      "original_bits": 32,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    }
+  ],
+  "avg_mse_improvement_percent": 5.275394058227539,
+  "avg_compression_improvement_percent": 78.125,
+  "status": "PASSED"
+}
