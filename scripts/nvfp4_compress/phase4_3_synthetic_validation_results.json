@@ -1,0 +1,29 @@
+{
+  "compression_accuracy": {
+    "num_samples": 100000,
+    "compression_ratio": 1.9248120300751879,
+    "bits_per_elem": 2.078125,
+    "avg_mse": 0.864005,
+    "compression_time_sec": 38.09565210342407,
+    "throughput_codes_per_sec": 2624.971472558463,
+    "validation_results": {
+      "compression_ratio_target": {
+        "target": 1.92,
+        "achieved": 1.9248120300751879,
+        "passed": true
+      },
+      "bits_per_elem_target": {
+        "target": 2.08,
+        "achieved": 2.078125,
+        "passed": true
+      },
+      "mse_target": {
+        "target": 0.7,
+        "achieved": 0.864005,
+        "passed": false
+      }
+    }
+  },
+  "overall_passed": false,
+  "timestamp": "2026-03-30 03:34:31"
+}
