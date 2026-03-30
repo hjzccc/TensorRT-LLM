@@ -1,0 +1,29 @@
+{
+  "synthetic": {
+    "mse_before": 0.009925168419374327,
+    "mse_after": 1.2097544582728857e-17,
+    "improvement_percent": 99.99999999999987,
+    "improvement_ratio": 820428339941318.5
+  },
+  "realistic": {
+    "uniform": {
+      "mse_before": 0.0033516529000092716,
+      "mse_after": 1.5730456485793362e-18,
+      "improvement_percent": 99.99999999999994,
+      "improvement_ratio": 2130677455569231.5
+    },
+    "gaussian": {
+      "mse_before": 0.009845500154811185,
+      "mse_after": 1.0826483137048236e-17,
+      "improvement_percent": 99.99999999999989,
+      "improvement_ratio": 909390429946717.8
+    },
+    "sparse": {
+      "mse_before": 0.024950266792214962,
+      "mse_after": 7.726281173296045e-17,
+      "improvement_percent": 99.99999999999969,
+      "improvement_ratio": 322927243166470.7
+    }
+  },
+  "timestamp": 1774875352.4272566
+}

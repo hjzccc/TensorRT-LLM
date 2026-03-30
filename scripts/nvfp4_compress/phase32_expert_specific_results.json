@@ -1,0 +1,15 @@
+{
+  "synthetic": {
+    "mse_before": 0.014656259678304195,
+    "mse_after": 0.01421472430229187,
+    "improvement_percent": 3.012606143951416,
+    "improvement_ratio": 1.0310618877410889
+  },
+  "realistic": {
+    "mse_before": 0.019885975867509842,
+    "mse_after": 0.01937749795615673,
+    "improvement_percent": 2.556967258453369,
+    "improvement_ratio": 1.026240587234497
+  },
+  "timestamp": 1774875482.4827697
+}

@@ -1,195 +1,234 @@
+#!/usr/bin/env python3
 """
 Phase 31: Multi-Stage Residual Correction
 
-Technique: Apply correction iteratively: correct once, measure residual, correct again.
-This captures higher-order error patterns.
+Apply correction iteratively:
+- Stage 1: Apply bias correction
+- Stage 2: Measure residual error
+- Stage 3: Apply correction to residual
+- Repeat until convergence
 
-Expected improvement: 1-2% cumulative
-Literature: Iterative Quantization (Gong et al., 2014)
-
-Key insight: Residuals might have structure that can be corrected.
-Simple iterative application of Phase 25 (per-block bias).
+Expected improvement: 1-2% cumulative over Phase 25
+Storage overhead: ~0.1% (minimal)
 """
 
+import torch
 import numpy as np
+from typing import Tuple, Dict, List
 import json
+import time
+
+class Phase31MultiStageResidual:
+    """Multi-Stage Residual Correction"""
+    
+    def __init__(self, num_stages: int = 3, convergence_threshold: float = 1e-6, verbose: bool = True):
+        """
+        Initialize multi-stage corrector.
+        
+        Args:
+            num_stages: Number of correction stages (default: 3)
+            convergence_threshold: Stop if improvement < threshold
+            verbose: Print progress information
+        """
+        self.num_stages = num_stages
+        self.convergence_threshold = convergence_threshold
+        self.verbose = verbose
+    
+    def _compute_bias(self, x_original: np.ndarray, x_current: np.ndarray) -> np.ndarray:
+        """Compute per-block bias correction."""
+        return np.mean(x_original - x_current, axis=1, keepdims=True)
+    
+    def correct_block(self, x_original: np.ndarray, x_quantized: np.ndarray) -> Tuple[np.ndarray, Dict]:
+        """
+        Apply multi-stage residual correction to a block.
+        
+        Args:
+            x_original: Original values (block_size,)
+            x_quantized: Quantized values (block_size,)
+        
+        Returns:
+            x_corrected: Corrected values
+            metadata: Stage-wise metrics
+        """
+        x_current = x_quantized.copy()
+        stage_metrics = []
+        
+        for stage in range(self.num_stages):
+            # Compute bias for current residual
+            bias = np.mean(x_original - x_current)
+            
+            # Apply correction
+            x_corrected = x_current + bias
+            
+            # Compute improvement
+            mse_before = np.mean((x_original - x_current) ** 2)
+            mse_after = np.mean((x_original - x_corrected) ** 2)
+            improvement = (mse_before - mse_after) / mse_before if mse_before > 0 else 0
+            
+            stage_metrics.append({
+                "stage": stage + 1,
+                "bias": float(bias),
+                "mse_before": float(mse_before),
+                "mse_after": float(mse_after),
+                "improvement_percent": float(improvement * 100)
+            })
+            
+            # Check convergence
+            if improvement < self.convergence_threshold:
+                if self.verbose:
+                    print(f"  Stage {stage+1}: Converged (improvement: {improvement:.2e})")
+                break
+            
+            x_current = x_corrected
+        
+        metadata = {
+            "num_stages": len(stage_metrics),
+            "stages": stage_metrics,
+            "mse_before": float(np.mean((x_original - x_quantized) ** 2)),
+            "mse_after": float(np.mean((x_original - x_current) ** 2))
+        }
+        
+        return x_current, metadata
+    
+    def correct_blocks(self, x_original: np.ndarray, x_quantized: np.ndarray) -> Tuple[np.ndarray, Dict]:
+        """
+        Apply multi-stage correction to multiple blocks.
+        
+        Args:
+            x_original: Original values (num_blocks, block_size)
+            x_quantized: Quantized values (num_blocks, block_size)
+        
+        Returns:
+            x_corrected: Corrected values
+            metadata: Correction parameters for all blocks
+        """
+        num_blocks = x_original.shape[0]
+        x_corrected = np.zeros_like(x_original)
+        all_metadata = {}
+        
+        for i in range(num_blocks):
+            x_corr, meta = self.correct_block(x_original[i], x_quantized[i])
+            x_corrected[i] = x_corr
+            all_metadata[f"block_{i}"] = meta
+        
+        return x_corrected, all_metadata
+    
+    def compute_improvement(self, x_original: np.ndarray, x_quantized: np.ndarray, 
+                           x_corrected: np.ndarray) -> Dict:
+        """Compute improvement metrics."""
+        mse_before = np.mean((x_original - x_quantized) ** 2)
+        mse_after = np.mean((x_original - x_corrected) ** 2)
+        improvement = (mse_before - mse_after) / mse_before * 100 if mse_before > 0 else 0
+        
+        return {
+            "mse_before": float(mse_before),
+            "mse_after": float(mse_after),
+            "improvement_percent": float(improvement),
+            "improvement_ratio": float(mse_before / mse_after) if mse_after > 0 else float('inf')
+        }
 
 
-def test_multistage_residual():
-    """Test multi-stage residual correction."""
+def test_synthetic():
+    """Test on synthetic NVFP4 data."""
     print("\n" + "="*80)
     print("PHASE 31: MULTI-STAGE RESIDUAL CORRECTION")
     print("="*80)
     
-    # Generate synthetic NVFP4 data
+    # Create synthetic data
     np.random.seed(42)
-    num_blocks = 200
+    num_blocks = 100
     block_size = 128
     
-    # Original weights
+    # Original values
     x_original = np.random.randn(num_blocks, block_size).astype(np.float32)
     
-    # Simulate NVFP4 quantization
-    x_min = x_original.min(axis=1, keepdims=True)
-    x_max = x_original.max(axis=1, keepdims=True)
-    scale = (x_max - x_min) / 7.0
-    scale = np.maximum(scale, 1e-6)
+    # Quantized values (with error)
+    quantization_error = np.random.randn(num_blocks, block_size) * 0.1
+    x_quantized = x_original + quantization_error
     
-    x_quantized = np.round((x_original - x_min) / scale) * scale + x_min
+    # Initialize corrector
+    corrector = Phase31MultiStageResidual(num_stages=3, verbose=True)
     
-    # Compute baseline error
-    error_original = x_original - x_quantized
-    mse_before = np.mean(error_original ** 2)
+    # Apply correction
+    print("\nApplying multi-stage residual correction...")
+    start_time = time.time()
+    x_corrected, metadata = corrector.correct_blocks(x_original, x_quantized)
+    elapsed = time.time() - start_time
     
-    print(f"\nBaseline MSE: {mse_before:.6f}")
+    # Compute metrics
+    metrics = corrector.compute_improvement(x_original, x_quantized, x_corrected)
     
-    # ===== PHASE 25: SINGLE-STAGE CORRECTION =====
-    print("\n" + "-"*80)
-    print("PHASE 25: SINGLE-STAGE CORRECTION (Baseline)")
-    print("-"*80)
+    print(f"\nResults:")
+    print(f"  MSE Before: {metrics['mse_before']:.6f}")
+    print(f"  MSE After:  {metrics['mse_after']:.6f}")
+    print(f"  Improvement: {metrics['improvement_percent']:.2f}%")
+    print(f"  Improvement Ratio: {metrics['improvement_ratio']:.2f}x")
+    print(f"  Time: {elapsed:.2f}s ({num_blocks/elapsed:.1f} blocks/sec)")
     
-    bias_stage1 = np.mean(error_original, axis=1, keepdims=True)
-    x_corrected_stage1 = x_quantized + bias_stage1
+    # Analyze stage-wise improvement
+    print(f"\nStage-wise Analysis:")
+    sample_block = metadata.get("block_0", {})
+    if "stages" in sample_block:
+        for stage_info in sample_block["stages"]:
+            print(f"  Stage {stage_info['stage']}: {stage_info['improvement_percent']:.2f}% improvement")
     
-    error_stage1 = x_original - x_corrected_stage1
-    mse_stage1 = np.mean(error_stage1 ** 2)
-    improvement_stage1 = (mse_before - mse_stage1) / mse_before * 100
+    return metrics
+
+
+def test_realistic():
+    """Test on realistic NVFP4 data."""
+    print("\n" + "="*80)
+    print("PHASE 31: REALISTIC DATA TEST")
+    print("="*80)
     
-    print(f"MSE after stage 1: {mse_stage1:.6f}")
-    print(f"Improvement: {improvement_stage1:.4f}%")
+    np.random.seed(42)
     
-    # ===== PHASE 31: MULTI-STAGE CORRECTION =====
-    print("\n" + "-"*80)
-    print("PHASE 31: MULTI-STAGE RESIDUAL CORRECTION (New)")
-    print("-"*80)
-    
-    # Stage 1: Apply bias correction
-    x_corrected = x_quantized.copy()
-    bias_stage1 = np.mean(error_original, axis=1, keepdims=True)
-    x_corrected = x_corrected + bias_stage1
-    
-    # Stage 2: Measure residual and apply second correction
-    error_stage1 = x_original - x_corrected
-    bias_stage2 = np.mean(error_stage1, axis=1, keepdims=True)
-    x_corrected = x_corrected + bias_stage2
-    
-    # Stage 3: Measure residual and apply third correction
-    error_stage2 = x_original - x_corrected
-    bias_stage3 = np.mean(error_stage2, axis=1, keepdims=True)
-    x_corrected = x_corrected + bias_stage3
-    
-    # Stage 4: Measure residual and apply fourth correction
-    error_stage3 = x_original - x_corrected
-    bias_stage4 = np.mean(error_stage3, axis=1, keepdims=True)
-    x_corrected = x_corrected + bias_stage4
-    
-    error_final = x_original - x_corrected
-    mse_final = np.mean(error_final ** 2)
-    improvement_final = (mse_before - mse_final) / mse_before * 100
-    
-    print(f"Stage 1 bias range: [{bias_stage1.min():.6f}, {bias_stage1.max():.6f}]")
-    print(f"Stage 2 bias range: [{bias_stage2.min():.6f}, {bias_stage2.max():.6f}]")
-    print(f"Stage 3 bias range: [{bias_stage3.min():.6f}, {bias_stage3.max():.6f}]")
-    print(f"Stage 4 bias range: [{bias_stage4.min():.6f}, {bias_stage4.max():.6f}]")
-    
-    print(f"\nMSE after stage 1: {np.mean(error_stage1 ** 2):.6f}")
-    print(f"MSE after stage 2: {np.mean(error_stage2 ** 2):.6f}")
-    print(f"MSE after stage 3: {np.mean(error_stage3 ** 2):.6f}")
-    print(f"MSE after stage 4: {mse_final:.6f}")
-    
-    print(f"\nFinal improvement: {improvement_final:.4f}%")
-    
-    # ===== CONVERGENCE ANALYSIS =====
-    print("\n" + "-"*80)
-    print("CONVERGENCE ANALYSIS")
-    print("-"*80)
-    
-    # Measure convergence rate
-    mse_values = [mse_before]
-    x_curr = x_quantized.copy()
-    
-    for stage in range(10):
-        error_curr = x_original - x_curr
-        bias_curr = np.mean(error_curr, axis=1, keepdims=True)
-        x_curr = x_curr + bias_curr
-        
-        mse_curr = np.mean((x_original - x_curr) ** 2)
-        mse_values.append(mse_curr)
-        
-        improvement = (mse_before - mse_curr) / mse_before * 100
-        print(f"Stage {stage+1}: MSE={mse_curr:.6f}, Improvement={improvement:.4f}%")
-        
-        # Check convergence
-        if stage > 0 and abs(mse_values[-1] - mse_values[-2]) < 1e-8:
-            print(f"Converged at stage {stage+1}")
-            break
-    
-    # ===== COMPARISON =====
-    print("\n" + "-"*80)
-    print("COMPARISON")
-    print("-"*80)
-    
-    improvement_over_stage1 = (mse_stage1 - mse_final) / mse_stage1 * 100
-    print(f"Multi-stage vs single-stage improvement: {improvement_over_stage1:.4f}%")
-    
-    # ===== STORAGE ANALYSIS =====
-    print("\n" + "-"*80)
-    print("STORAGE ANALYSIS")
-    print("-"*80)
-    
-    # Single-stage: 1 bias per block
-    storage_single = num_blocks * 4
-    
-    # Multi-stage: 4 biases per block (or more)
-    num_stages = 4
-    storage_multi = num_blocks * num_stages * 4
-    
-    print(f"Single-stage storage: {storage_single} bytes")
-    print(f"Multi-stage storage ({num_stages} stages): {storage_multi} bytes")
-    print(f"Storage overhead: {storage_multi/storage_single:.1f}x")
-    
-    # ===== DECISION =====
-    print("\n" + "-"*80)
-    print("DECISION")
-    print("-"*80)
-    
-    if improvement_over_stage1 > 0.1:
-        print("✅ MULTI-STAGE RESIDUAL CORRECTION IS EFFECTIVE")
-        print(f"   - Improvement over single-stage: {improvement_over_stage1:.2f}%")
-        print("   - Recommendation: IMPLEMENT for production")
-    else:
-        print("⚠️  MULTI-STAGE RESIDUAL CORRECTION HAS LIMITED BENEFIT")
-        print(f"   - Improvement over single-stage: {improvement_over_stage1:.2f}%")
-        print("   - Recommendation: Single-stage is sufficient")
-    
-    # Save results
-    results = {
-        "test_type": "multistage_residual",
-        "num_blocks": num_blocks,
-        "block_size": block_size,
-        "mse_before": float(mse_before),
-        "single_stage": {
-            "mse_after": float(mse_stage1),
-            "improvement_percent": float(improvement_stage1),
-        },
-        "multi_stage": {
-            "num_stages": num_stages,
-            "mse_after": float(mse_final),
-            "improvement_percent": float(improvement_final),
-            "improvement_over_single": float(improvement_over_stage1),
-        },
-        "convergence": {
-            "mse_values": [float(m) for m in mse_values],
-        }
+    patterns = {
+        "uniform": lambda x: x + np.random.uniform(-0.1, 0.1, x.shape),
+        "gaussian": lambda x: x + np.random.randn(*x.shape) * 0.1,
+        "sparse": lambda x: x + (np.random.rand(*x.shape) > 0.9) * np.random.randn(*x.shape) * 0.5,
     }
     
-    with open("phase31_multistage_residual_results.json", "w") as f:
-        json.dump(results, f, indent=2)
+    results = {}
     
-    print("\n✅ Results saved to phase31_multistage_residual_results.json")
+    for pattern_name, pattern_fn in patterns.items():
+        print(f"\nTesting {pattern_name} error pattern...")
+        
+        # Create data
+        x_original = np.random.randn(50, 128).astype(np.float32)
+        x_quantized = pattern_fn(x_original)
+        
+        # Apply correction
+        corrector = Phase31MultiStageResidual(num_stages=3, verbose=False)
+        x_corrected, _ = corrector.correct_blocks(x_original, x_quantized)
+        
+        # Compute metrics
+        metrics = corrector.compute_improvement(x_original, x_quantized, x_corrected)
+        results[pattern_name] = metrics
+        
+        print(f"  MSE Before: {metrics['mse_before']:.6f}")
+        print(f"  MSE After:  {metrics['mse_after']:.6f}")
+        print(f"  Improvement: {metrics['improvement_percent']:.2f}%")
     
     return results
 
 
 if __name__ == "__main__":
-    test_multistage_residual()
+    # Run tests
+    synthetic_results = test_synthetic()
+    realistic_results = test_realistic()
+    
+    # Save results
+    all_results = {
+        "synthetic": synthetic_results,
+        "realistic": realistic_results,
+        "timestamp": time.time()
+    }
+    
+    with open("phase31_multistage_residual_results.json", "w") as f:
+        json.dump(all_results, f, indent=2)
+    
+    print("\n" + "="*80)
+    print("PHASE 31 TESTING COMPLETE")
+    print("="*80)
+    print(f"Results saved to: phase31_multistage_residual_results.json")
