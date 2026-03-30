@@ -1,0 +1,34 @@
+{
+  "test_type": "synthetic",
+  "by_layer": {
+    "attention": {
+      "num_blocks": 50,
+      "block_size": 128,
+      "mse_before": 0.011375827714800835,
+      "mse_after": 0.011290664784610271,
+      "improvement_percent": 0.7486306428909302,
+      "correction_strategy": "bias"
+    },
+    "mlp": {
+      "num_blocks": 100,
+      "block_size": 128,
+      "mse_before": 0.04785648733377457,
+      "mse_after": 0.044668663293123245,
+      "improvement_percent": 6.6612162590026855,
+      "correction_strategy": "affine"
+    },
+    "expert": {
+      "num_blocks": 50,
+      "block_size": 128,
+      "mse_before": 0.1730676293373108,
+      "mse_after": 2.7383759584647553e-17,
+      "improvement_percent": 100.0,
+      "correction_strategy": "per_element"
+    }
+  },
+  "overall": {
+    "mse_before": 0.07003910839557648,
+    "mse_after": 0.02515699900686741,
+    "improvement_percent": 64.08150482177734
+  }
+}
