@@ -68,9 +68,20 @@ class Phase33EnhancedResidualQuantizer:
         
         return quantized, indices
     
-    def create_codebook(self, num_codes: int) -> np.ndarray:
-        """Create a codebook with given number of codes."""
-        if num_codes <= 16:
+    def create_codebook(self, num_codes: int, data_range: Optional[Tuple[float, float]] = None) -> np.ndarray:
+        """Create a codebook with given number of codes.
+        
+        Args:
+            num_codes: Number of codes in the codebook
+            data_range: Optional (min, max) range for the data being quantized.
+                       If provided, codebook is scaled to this range.
+                       If None, uses the default FP4 range.
+        """
+        if data_range is not None:
+            # Create codebook scaled to the data range
+            min_val, max_val = data_range
+            return np.linspace(min_val, max_val, num_codes)
+        elif num_codes <= 16:
             return self.fp4_codes[:num_codes]
         else:
             # For larger codebooks, interpolate

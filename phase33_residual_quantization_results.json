@@ -1,0 +1,34 @@
+{
+  "baseline_mse": 0.04612079635262489,
+  "final_mse": 0.00045224721543490887,
+  "overall_improvement_percent": 99.0194320678711,
+  "stages": [
+    {
+      "stage": 1,
+      "mse_before": 0.04612079635262489,
+      "mse_after": 0.043106332421302795,
+      "improvement_percent": 6.5360188484191895,
+      "residual_mean": 2.287561112757075e-10,
+      "residual_std": 0.20762065052986145,
+      "codebook_size": 16
+    },
+    {
+      "stage": 2,
+      "mse_before": 0.043106332421302795,
+      "mse_after": 0.007563358172774315,
+      "improvement_percent": 82.45417785644531,
+      "residual_mean": -0.0013949257554486394,
+      "residual_std": 0.08695638179779053,
+      "codebook_size": 4
+    },
+    {
+      "stage": 3,
+      "mse_before": 0.007563358172774315,
+      "mse_after": 0.00045224721543490887,
+      "improvement_percent": 94.02054595947266,
+      "residual_mean": -1.5647268810425885e-05,
+      "residual_std": 0.02126610092818737,
+      "codebook_size": 4
+    }
+  ]
+}

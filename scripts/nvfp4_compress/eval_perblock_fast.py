@@ -26,8 +26,11 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
-sys.path.insert(0, '/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant_new')
-sys.path.insert(0, '/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/channel_quant')
+# Auto-detect Docker vs host environment
+import os as _os
+_base = '/code/tensorrt_llm' if _os.path.exists('/code/tensorrt_llm') else '/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile'
+sys.path.insert(0, f'{_base}/scripts/channel_quant_new')
+sys.path.insert(0, f'{_base}/scripts/channel_quant')
 
 import exact_docker_eval as ee
 from spike1_ground_truth import (
