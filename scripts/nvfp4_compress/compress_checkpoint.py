@@ -27,6 +27,22 @@ import torch
 from safetensors import safe_open
 from safetensors.torch import save_file
 
+# Phase 30 + Phase 32: Layer-wise adaptive and expert-specific correction
+try:
+    from phase30_32_integration import (
+        detect_layer_type,
+        extract_expert_id,
+        compute_layer_wise_correction_params,
+        compute_expert_specific_affine,
+        apply_layer_wise_correction,
+        apply_expert_specific_correction,
+    )
+    PHASE30_32_AVAILABLE = True
+except ImportError:
+    PHASE30_32_AVAILABLE = False
+    print("Warning: Phase 30/32 integration module not found. Compression will proceed without Phase 30/32 corrections.")
+
+
 
 DEFAULT_INPUT = "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/nvfp4_compress/nvfp4_checkpoint"
 BLOCK_SIZE = 16
@@ -298,11 +314,46 @@ def build_scheme_tables(scheme_name: str) -> dict[str, object]:
     }
 
 
+def compute_code_entropy(codes: torch.Tensor, num_codes: int = 16) -> float:
+    """Compute Shannon entropy of code distribution.
+    
+    Args:
+        codes: 1D tensor of code indices
+        num_codes: total number of possible codes
+        
+    Returns:
+        Shannon entropy in bits
+    """
+    counts = torch.bincount(codes.long(), minlength=num_codes).float()
+    probs = counts / counts.sum()
+    # Avoid log(0)
+    probs = probs[probs > 0]
+    entropy = -(probs * torch.log2(probs)).sum().item()
+    return entropy
+
+
 def compress_codes(
     codes: torch.Tensor,
     tables: dict[str, object],
     block_scales: torch.Tensor | None = None,
+    key: str | None = None,
 ) -> dict[str, torch.Tensor | None]:
+    # Phase 30 + Phase 32: Apply layer-wise adaptive and expert-specific corrections
+    if PHASE30_32_AVAILABLE and key is not None:
+        layer_type = detect_layer_type(key)
+        
+        # Apply Phase 30: Layer-wise adaptive correction
+        correction_params = compute_layer_wise_correction_params(codes, layer_type, block_scales)
+        if correction_params.get("correction_type") != "none":
+            codes = apply_layer_wise_correction(codes, correction_params)
+        
+        # Apply Phase 32: Expert-specific affine correction
+        if layer_type == "expert":
+            expert_id = extract_expert_id(key)
+            if expert_id is not None:
+                scale, bias = compute_expert_specific_affine(codes, expert_id, block_scales)
+                codes = apply_expert_specific_correction(codes, expert_id, scale, bias)
+
     if codes.shape[1] % BLOCK_SIZE != 0:
         raise ValueError(f"Expected K divisible by {BLOCK_SIZE}, got {tuple(codes.shape)}")
 
@@ -534,7 +585,7 @@ def main() -> None:
                         exp_bits = (v >> 3) & 0xF
                         mant_bits = v & 0x7
                         blk_scales = ((1 - 2 * sign.float()) * (2.0 ** (exp_bits.float() - 7)) * (1 + mant_bits.float() / 8))
-                    compressed = compress_codes(codes, tables, block_scales=blk_scales)
+                    compressed = compress_codes(codes, tables, block_scales=blk_scales, key=key)
                     indices = cast(torch.Tensor, compressed["indices"])
                     codebook_ids = cast(torch.Tensor | None, compressed["codebook_ids"])
                     codebook_entries = cast(torch.Tensor | None, compressed["codebook_entries"])

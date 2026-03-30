@@ -31,6 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-batch-total-tokens", type=int, default=17760)
     parser.add_argument("--subject", type=str, default=None)
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--cpu-offload", action="store_true", help="Offload layers to CPU between forward passes (reduces GPU memory usage)")
     parser.add_argument(
         "--output",
         type=Path,
@@ -72,6 +73,7 @@ def main() -> None:
         ckpt_dir=ckpt_dir,
         batch_size=args.batch_size,
         max_batch_total_tokens=args.max_batch_total_tokens,
+        cpu_offload=args.cpu_offload,
     )
 
     all_correct = 0

@@ -1,0 +1,130 @@
+{
+  "results": [
+    {
+      "key": "model.layers.0.mlp.experts.0.down_proj.weight",
+      "n_elements": 1048576,
+      "bits_orig": 2.75,
+      "bits_sep": 2.0345993041992188,
+      "bits_joint": 2.0410537719726562,
+      "savings_sep_pct": 26.014570756392047,
+      "savings_joint_pct": 25.779862837357953,
+      "correct": true,
+      "time_sep": 0.02383565902709961,
+      "time_joint": 0.07283377647399902
+    },
+    {
+      "key": "model.layers.0.mlp.experts.1.down_proj.weight",
+      "n_elements": 1048576,
+      "bits_orig": 2.75,
+      "bits_sep": 2.0017166137695312,
+      "bits_joint": 2.007080078125,
+      "savings_sep_pct": 27.21030495383523,
+      "savings_joint_pct": 27.015269886363637,
+      "correct": true,
+      "time_sep": 0.03206920623779297,
+      "time_joint": 0.028896570205688477
+    },
+    {
+      "key": "model.layers.0.mlp.experts.10.down_proj.weight",
+      "n_elements": 1048576,
+      "bits_orig": 2.75,
+      "bits_sep": 2.0362014770507812,
+      "bits_joint": 2.0418777465820312,
+      "savings_sep_pct": 25.956309925426137,
+      "savings_joint_pct": 25.74990012428977,
+      "correct": true,
+      "time_sep": 0.03423357009887695,
+      "time_joint": 0.03560972213745117
+    },
+    {
+      "key": "model.layers.0.mlp.experts.100.down_proj.weight",
+      "n_elements": 1048576,
+      "bits_orig": 2.75,
+      "bits_sep": 2.3343582153320312,
+      "bits_joint": 2.3400192260742188,
+      "savings_sep_pct": 15.114246715198865,
+      "savings_joint_pct": 14.908391779119318,
+      "correct": true,
+      "time_sep": 0.03226161003112793,
+      "time_joint": 0.023322582244873047
+    },
+    {
+      "key": "model.layers.0.mlp.experts.101.down_proj.weight",
+      "n_elements": 1048576,
+      "bits_orig": 2.75,
+      "bits_sep": 2.204803466796875,
+      "bits_joint": 2.2143325805664062,
+      "savings_sep_pct": 19.825328480113637,
+      "savings_joint_pct": 19.478815252130683,
+      "correct": true,
+      "time_sep": 0.02327561378479004,
+      "time_joint": 0.019315719604492188
+    },
+    {
+      "key": "model.layers.0.mlp.experts.102.down_proj.weight",
+      "n_elements": 1048576,
+      "bits_orig": 2.75,
+      "bits_sep": 2.078369140625,
+      "bits_joint": 2.0817184448242188,
+      "savings_sep_pct": 24.42294034090909,
+      "savings_joint_pct": 24.3011474609375,
+      "correct": true,
+      "time_sep": 0.025066137313842773,
+      "time_joint": 0.021631717681884766
+    },
+    {
+      "key": "model.layers.0.mlp.experts.103.down_proj.weight",
+      "n_elements": 1048576,
+      "bits_orig": 2.75,
+      "bits_sep": 2.12298583984375,
+      "bits_joint": 2.1325454711914062,
+      "savings_sep_pct": 22.800514914772727,
+      "savings_joint_pct": 22.452891956676137,
+      "correct": true,
+      "time_sep": 0.019506454467773438,
+      "time_joint": 0.020827770233154297
+    },
+    {
+      "key": "model.layers.0.mlp.experts.104.down_proj.weight",
+      "n_elements": 1048576,
+      "bits_orig": 2.75,
+      "bits_sep": 2.3811721801757812,
+      "bits_joint": 2.38421630859375,
+      "savings_sep_pct": 13.411920720880682,
+      "savings_joint_pct": 13.301225142045455,
+      "correct": true,
+      "time_sep": 0.01141214370727539,
+      "time_joint": 0.010550498962402344
+    },
+    {
+      "key": "model.layers.0.mlp.experts.105.down_proj.weight",
+      "n_elements": 1048576,
+      "bits_orig": 2.75,
+      "bits_sep": 2.255706787109375,
+      "bits_joint": 2.263763427734375,
+      "savings_sep_pct": 17.974298650568183,
+      "savings_joint_pct": 17.681329900568183,
+      "correct": true,
+      "time_sep": 0.02451777458190918,
+      "time_joint": 0.019207477569580078
+    },
+    {
+      "key": "model.layers.0.mlp.experts.106.down_proj.weight",
+      "n_elements": 1048576,
+      "bits_orig": 2.75,
+      "bits_sep": 1.9914779663085938,
+      "bits_joint": 1.997894287109375,
+      "savings_sep_pct": 27.58261940696023,
+      "savings_joint_pct": 27.349298650568183,
+      "correct": true,
+      "time_sep": 0.026497840881347656,
+      "time_joint": 0.02442479133605957
+    }
+  ],
+  "summary": {
+    "avg_sep": 2.1441390991210936,
+    "avg_joint": 2.1504501342773437,
+    "avg_savings_sep": 22.03130548650568,
+    "avg_savings_joint": 21.801813299005683
+  }
+}

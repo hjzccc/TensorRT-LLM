@@ -319,7 +319,6 @@ class NVFP4LM(TemplateLM):
         max_gen_toks: int = DEFAULT_MAX_GEN_TOKS,
         batch_size: int = 128,
         max_batch_total_tokens: int = DEFAULT_MAX_BATCH_TOTAL_TOKENS,
-        cpu_offload: bool = False,
     ) -> None:
         super().__init__()
         if not torch.cuda.is_available():
@@ -332,7 +331,6 @@ class NVFP4LM(TemplateLM):
         self._torch_device = torch.device(device)
         if self._torch_device.type != "cuda":
             raise ValueError(f"NVFP4LM requires a CUDA device, got {device!r}")
-        self._cpu_offload = cpu_offload
 
         self.dtype = getattr(torch, dtype) if isinstance(dtype, str) else dtype
         self._batch_size = int(batch_size)
@@ -588,18 +586,16 @@ class NVFP4LM(TemplateLM):
                     ]
                 )
 
-        _layer_device = "cpu" if self._cpu_offload else self.device
-        tensors_raw = self.store.load_tensors(keys, device="cpu")
+        tensors_raw = self.store.load_tensors(keys, device=self.device)
         layer: dict[str, Any] = {"layer_idx": layer_idx, "layer_type": layer_type}
-        _store_device = torch.device(_layer_device)
         for key, tensor in tensors_raw.items():
             short = key.removeprefix(f"{prefix}.")
             if short in {"linear_attn.A_log", "linear_attn.dt_bias"}:
-                layer[short] = move_tensor(tensor, _store_device, torch.float32)
+                layer[short] = move_tensor(tensor, self._torch_device, torch.float32)
             elif tensor.is_floating_point():
-                layer[short] = move_tensor(tensor, _store_device, self.dtype)
+                layer[short] = move_tensor(tensor, self._torch_device, self.dtype)
             else:
-                layer[short] = tensor.to(_store_device)
+                layer[short] = tensor.to(self._torch_device)
 
         experts: dict[str, dict[str, torch.Tensor]] = {}
         for proj_name in proj_names:
@@ -618,23 +614,6 @@ class NVFP4LM(TemplateLM):
                 flush=True,
             )
         return layers
-
-    def _move_layer_to_device(self, layer: dict[str, Any], device: torch.device) -> None:
-        """Move all tensors in a layer dict to the given device (in-place)."""
-        for key, val in layer.items():
-            if isinstance(val, torch.Tensor):
-                layer[key] = val.to(device, non_blocking=True)
-            elif isinstance(val, dict):
-                for k2, v2 in val.items():
-                    if isinstance(v2, torch.Tensor):
-                        val[k2] = v2.to(device, non_blocking=True)
-        # experts sub-dict
-        experts = layer.get("experts", {})
-        for proj_name, proj_group in experts.items():
-            if isinstance(proj_group, dict):
-                for k2, v2 in proj_group.items():
-                    if isinstance(v2, torch.Tensor):
-                        proj_group[k2] = v2.to(device, non_blocking=True)
 
     def _unload_layer(self, layer: dict[str, Any]) -> None:
         experts = layer.pop("experts", None)
@@ -951,9 +930,6 @@ class NVFP4LM(TemplateLM):
         position_embeddings = self._get_position_embeddings(seq_len)
 
         for layer in self.layers:
-            if self._cpu_offload:
-                self._move_layer_to_device(layer, self._torch_device)
-                torch.cuda.synchronize()
             residual = hidden_states
             hidden_states = rms_norm_qwen3_next(
                 hidden_states,
@@ -978,9 +954,6 @@ class NVFP4LM(TemplateLM):
                 self.model_config.rms_norm_eps,
             )
             hidden_states = residual + self._moe_forward(hidden_states, layer)
-            if self._cpu_offload:
-                self._move_layer_to_device(layer, torch.device("cpu"))
-                torch.cuda.empty_cache()
 
         hidden_states = rms_norm_qwen3_next(
             hidden_states,
