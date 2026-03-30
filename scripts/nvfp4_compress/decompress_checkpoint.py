@@ -1,119 +1,192 @@
 #!/usr/bin/env python3
-"""Step 4b: Decompress NVFP4 Checkpoint.
+"""Decompress a sub-4-bit checkpoint back into standard NVFP4 shards."""
 
-Decompress a compressed NVFP4 checkpoint for inference.
-"""
+from __future__ import annotations
 
+import argparse
+import gc
 import json
+import os
+import shutil
+import time
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, cast
 
-import torch
 import numpy as np
-
-# E2M1 code → float value
-E2M1_TABLE = torch.tensor([
-    0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0,
-    0.0, -0.5, -1.0, -1.5, -2.0, -3.0, -4.0, -6.0,
-], dtype=torch.float32)
+import torch
+from safetensors import safe_open
+from safetensors.torch import save_file
 
 
-class FastCodebookDecompressor:
-    """Fast codebook-based decompression with LUT optimization."""
-    
-    def __init__(self, codebook: List[int]):
-        """Initialize with a codebook.
-        
-        Args:
-            codebook: List of FP4 codes (e.g., [0, 2, 5, 7, 8, 10, 13, 15])
-        """
-        self.codebook = codebook
-        self.codebook_values = E2M1_TABLE[codebook].numpy()
-        
-        # Precompute LUT for fast nearest-neighbor lookup
-        self.lut = np.zeros(16, dtype=np.int32)
-        for code in range(16):
-            src_val = E2M1_TABLE[code].item()
-            dists = np.abs(self.codebook_values - src_val)
-            self.lut[code] = np.argmin(dists)
-    
-    def decompress_indices(self, packed_indices: List[int]) -> np.ndarray:
-        """Decompress packed indices to codebook values.
-        
-        Args:
-            packed_indices: List of packed 3-bit indices
-            
-        Returns:
-            Array of decompressed float values
-        """
-        # Unpack 3-bit indices
-        indices = []
-        for i in range(0, len(packed_indices), 3):
-            chunk = packed_indices[i:i+3]
-            if len(chunk) == 3:
-                val = chunk[0] | (chunk[1] << 8) | (chunk[2] << 16)
-                for j in range(8):
-                    idx = (val >> (j * 3)) & 0x7
-                    indices.append(idx)
-        
-        # Map indices to codebook values
-        return self.codebook_values[indices]
+DEFAULT_INPUT = "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/nvfp4_compress/compressed_identity"
 
 
-def decompress_tensor(compressed_data: Dict) -> torch.Tensor:
-    """Decompress a single tensor.
-    
-    Args:
-        compressed_data: Dictionary with codebook and indices
-        
-    Returns:
-        Decompressed tensor (as FP4 codes)
-    """
-    # Create decompressor
-    decompressor = FastCodebookDecompressor(compressed_data["codebook"])
-    
-    # Decompress indices
-    values = decompressor.decompress_indices(compressed_data["indices"])
-    
-    # Reshape to original shape
-    shape = compressed_data["shape"]
-    values = values[:np.prod(shape)].reshape(shape)
-    
-    return torch.from_numpy(values).float()
+def repack_fp4_codes(codes: torch.Tensor) -> torch.Tensor:
+    m, k = codes.shape
+    codes = codes.view(m, k // 2, 2)
+    return (codes[:, :, 0] | (codes[:, :, 1] << 4)).to(torch.uint8)
 
 
-def main():
-    print("=" * 70)
-    print("STEP 4b: DECOMPRESS NVFP4 CHECKPOINT")
-    print("=" * 70)
-    
-    # Example: decompress a single tensor
-    print("\nExample decompression:")
-    
-    # Create sample compressed data
-    sample_codebook = [0, 2, 5, 7, 8, 10, 13, 15]
-    sample_indices = [0, 1, 2, 3, 4, 5, 6, 7] * 100  # 800 indices
-    
-    compressed_data = {
-        "codebook": sample_codebook,
-        "indices": sample_indices,
-        "shape": [16, 50],
-    }
-    
-    # Decompress
-    decompressed = decompress_tensor(compressed_data)
-    
-    print(f"Codebook: {sample_codebook}")
-    print(f"Decompressed shape: {decompressed.shape}")
-    print(f"Decompressed values (first 16): {decompressed.flatten()[:16]}")
-    
-    print("\n" + "=" * 70)
-    print("DECOMPRESSION SUCCESSFUL")
-    print("=" * 70)
-    print("\nDecompression is fast and memory-efficient:")
-    print("- Latency: ~0.77 µs per block (negligible)")
-    print("- Memory overhead: <0.02% for codebook + LUT")
-    print("- Ready for production inference")
+def unpack_bits(packed: torch.Tensor, bits: int, count: int) -> torch.Tensor:
+    if bits == 0:
+        return torch.zeros(count, dtype=torch.uint8)
+    arr = packed.reshape(-1).cpu().numpy().astype(np.uint8, copy=False)
+    if bits == 4:
+        vals = np.empty(arr.size * 2, dtype=np.uint8)
+        vals[0::2] = arr & 0x0F
+        vals[1::2] = (arr >> 4) & 0x0F
+        return torch.from_numpy(vals[:count].astype(np.uint8, copy=False))
+    if bits == 2:
+        vals = np.empty(arr.size * 4, dtype=np.uint8)
+        vals[0::4] = arr & 0x03
+        vals[1::4] = (arr >> 2) & 0x03
+        vals[2::4] = (arr >> 4) & 0x03
+        vals[3::4] = (arr >> 6) & 0x03
+        return torch.from_numpy(vals[:count].astype(np.uint8, copy=False))
+    if bits == 1:
+        vals = np.empty(arr.size * 8, dtype=np.uint8)
+        vals[0::8] = arr & 0x01
+        vals[1::8] = (arr >> 1) & 0x01
+        vals[2::8] = (arr >> 2) & 0x01
+        vals[3::8] = (arr >> 3) & 0x01
+        vals[4::8] = (arr >> 4) & 0x01
+        vals[5::8] = (arr >> 5) & 0x01
+        vals[6::8] = (arr >> 6) & 0x01
+        vals[7::8] = (arr >> 7) & 0x01
+        return torch.from_numpy(vals[:count].astype(np.uint8, copy=False))
+    raise ValueError(f"Unsupported bit width: {bits}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", type=str, default=DEFAULT_INPUT)
+    parser.add_argument("--output", type=str, default=None)
+    args = parser.parse_args()
+
+    input_dir = Path(args.input)
+    if args.output is None:
+        args.output = str(input_dir.parent / f"decompressed_{input_dir.name}")
+    output_dir = Path(args.output)
+
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True)
+
+    with (input_dir / "compression_manifest.json").open() as f:
+        manifest = cast(dict[str, Any], json.load(f))
+    with (input_dir / "model.safetensors.index.json").open() as f:
+        input_index = cast(dict[str, Any], json.load(f))
+
+    storage_mode = str(manifest.get("storage_mode", "global_id"))
+    bits_per_index = int(manifest["bits_per_index"])
+    codebook_id_bits = int(manifest["codebook_id_bits"])
+    codebooks_raw = cast(list[list[int]], manifest["codebooks"])
+    codebooks = [torch.tensor(cb, dtype=torch.uint8) for cb in codebooks_raw]
+    fixed_codes = torch.tensor(cast(list[int], manifest.get("fixed_codes", [])), dtype=torch.uint8)
+    stored_codebook_codes_per_block = int(manifest.get("stored_codebook_codes_per_block", 0))
+    compressed_weights = cast(dict[str, dict[str, object]], manifest["compressed_weights"])
+    input_weight_map = cast(dict[str, str], input_index["weight_map"])
+    shard_files = sorted(set(input_weight_map.values()))
+
+    output_weight_map: dict[str, str] = {}
+    t0 = time.time()
+    decompressed_count = 0
+
+    for shard_file in shard_files:
+        shard_path = input_dir / shard_file
+        shard_keys = [k for k, v in input_weight_map.items() if v == shard_file]
+        compressed_bases = sorted(
+            {
+                key[: -len(".weight_indices")]
+                for key in shard_keys
+                if key.endswith(".weight_indices")
+            }
+        )
+
+        if not compressed_bases:
+            os.symlink(shard_path.resolve(), output_dir / shard_file)
+            for key in shard_keys:
+                output_weight_map[key] = shard_file
+            continue
+
+        new_data: dict[str, torch.Tensor] = {}
+        skip_keys: set[str] = set()
+        with safe_open(str(shard_path), framework="pt", device="cpu") as sf:
+            for base in compressed_bases:
+                info = cast(dict[str, Any], compressed_weights[base])
+                shape = tuple(int(v) for v in cast(list[int], info["shape"]))
+                packed_shape = tuple(int(v) for v in cast(list[int], info["packed_shape"]))
+                num_values = shape[0] * shape[1]
+                num_blocks = int(info["num_blocks"])
+
+                indices_packed = sf.get_tensor(f"{base}.weight_indices")
+                flat_indices = unpack_bits(indices_packed, bits_per_index, num_values)
+                indices = flat_indices.view(shape)
+
+                if storage_mode == "per_block_codebook":
+                    codebook_entries_packed = sf.get_tensor(f"{base}.weight_codebook_entries")
+                    extra_codes = unpack_bits(
+                        codebook_entries_packed,
+                        4,
+                        num_blocks * stored_codebook_codes_per_block,
+                    ).view(num_blocks, stored_codebook_codes_per_block)
+                    fixed = fixed_codes.view(1, -1).expand(num_blocks, -1)
+                    block_codebooks = torch.cat([fixed, extra_codes], dim=1)
+                    flat_indices = indices.view(num_blocks, -1).long()
+                    recon_blocks = torch.gather(block_codebooks, 1, flat_indices)
+                elif codebook_id_bits > 0:
+                    codebook_ids_packed = sf.get_tensor(f"{base}.weight_codebook_ids")
+                    codebook_ids = unpack_bits(codebook_ids_packed, codebook_id_bits, num_blocks)
+                    flat_indices = indices.view(num_blocks, -1)
+                    recon_blocks = torch.empty_like(flat_indices, dtype=torch.uint8)
+                    for cb_id, codebook in enumerate(codebooks):
+                        mask = codebook_ids == cb_id
+                        if not torch.any(mask):
+                            continue
+                        recon_blocks[mask] = codebook[flat_indices[mask].long()]
+                else:
+                    codebook_ids = torch.zeros(num_blocks, dtype=torch.uint8)
+                    flat_indices = indices.view(num_blocks, -1)
+                    recon_blocks = codebooks[0][flat_indices.long()]
+
+                codes = recon_blocks.view(shape)
+                packed_weight = repack_fp4_codes(codes).view(packed_shape)
+                new_data[f"{base}.weight"] = packed_weight
+                output_weight_map[f"{base}.weight"] = shard_file
+                decompressed_count += 1
+
+                skip_keys.add(f"{base}.weight_indices")
+                skip_keys.add(f"{base}.weight_codebook_ids")
+                skip_keys.add(f"{base}.weight_codebook_entries")
+
+            for key in shard_keys:
+                if key in skip_keys:
+                    continue
+                tensor = sf.get_tensor(key)
+                new_data[key] = tensor
+                output_weight_map[key] = shard_file
+
+        save_file(new_data, str(output_dir / shard_file))
+        del new_data
+        gc.collect()
+
+    output_index = dict(input_index)
+    output_index["weight_map"] = output_weight_map
+    with (output_dir / "model.safetensors.index.json").open("w") as f:
+        json.dump(output_index, f, indent=2)
+
+    for fn in os.listdir(input_dir):
+        if fn.endswith(".safetensors") or fn in {"model.safetensors.index.json", "compression_manifest.json"}:
+            continue
+        src = input_dir / fn
+        dst = output_dir / fn
+        if dst.exists():
+            continue
+        os.symlink(src.resolve(), dst)
+
+    print(f"Decompressed weights: {decompressed_count}", flush=True)
+    print(f"Output: {output_dir}", flush=True)
+    print(f"Elapsed: {time.time() - t0:.1f}s", flush=True)
 
 
 if __name__ == "__main__":

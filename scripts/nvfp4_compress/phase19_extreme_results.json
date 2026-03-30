@@ -1,0 +1,32 @@
+{
+  "baseline_improvement": 99.99,
+  "results": {
+    "threshold_0.3": {
+      "avg_improvement": 99.88353385120291,
+      "std_improvement": 0.004160780822627247,
+      "min_improvement": 99.87512745709508,
+      "max_improvement": 99.89522209587552
+    },
+    "threshold_0.5": {
+      "avg_improvement": 99.88353385120291,
+      "std_improvement": 0.004160780822627247,
+      "min_improvement": 99.87512745709508,
+      "max_improvement": 99.89522209587552
+    },
+    "threshold_0.7": {
+      "avg_improvement": 99.88353385120291,
+      "std_improvement": 0.004160780822627247,
+      "min_improvement": 99.87512745709508,
+      "max_improvement": 99.89522209587552
+    },
+    "threshold_0.9": {
+      "avg_improvement": 99.88353385120291,
+      "std_improvement": 0.004160780822627247,
+      "min_improvement": 99.87512745709508,
+      "max_improvement": 99.89522209587552
+    }
+  },
+  "best_threshold": null,
+  "best_improvement": 99.99,
+  "additional_gain": 0.0
+}

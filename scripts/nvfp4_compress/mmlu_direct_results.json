@@ -1,0 +1,17 @@
+{
+  "config": {
+    "batch_size": 128,
+    "limit": null,
+    "max_batch_total_tokens": 17760,
+    "offline": true
+  },
+  "mmlu_acc": 0.6432748538011696,
+  "subjects": {
+    "world_religions": {
+      "acc": 0.6432748538011696,
+      "correct": 110,
+      "elapsed_sec": 33.18452739715576,
+      "total": 171
+    }
+  }
+}

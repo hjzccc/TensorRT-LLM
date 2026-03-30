@@ -1,0 +1,32 @@
+{
+  "baseline_improvement": 99.99,
+  "results": {
+    "Hierarchical + Soft-EM (T=1.75)": {
+      "avg_improvement": 99.74762683081062,
+      "std_improvement": 0.05675847685680239,
+      "min_improvement": 99.39651817146442,
+      "max_improvement": 99.862225227846
+    },
+    "Hierarchical + Soft-EM (T=1.5)": {
+      "avg_improvement": 99.64687799629583,
+      "std_improvement": 0.06252094686249024,
+      "min_improvement": 99.38814781725452,
+      "max_improvement": 99.85599772431874
+    },
+    "Hierarchical + Soft-EM (T=2.0)": {
+      "avg_improvement": 99.80515905511736,
+      "std_improvement": 0.060397669335258856,
+      "min_improvement": 99.36969069354124,
+      "max_improvement": 99.88081658570563
+    },
+    "Hierarchical + Soft-EM (3-stage)": {
+      "avg_improvement": 99.70404874590939,
+      "std_improvement": 0.0504774157761775,
+      "min_improvement": 99.63692084648741,
+      "max_improvement": 99.83393456075382
+    }
+  },
+  "best_approach": null,
+  "best_improvement": 99.99,
+  "additional_gain": 0.0
+}

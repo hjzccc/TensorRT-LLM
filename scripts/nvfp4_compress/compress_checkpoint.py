@@ -1,134 +1,427 @@
 #!/usr/bin/env python3
-"""Compress NVFP4 checkpoint: remap FP4 codes via sub-codebook LUT.
+"""Compress an NVFP4 checkpoint into a sub-4-bit on-disk format.
 
-For each weight tensor, unpacks FP4 codes, maps through a LUT, repacks.
-All scales are preserved unchanged. The output is a standard NVFP4 checkpoint
-with fewer unique code values (lossy compression).
+The compressed checkpoint stores, for each quantized weight tensor:
+- per-element indices into a small codebook
+- per-block codebook ids (one id per 16-element block)
+- original scales unchanged
 
-This is the DECOMPRESSED format — still 4 bits/element, but restricted to
-a sub-codebook. True sub-4-bit packing is a future step.
-
-Usage:
-    python3 compress_checkpoint.py --codebook identity    # verify: should match original
-    python3 compress_checkpoint.py --codebook 3bit_uniform
+`decompress_checkpoint.py` reconstructs a standard NVFP4 checkpoint from this format.
 """
+
+from __future__ import annotations
+
 import argparse
 import gc
+import itertools
 import json
+import math
 import os
 import shutil
 import time
+from pathlib import Path
+from typing import Any, cast
 
+import numpy as np
 import torch
 from safetensors import safe_open
 from safetensors.torch import save_file
 
-CKPT_DIR = "/code/tensorrt_llm/scripts/nvfp4_compress/nvfp4_checkpoint"
 
-E2M1_TABLE = torch.tensor([
-    0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0,
-    0.0, -0.5, -1.0, -1.5, -2.0, -3.0, -4.0, -6.0,
-], dtype=torch.float32)
+DEFAULT_INPUT = "/home/jerry/Documents/fork_new/TensorRT-LLM-dual-tile/scripts/nvfp4_compress/nvfp4_checkpoint"
+BLOCK_SIZE = 16
+BLOCK_SEARCH_CHUNK_BLOCKS = 65536
 
-CODEBOOKS = {
-    "identity": [-6, -4, -3, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 3, 4, 6],
-    "3bit_uniform": [-6, -4, -2, 0, 2, 4, 6],
-    "3bit_dense": [-6, -2, -1, 0, 1, 2, 6],
-    "3bit_truncate": [-4, -2, -1, 0, 1, 2, 4],
+E2M1_TABLE = torch.tensor(
+    [
+        0.0,
+        0.5,
+        1.0,
+        1.5,
+        2.0,
+        3.0,
+        4.0,
+        6.0,
+        0.0,
+        -0.5,
+        -1.0,
+        -1.5,
+        -2.0,
+        -3.0,
+        -4.0,
+        -6.0,
+    ],
+    dtype=torch.float32,
+)
+
+SCHEMES: dict[str, dict[str, object]] = {
+    "identity": {
+        "description": "Exact round-trip verification format (4-bit indices, 1 codebook)",
+        "bits_per_index": 4,
+        "codebooks": [list(range(16))],
+    },
+    "2b1b_demo": {
+        "description": "Demo 2-bit index + 1-bit codebook selector format",
+        "bits_per_index": 2,
+        "codebooks": [
+            [15, 12, 0, 4],
+            [14, 10, 2, 6],
+        ],
+    },
+    "2b1b_freq_symmetric": {
+        "description": "Data-driven symmetric 2-bit index + 1-bit codebook selector",
+        "bits_per_index": 2,
+        "codebooks": [
+            [9, 14, 1, 6],
+            [9, 15, 1, 7],
+        ],
+    },
+    "2b075b_zero_fixed_exact": {
+        "description": "Exact per-block MSE search with 0 fixed and 3 stored FP4 codes",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [0],
+    },
 }
 
 
-def build_lut(sub_values):
-    cb = torch.tensor(sub_values, dtype=torch.float32)
-    lut = torch.zeros(16, dtype=torch.uint8)
-    for src in range(16):
-        dists = (cb - E2M1_TABLE[src]).abs()
-        nearest_val = cb[dists.argmin()].item()
-        for dst in range(16):
-            if abs(E2M1_TABLE[dst].item() - nearest_val) < 1e-6:
-                lut[src] = dst
-                break
-    return lut
-
-
-def remap_packed_weight(packed, lut):
+def unpack_fp4_codes(packed: torch.Tensor) -> torch.Tensor:
     low = packed & 0x0F
     high = (packed >> 4) & 0x0F
-    codes = torch.stack([low, high], dim=-1).reshape(packed.shape[0], packed.shape[1] * 2)
-    mapped = lut[codes.long()]
-    M, K = mapped.shape
-    mapped = mapped.view(M, K // 2, 2)
-    return (mapped[:, :, 0] | (mapped[:, :, 1] << 4)).to(torch.uint8)
+    return torch.stack([low, high], dim=-1).reshape(packed.shape[0], packed.shape[1] * 2)
 
 
-def main():
+def repack_fp4_codes(codes: torch.Tensor) -> torch.Tensor:
+    m, k = codes.shape
+    codes = codes.view(m, k // 2, 2)
+    return (codes[:, :, 0] | (codes[:, :, 1] << 4)).to(torch.uint8)
+
+
+def pack_bits(values: torch.Tensor, bits: int) -> torch.Tensor:
+    if bits == 0:
+        return torch.empty(0, dtype=torch.uint8)
+    arr = values.reshape(-1).cpu().numpy().astype(np.uint8, copy=False)
+    if bits == 4:
+        if arr.size % 2:
+            arr = np.pad(arr, (0, 1))
+        packed = arr[0::2] | (arr[1::2] << 4)
+        return torch.from_numpy(packed.astype(np.uint8, copy=False))
+    if bits == 2:
+        pad = (-arr.size) % 4
+        if pad:
+            arr = np.pad(arr, (0, pad))
+        packed = (
+            arr[0::4]
+            | (arr[1::4] << 2)
+            | (arr[2::4] << 4)
+            | (arr[3::4] << 6)
+        )
+        return torch.from_numpy(packed.astype(np.uint8, copy=False))
+    if bits == 1:
+        pad = (-arr.size) % 8
+        if pad:
+            arr = np.pad(arr, (0, pad))
+        packed = (
+            arr[0::8]
+            | (arr[1::8] << 1)
+            | (arr[2::8] << 2)
+            | (arr[3::8] << 3)
+            | (arr[4::8] << 4)
+            | (arr[5::8] << 5)
+            | (arr[6::8] << 6)
+            | (arr[7::8] << 7)
+        )
+        return torch.from_numpy(packed.astype(np.uint8, copy=False))
+    raise ValueError(f"Unsupported bit width: {bits}")
+
+
+def is_quantized_weight(key: str, key_set: set[str]) -> bool:
+    if not key.endswith(".weight"):
+        return False
+    base = key[: -len(".weight")]
+    return f"{base}.weight_scale" in key_set and f"{base}.weight_scale_2" in key_set
+
+
+def build_scheme_tables(scheme_name: str) -> dict[str, object]:
+    scheme = cast(dict[str, Any], SCHEMES[scheme_name])
+    storage_mode = str(scheme.get("storage_mode", "global_id"))
+
+    if storage_mode == "per_block_codebook":
+        fixed_codes = torch.tensor(cast(list[int], scheme["fixed_codes"]), dtype=torch.uint8)
+        nonzero_codes = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15]
+        candidate_extra_codes = torch.tensor(
+            list(itertools.combinations(nonzero_codes, 3)),
+            dtype=torch.uint8,
+        )
+        candidate_codebooks = torch.cat(
+            [
+                fixed_codes.unsqueeze(0).expand(candidate_extra_codes.shape[0], -1),
+                candidate_extra_codes,
+            ],
+            dim=1,
+        )
+        candidate_values = E2M1_TABLE[candidate_codebooks.long()]
+        dists = (E2M1_TABLE.view(1, 16, 1) - candidate_values[:, None, :]).abs()
+        best_idx = dists.argmin(dim=2).to(torch.uint8)
+        candidate_best_codes = torch.gather(candidate_codebooks, 1, best_idx.long())
+        candidate_mse_luts = (E2M1_TABLE.view(1, 16) - E2M1_TABLE[candidate_best_codes.long()]) ** 2
+        return {
+            "scheme_name": scheme_name,
+            "storage_mode": storage_mode,
+            "bits_per_index": int(cast(int, scheme["bits_per_index"])),
+            "codebook_id_bits": 0,
+            "fixed_codes": fixed_codes,
+            "stored_codebook_codes_per_block": int(candidate_extra_codes.shape[1]),
+            "candidate_extra_codes": candidate_extra_codes,
+            "candidate_best_index_luts": best_idx,
+            "candidate_best_code_luts": candidate_best_codes.to(torch.uint8),
+            "candidate_mse_luts": candidate_mse_luts.to(torch.float32),
+            "description": str(cast(str, scheme["description"])),
+        }
+
+    codebooks_raw = cast(list[list[int]], scheme["codebooks"])
+    codebooks = [torch.tensor(cb, dtype=torch.uint8) for cb in codebooks_raw]
+    bits_per_index = int(cast(int, scheme["bits_per_index"]))
+    codebook_id_bits = 0 if len(codebooks) == 1 else math.ceil(math.log2(len(codebooks)))
+
+    best_index_luts: list[torch.Tensor] = []
+    best_code_luts: list[torch.Tensor] = []
+    mse_luts: list[torch.Tensor] = []
+    for codebook in codebooks:
+        cb_values = E2M1_TABLE[codebook.long()]
+        dists = (E2M1_TABLE[:, None] - cb_values[None, :]).abs()
+        best_idx = dists.argmin(dim=1).to(torch.uint8)
+        best_codes = codebook[best_idx.long()].to(torch.uint8)
+        mse = (E2M1_TABLE - cb_values[best_idx.long()]) ** 2
+        best_index_luts.append(best_idx)
+        best_code_luts.append(best_codes)
+        mse_luts.append(mse)
+
+    return {
+        "scheme_name": scheme_name,
+        "storage_mode": storage_mode,
+        "bits_per_index": bits_per_index,
+        "codebook_id_bits": codebook_id_bits,
+        "codebooks": codebooks,
+        "best_index_luts": best_index_luts,
+        "best_code_luts": best_code_luts,
+        "mse_luts": mse_luts,
+        "description": str(cast(str, scheme["description"])),
+    }
+
+
+def compress_codes(
+    codes: torch.Tensor,
+    tables: dict[str, object],
+) -> dict[str, torch.Tensor | None]:
+    if codes.shape[1] % BLOCK_SIZE != 0:
+        raise ValueError(f"Expected K divisible by {BLOCK_SIZE}, got {tuple(codes.shape)}")
+
+    scheme_name = cast(str, tables["scheme_name"])
+    if scheme_name == "identity":
+        blocks = codes.numel() // BLOCK_SIZE
+        return {
+            "indices": codes.to(torch.uint8),
+            "codebook_ids": torch.zeros(blocks, dtype=torch.uint8),
+            "codebook_entries": None,
+            "recon_codes": codes.to(torch.uint8),
+        }
+
+    storage_mode = cast(str, tables["storage_mode"])
+    if storage_mode == "per_block_codebook":
+        flat_blocks = codes.reshape(-1, BLOCK_SIZE)
+        candidate_extra_codes = cast(torch.Tensor, tables["candidate_extra_codes"])
+        candidate_best_index_luts = cast(torch.Tensor, tables["candidate_best_index_luts"])
+        candidate_best_code_luts = cast(torch.Tensor, tables["candidate_best_code_luts"])
+        candidate_mse_luts = cast(torch.Tensor, tables["candidate_mse_luts"])
+
+        block_indices = torch.empty_like(flat_blocks, dtype=torch.uint8)
+        recon_blocks = torch.empty_like(flat_blocks, dtype=torch.uint8)
+        block_codebook_entries = torch.empty(
+            (flat_blocks.shape[0], candidate_extra_codes.shape[1]),
+            dtype=torch.uint8,
+        )
+
+        for start in range(0, flat_blocks.shape[0], BLOCK_SEARCH_CHUNK_BLOCKS):
+            end = min(start + BLOCK_SEARCH_CHUNK_BLOCKS, flat_blocks.shape[0])
+            chunk = flat_blocks[start:end].to(torch.long)
+            counts = torch.nn.functional.one_hot(chunk, num_classes=16).sum(dim=1).to(torch.float32)
+            costs = counts @ candidate_mse_luts.T
+            chosen = costs.argmin(dim=1)
+            chosen_index_luts = candidate_best_index_luts[chosen]
+            chosen_code_luts = candidate_best_code_luts[chosen]
+            block_indices[start:end] = torch.gather(chosen_index_luts, 1, chunk)
+            recon_blocks[start:end] = torch.gather(chosen_code_luts, 1, chunk)
+            block_codebook_entries[start:end] = candidate_extra_codes[chosen]
+
+        return {
+            "indices": block_indices.reshape_as(codes),
+            "codebook_ids": None,
+            "codebook_entries": block_codebook_entries,
+            "recon_codes": recon_blocks.reshape_as(codes),
+        }
+
+    flat_blocks = codes.reshape(-1, BLOCK_SIZE)
+    codebooks = cast(list[torch.Tensor], tables["codebooks"])
+    best_index_luts = cast(list[torch.Tensor], tables["best_index_luts"])
+    best_code_luts = cast(list[torch.Tensor], tables["best_code_luts"])
+    mse_luts = cast(list[torch.Tensor], tables["mse_luts"])
+
+    if len(codebooks) == 1:
+        chosen_codebooks = torch.zeros(flat_blocks.shape[0], dtype=torch.uint8)
+    else:
+        all_costs = torch.stack(
+            [mse_lut[flat_blocks.long()].sum(dim=1) for mse_lut in mse_luts],
+            dim=1,
+        )
+        chosen_codebooks = all_costs.argmin(dim=1).to(torch.uint8)
+
+    block_indices = torch.empty_like(flat_blocks, dtype=torch.uint8)
+    recon_blocks = torch.empty_like(flat_blocks, dtype=torch.uint8)
+    for cb_id in range(len(codebooks)):
+        mask = chosen_codebooks == cb_id
+        if not torch.any(mask):
+            continue
+        selected = flat_blocks[mask]
+        idx_lut = best_index_luts[cb_id]
+        code_lut = best_code_luts[cb_id]
+        block_indices[mask] = idx_lut[selected.long()]
+        recon_blocks[mask] = code_lut[selected.long()]
+
+    return {
+        "indices": block_indices.reshape_as(codes),
+        "codebook_ids": chosen_codebooks,
+        "codebook_entries": None,
+        "recon_codes": recon_blocks.reshape_as(codes),
+    }
+
+
+def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--codebook", type=str, default="identity", choices=list(CODEBOOKS.keys()))
-    parser.add_argument("--input", type=str, default=CKPT_DIR)
+    parser.add_argument("--input", type=str, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=str, default=None)
+    parser.add_argument("--scheme", type=str, default="identity", choices=sorted(SCHEMES))
     args = parser.parse_args()
 
+    input_dir = Path(args.input)
     if args.output is None:
-        args.output = f"/code/tensorrt_llm/scripts/nvfp4_compress/ckpt_{args.codebook}"
+        args.output = str(input_dir.parent / f"compressed_{args.scheme}")
+    output_dir = Path(args.output)
 
-    if os.path.exists(args.output):
-        shutil.rmtree(args.output)
-    os.makedirs(args.output)
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True)
 
-    lut = build_lut(CODEBOOKS[args.codebook])
-    print(f"Codebook: {args.codebook}", flush=True)
-    for i in range(16):
-        s, d = E2M1_TABLE[i].item(), E2M1_TABLE[lut[i].item()].item()
-        if i != lut[i].item():
-            print(f"  {s:+5.1f} -> {d:+5.1f}", flush=True)
+    tables = build_scheme_tables(args.scheme)
+    bits_per_index = int(cast(int, tables["bits_per_index"]))
+    codebook_id_bits = int(cast(int, tables["codebook_id_bits"]))
 
-    with open(f"{args.input}/model.safetensors.index.json") as f:
-        idx = json.load(f)
-    weight_map = idx["weight_map"]
+    with (input_dir / "model.safetensors.index.json").open() as f:
+        input_index = json.load(f)
+    input_weight_map: dict[str, str] = input_index["weight_map"]
+    shard_files = sorted(set(input_weight_map.values()))
+
+    output_weight_map: dict[str, str] = {}
+    manifest: dict[str, Any] = {
+        "format_version": 1,
+        "source_checkpoint": str(input_dir),
+        "scheme": args.scheme,
+        "description": cast(str, tables["description"]),
+        "storage_mode": cast(str, tables["storage_mode"]),
+        "block_size": BLOCK_SIZE,
+        "bits_per_index": bits_per_index,
+        "codebook_id_bits": codebook_id_bits,
+        "codebooks": [[int(v) for v in cb.tolist()] for cb in cast(list[torch.Tensor], tables.get("codebooks", []))],
+        "fixed_codes": [int(v) for v in cast(torch.Tensor, tables.get("fixed_codes", torch.empty(0, dtype=torch.uint8))).tolist()],
+        "stored_codebook_codes_per_block": int(cast(int, tables.get("stored_codebook_codes_per_block", 0))),
+        "compressed_weights": {},
+    }
+    compressed_weights = cast(dict[str, dict[str, object]], manifest["compressed_weights"])
 
     t0 = time.time()
-    processed_shards = set()
+    compressed_count = 0
     remapped_count = 0
 
-    for shard_file in sorted(set(weight_map.values())):
-        if shard_file in processed_shards:
+    for shard_file in shard_files:
+        shard_path = input_dir / shard_file
+        shard_keys = [k for k, v in input_weight_map.items() if v == shard_file]
+        key_set = set(shard_keys)
+        quantized_weight_keys = [k for k in shard_keys if is_quantized_weight(k, key_set)]
+
+        if not quantized_weight_keys:
+            os.symlink(shard_path.resolve(), output_dir / shard_file)
+            for key in shard_keys:
+                output_weight_map[key] = shard_file
             continue
 
-        shard_keys = [k for k, v in weight_map.items() if v == shard_file]
-        src_path = f"{args.input}/{shard_file}"
+        new_data: dict[str, torch.Tensor] = {}
+        with safe_open(str(shard_path), framework="pt", device="cpu") as sf:
+            for key in shard_keys:
+                tensor = sf.get_tensor(key)
+                if key in quantized_weight_keys:
+                    base = key[: -len(".weight")]
+                    codes = unpack_fp4_codes(tensor)
+                    compressed = compress_codes(codes, tables)
+                    indices = cast(torch.Tensor, compressed["indices"])
+                    codebook_ids = cast(torch.Tensor | None, compressed["codebook_ids"])
+                    codebook_entries = cast(torch.Tensor | None, compressed["codebook_entries"])
+                    recon_codes = cast(torch.Tensor, compressed["recon_codes"])
+                    packed_indices = pack_bits(indices, bits_per_index)
 
-        has_expert_weight = any(k.endswith(".weight") and "experts." in k for k in shard_keys)
+                    new_data[f"{base}.weight_indices"] = packed_indices
+                    output_weight_map[f"{base}.weight_indices"] = shard_file
+                    if codebook_ids is not None and codebook_id_bits > 0:
+                        packed_codebook_ids = pack_bits(codebook_ids, codebook_id_bits)
+                        new_data[f"{base}.weight_codebook_ids"] = packed_codebook_ids
+                        output_weight_map[f"{base}.weight_codebook_ids"] = shard_file
+                    if codebook_entries is not None:
+                        packed_codebook_entries = pack_bits(codebook_entries.reshape(-1), 4)
+                        new_data[f"{base}.weight_codebook_entries"] = packed_codebook_entries
+                        output_weight_map[f"{base}.weight_codebook_entries"] = shard_file
 
-        if has_expert_weight:
-            new_data = {}
-            with safe_open(src_path, framework="pt", device="cpu") as sf:
-                for k in shard_keys:
-                    t = sf.get_tensor(k)
-                    if k.endswith(".weight") and "experts." in k:
-                        new_data[k] = remap_packed_weight(t, lut)
+                    compressed_weights[base] = {
+                        "shape": list(tensor.shape[0:1]) + [tensor.shape[1] * 2],
+                        "packed_shape": list(tensor.shape),
+                        "num_blocks": int(tensor.shape[0] * tensor.shape[1] * 2 // BLOCK_SIZE),
+                        "shard_file": shard_file,
+                    }
+                    compressed_count += 1
+                    if not torch.equal(recon_codes, codes):
                         remapped_count += 1
-                    else:
-                        new_data[k] = t
-            save_file(new_data, f"{args.output}/{shard_file}")
-            del new_data
-            gc.collect()
-        else:
-            os.symlink(os.path.abspath(src_path), f"{args.output}/{shard_file}")
+                else:
+                    new_data[key] = tensor
+                    output_weight_map[key] = shard_file
 
-        processed_shards.add(shard_file)
+        save_file(new_data, str(output_dir / shard_file))
+        del new_data
+        gc.collect()
 
-    json.dump(idx, open(f"{args.output}/model.safetensors.index.json", "w"), indent=2)
+    output_index = dict(input_index)
+    output_index["weight_map"] = output_weight_map
+    with (output_dir / "model.safetensors.index.json").open("w") as f:
+        json.dump(output_index, f, indent=2)
+    with (output_dir / "compression_manifest.json").open("w") as f:
+        json.dump(manifest, f, indent=2)
 
-    for fn in os.listdir(args.input):
+    for fn in os.listdir(input_dir):
         if fn.endswith(".safetensors") or fn == "model.safetensors.index.json":
             continue
-        src = f"{args.input}/{fn}"
-        dst = f"{args.output}/{fn}"
-        if not os.path.exists(dst):
-            os.symlink(os.path.abspath(src), dst)
+        src = input_dir / fn
+        dst = output_dir / fn
+        if dst.exists():
+            continue
+        os.symlink(src.resolve(), dst)
 
-    print(f"Remapped {remapped_count} weights in {time.time()-t0:.0f}s", flush=True)
-    print(f"Output: {args.output}", flush=True)
+    storage_mode = cast(str, tables["storage_mode"])
+    bits_per_elem = bits_per_index + (codebook_id_bits / BLOCK_SIZE)
+    if storage_mode == "per_block_codebook":
+        bits_per_elem += (4 * int(cast(int, tables["stored_codebook_codes_per_block"]))) / BLOCK_SIZE
+    print(f"Scheme: {args.scheme}", flush=True)
+    print(f"Compressed weights: {compressed_count}", flush=True)
+    print(f"Remapped weights: {remapped_count}", flush=True)
+    print(f"Effective bits/elem: {bits_per_elem:.4f}", flush=True)
+    print(f"Output: {output_dir}", flush=True)
+    print(f"Elapsed: {time.time() - t0:.1f}s", flush=True)
 
 
 if __name__ == "__main__":
