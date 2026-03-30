@@ -1,0 +1,217 @@
+{
+  "variant": "B_frequency_weighted_mse_greedy",
+  "validation_type": "sample",
+  "selection_method": "greedy_most_frequent",
+  "block_size": 128,
+  "num_codewords": 4,
+  "sample_size": 50,
+  "successfully_compressed": 0,
+  "total_original_size": 0,
+  "total_compressed_size": 0,
+  "overall_compression_ratio": 0,
+  "overall_compression_percent": 0,
+  "baseline_compression_percent": 97.5,
+  "elapsed_seconds": 0.13035178184509277,
+  "results": [
+    {
+      "weight": "model.layers.0.mlp.experts.0.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.1.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.10.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.100.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.101.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.102.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.103.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.104.down_proj.weight",
+      "error": "index 130 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.105.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.106.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.107.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.108.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.109.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.11.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.110.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.111.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.112.down_proj.weight",
+      "error": "index 129 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.113.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.114.down_proj.weight",
+      "error": "index 141 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.115.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.116.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.117.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.118.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.119.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.12.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.120.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.121.down_proj.weight",
+      "error": "index 82 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.122.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.123.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.124.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.125.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.126.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.127.down_proj.weight",
+      "error": "index 240 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.128.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.129.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.13.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.130.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.131.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.132.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.133.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.134.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.135.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.136.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.137.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.138.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.139.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.14.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.140.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.141.down_proj.weight",
+      "error": "index 128 is out of bounds for axis 0 with size 16"
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.142.down_proj.weight",
+      "error": "index 136 is out of bounds for axis 0 with size 16"
+    }
+  ]
+}

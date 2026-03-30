@@ -1,0 +1,11 @@
+{
+  "phase": "18A",
+  "method": "Activation-Weighted MSE (Fast)",
+  "num_blocks": 20,
+  "avg_improvement": 98.55171623229981,
+  "std_improvement": 1.8576978500503971,
+  "min_improvement": 94.91278839111328,
+  "max_improvement": 100.0,
+  "blocks_with_improvement": 20,
+  "timestamp": "2026-03-30 03:17:27"
+}

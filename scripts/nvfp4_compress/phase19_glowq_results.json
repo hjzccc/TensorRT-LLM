@@ -1,0 +1,74 @@
+{
+  "phase": "19",
+  "method": "GlowQ-Inspired Low-Rank Correction",
+  "synthetic_tests": {
+    "num_blocks": 3,
+    "rank": 4,
+    "avg_improvement": 80.4696954185135,
+    "std_improvement": 1.2364965108875756,
+    "min_improvement": 78.8235727482133,
+    "max_improvement": 81.80373184884782,
+    "blocks_with_benefit": 3,
+    "avg_overhead_ratio": 0.75,
+    "improvement_percentages": [
+      80.78178165847937,
+      78.8235727482133,
+      81.80373184884782
+    ]
+  },
+  "real_blocks_test": {
+    "num_blocks": 20,
+    "rank": 4,
+    "avg_improvement": 80.24502098853603,
+    "std_improvement": 2.0211065388746143,
+    "min_improvement": 76.33804979624165,
+    "max_improvement": 83.07432647094967,
+    "blocks_with_benefit": 20,
+    "avg_overhead_ratio": 0.75,
+    "improvement_percentages": [
+      77.20611387953853,
+      82.34076107314458,
+      77.44301029468926,
+      78.69613628023318,
+      79.70445361002844,
+      81.57258016412061,
+      79.73198365292838,
+      76.33804979624165,
+      79.42181635074196,
+      77.86844653895938,
+      83.07432647094967,
+      80.72459251725884,
+      81.70289520456268,
+      81.92335727903003,
+      81.53107087985696,
+      82.30543461836125,
+      79.66388946597345,
+      78.44319895185377,
+      82.35884877993122,
+      82.84945396231713
+    ]
+  },
+  "rank_sensitivity": {
+    "2": {
+      "avg_improvement": 51.6108585576554,
+      "avg_overhead_ratio": 0.375,
+      "blocks_with_benefit": 20
+    },
+    "4": {
+      "avg_improvement": 80.24502098853603,
+      "avg_overhead_ratio": 0.75,
+      "blocks_with_benefit": 20
+    },
+    "8": {
+      "avg_improvement": 99.99999999999945,
+      "avg_overhead_ratio": 1.5,
+      "blocks_with_benefit": 20
+    },
+    "16": {
+      "avg_improvement": 99.99999999999945,
+      "avg_overhead_ratio": 3.0,
+      "blocks_with_benefit": 20
+    }
+  },
+  "timestamp": "2026-03-30 03:20:03"
+}

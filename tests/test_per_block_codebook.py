@@ -584,7 +584,7 @@ class TestPerBlockAQLM:
         
         quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
         quantized, metadata = quantizer.quantize(weights)
-        dequantized = quantizer.dequantize(metadata)
+        dequantized = quantizer.dequantize(quantized, metadata)
         
         # Check shape
         assert dequantized.shape == weights.shape
@@ -598,7 +598,7 @@ class TestPerBlockAQLM:
         
         quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
         quantized, metadata = quantizer.quantize(weights)
-        dequantized = quantizer.dequantize(metadata)
+        dequantized = quantizer.dequantize(quantized, metadata)
         
         # Compute MSE
         mse = torch.mean((dequantized - quantized) ** 2).item()
