@@ -406,10 +406,15 @@ def compress_codes(
                 weighted_counts = counts * (scales_chunk ** 2)
                 costs = weighted_counts @ candidate_mse_luts.T
             elif loss_mode == "entropy":
-                # Entropy-based codebook selection: use MSE as proxy for entropy
-                # (Full entropy calculation is too slow; MSE correlates with entropy)
-                # Lower MSE blocks tend to have lower entropy reconstructions
-                costs = counts @ candidate_mse_luts.T
+                # Fast entropy-based codebook selection using frequency skewness
+                # Prefer codebooks that produce more skewed (lower entropy) distributions
+                # Compute frequency skewness: sum of squared frequencies (higher = more skewed)
+                # This is a fast proxy for entropy that avoids log calculations
+                freq = counts / counts.sum(dim=1, keepdim=True).clamp(min=1)
+                skewness = (freq ** 2).sum(dim=1, keepdim=True)  # Higher skewness = lower entropy
+                # Weight MSE by inverse skewness (prefer high-skewness codebooks)
+                weighted_counts = counts / (skewness + 1e-8)
+                costs = weighted_counts @ candidate_mse_luts.T
             elif loss_mode == "scale_linear" and block_scales is not None:
                 # Weight each block's code counts by its block scale (linear, not squared)
                 # More moderate than scale^2: reduces dynamic range from 357000x to 600x

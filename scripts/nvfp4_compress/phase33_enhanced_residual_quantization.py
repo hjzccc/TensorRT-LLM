@@ -120,6 +120,15 @@ class Phase33EnhancedResidualQuantizer:
         
         for stage in range(num_stages):
             # Create codebook for this stage
+            # Create codebook adapted to residual range
+            if stage == 0:
+                # First stage: use full FP4 range
+                codebook = self.create_codebook(codebook_sizes[stage])
+            else:
+                # Subsequent stages: adapt to residual range
+                residual_min = np.min(residuals)
+                residual_max = np.max(residuals)
+                codebook = self.create_codebook(codebook_sizes[stage], (residual_min, residual_max))
             codebook = self.create_codebook(codebook_sizes[stage])
             
             # Quantize residuals
