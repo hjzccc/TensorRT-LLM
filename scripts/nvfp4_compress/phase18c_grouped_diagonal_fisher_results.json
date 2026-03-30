@@ -1,0 +1,19 @@
+{
+  "phase": "18C",
+  "method": "Grouped-Diagonal Fisher",
+  "synthetic_tests": {
+    "num_blocks": 3,
+    "avg_weighted_mse": 0.0,
+    "std_weighted_mse": 0.0,
+    "min_weighted_mse": 0.0,
+    "max_weighted_mse": 0.0
+  },
+  "real_blocks_test": {
+    "num_blocks": 10,
+    "avg_weighted_mse": 0.8573209643363953,
+    "std_weighted_mse": 0.1558317393064499,
+    "min_weighted_mse": 0.6110222339630127,
+    "max_weighted_mse": 1.058113932609558
+  },
+  "timestamp": "2026-03-30 03:21:09"
+}
