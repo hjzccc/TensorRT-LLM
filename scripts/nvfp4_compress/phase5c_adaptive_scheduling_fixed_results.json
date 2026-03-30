@@ -1,0 +1,70 @@
+{
+  "adaptive_scheduling": {
+    "test_type": "phase5c_adaptive_scheduling",
+    "by_layer": {
+      "attention": {
+        "layer_type": "attention",
+        "num_layers": 40,
+        "num_codebooks": 8,
+        "num_elements_per_layer": 5120,
+        "entropy_bits": 3.0,
+        "codebook_size_bytes": 2048,
+        "index_size_bytes": 15,
+        "scale_size_bytes": 160,
+        "total_compressed_bytes": 2223,
+        "original_size_bytes": 20480,
+        "compression_ratio_per_layer": 9.212775528565002,
+        "total_original_bytes": 819200,
+        "total_compressed_bytes_all": 88920,
+        "total_compression_ratio": 9.212775528565002
+      },
+      "mlp": {
+        "layer_type": "mlp",
+        "num_layers": 40,
+        "num_codebooks": 16,
+        "num_elements_per_layer": 5120,
+        "entropy_bits": 4.0,
+        "codebook_size_bytes": 4096,
+        "index_size_bytes": 20,
+        "scale_size_bytes": 160,
+        "total_compressed_bytes": 4276,
+        "original_size_bytes": 20480,
+        "compression_ratio_per_layer": 4.789522918615528,
+        "total_original_bytes": 819200,
+        "total_compressed_bytes_all": 171040,
+        "total_compression_ratio": 4.789522918615528
+      },
+      "expert": {
+        "layer_type": "expert",
+        "num_layers": 256,
+        "num_codebooks": 24,
+        "num_elements_per_layer": 32768,
+        "entropy_bits": 4.584962500721156,
+        "codebook_size_bytes": 6144,
+        "index_size_bytes": 146,
+        "scale_size_bytes": 1024,
+        "total_compressed_bytes": 7314,
+        "original_size_bytes": 131072,
+        "compression_ratio_per_layer": 17.920700027344818,
+        "total_original_bytes": 33554432,
+        "total_compressed_bytes_all": 1872384,
+        "total_compression_ratio": 17.920700027344818
+      }
+    },
+    "total_original_bytes": 35192832,
+    "total_compressed_bytes": 2132344,
+    "overall_compression": 16.504293866280488
+  },
+  "cumulative": {
+    "test_type": "phase5_cumulative_realistic",
+    "phase4_compression": 1.6,
+    "phase5a_compression": 1.88,
+    "phase5a_improvement": 1.1749999999999998,
+    "phase5b_compression": 2.13,
+    "phase5b_improvement": 1.1329787234042554,
+    "phase5c_compression_conservative": 3.195,
+    "phase5c_compression_optimistic": 4.26,
+    "cumulative_conservative": 1.9968749999999997,
+    "cumulative_optimistic": 2.6624999999999996
+  }
+}
