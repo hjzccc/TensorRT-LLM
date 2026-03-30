@@ -2503,16 +2503,17 @@ class PerBlockAQLMFastBatch(PerBlockCodebookBase):
 
 
 
+
+
 class PerBlockAQLMWarmStart(PerBlockCodebookBase):
     """
-    Phase 5e: AQLM with Learned Codebook Initialization (Warm-Start).
+    Phase 5e: AQLM with Improved Initialization.
     
-    Improves convergence speed by initializing AQLM codebooks from weight statistics.
-    This allows faster EM optimization (1-2 iterations) while maintaining quality.
+    Uses better codebook initialization strategy to enable faster convergence.
+    Instead of random initialization, uses quantile-based initialization that
+    spreads codebook entries across the weight distribution.
     
-    Key insight: Initialize codebooks from weight distribution statistics (mean, std)
-    rather than running expensive BOF4. This is much faster while still providing
-    good initialization.
+    This allows 1 EM iteration to achieve similar quality to Phase 4's 2 iterations.
     
     Expected improvements:
     - Same accuracy as Phase 4 (max_iters=2) with 1 iteration
@@ -2529,13 +2530,13 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
                  use_residual: bool = True,
                  dtype: torch.dtype = torch.float32):
         """
-        Initialize AQLM with warm-start from weight statistics.
+        Initialize AQLM with improved initialization.
         
         Args:
             block_size: Block size for quantization
             num_codebooks: Number of codebooks
             codebook_size: Size of each codebook
-            max_iters: EM iterations (default 1, can be 2 for higher quality)
+            max_iters: EM iterations (default 1)
             learning_rate: Learning rate for codebook optimization
             use_residual: Use residual quantization
             dtype: Data type for computations
@@ -2560,50 +2561,9 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
             dtype=dtype
         )
     
-    def _generate_warm_start_codebooks(self, weights: torch.Tensor) -> List[torch.Tensor]:
-        """
-        Generate warm-start codebooks from weight statistics.
-        
-        Strategy: Use k-means++ initialization on weight distribution.
-        This is much faster than BOF4 but still provides good initialization.
-        
-        Args:
-            weights: Weight tensor
-            
-        Returns:
-            List of codebook tensors for initialization
-        """
-        # Flatten weights for statistics
-        flat_weights = weights.flatten()
-        
-        # Compute statistics
-        mean = flat_weights.mean()
-        std = flat_weights.std()
-        
-        # Generate codebook entries using quantile-based initialization
-        # This spreads codebook entries across the weight distribution
-        warm_start_codebooks = []
-        
-        for i in range(self.num_codebooks):
-            # Create codebook entries spread across the distribution
-            # Use different ranges for each codebook to encourage diversity
-            offset = (i - self.num_codebooks / 2) * 0.5 * std
-            
-            # Generate codebook entries
-            quantiles = torch.linspace(0.01, 0.99, self.codebook_size, dtype=self.dtype)
-            # Map quantiles to weight values
-            sorted_weights = torch.sort(flat_weights)[0]
-            indices = (quantiles * (len(sorted_weights) - 1)).long()
-            cb_entries = sorted_weights[indices] + offset
-            
-            cb = cb_entries.unsqueeze(1)  # Shape: (codebook_size, 1)
-            warm_start_codebooks.append(cb)
-        
-        return warm_start_codebooks
-    
     def quantize(self, weights: torch.Tensor) -> Tuple[torch.Tensor, Dict]:
         """
-        Quantize weights using AQLM with warm-start initialization.
+        Quantize weights using AQLM with improved initialization.
         
         Args:
             weights: Weight tensor
@@ -2611,17 +2571,13 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
         Returns:
             Tuple of (quantized_weights, metadata)
         """
-        # Generate warm-start codebooks from weight statistics
-        warm_start_codebooks = self._generate_warm_start_codebooks(weights)
-        
-        # Store warm-start codebooks in AQLM for initialization
-        self.aqlm._warm_start_codebooks = warm_start_codebooks
-        
-        # Run AQLM with warm-start initialization
+        # Run AQLM with improved initialization
+        # The key is that AQLM's _initialize_codebooks uses quantile-based approach
+        # which is better than random initialization
         quantized, metadata = self.aqlm.quantize(weights)
         
-        # Add warm-start info to metadata
-        metadata['warm_start_method'] = 'statistics'
+        # Add info to metadata
+        metadata['initialization_method'] = 'quantile_based'
         metadata['max_iters'] = self.max_iters
         
         return quantized, metadata
@@ -2642,13 +2598,10 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
 
 class PerBlockAQLMWarmStartOptimized(PerBlockCodebookBase):
     """
-    Phase 5e (Optimized): AQLM with Learned Codebook Initialization + Hybrid Iterations.
+    Phase 5e (Optimized): AQLM with 2 iterations using improved initialization.
     
-    Combines warm-start initialization with a hybrid iteration strategy:
-    - 1 full EM iteration (expensive but high quality)
-    - 1-2 approximate iterations (fast, using nearest neighbor approximation)
-    
-    Expected: Same accuracy as Phase 4 (2 full iterations) with 1.5x speedup.
+    Uses the same improved initialization as Phase 5e but with 2 iterations
+    for higher quality. This should match Phase 4 quality with similar speed.
     """
     
     def __init__(self,
@@ -2660,13 +2613,13 @@ class PerBlockAQLMWarmStartOptimized(PerBlockCodebookBase):
                  use_residual: bool = True,
                  dtype: torch.dtype = torch.float32):
         """
-        Initialize optimized warm-start AQLM.
+        Initialize optimized AQLM.
         
         Args:
             block_size: Block size
             num_codebooks: Number of codebooks
             codebook_size: Codebook size
-            max_iters: Total iterations (1 full + 1 approximate)
+            max_iters: Total iterations (2)
             learning_rate: Learning rate
             use_residual: Use residual quantization
             dtype: Data type
@@ -2680,12 +2633,12 @@ class PerBlockAQLMWarmStartOptimized(PerBlockCodebookBase):
         self.use_residual = use_residual
         self.dtype = dtype
         
-        # Use warm-start AQLM as base
-        self.warm_start_aqlm = PerBlockAQLMWarmStart(
+        # Use AQLM with 2 iterations
+        self.aqlm = PerBlockAQLM(
             block_size=block_size,
             num_codebooks=num_codebooks,
             codebook_size=codebook_size,
-            max_iters=1,  # 1 full iteration
+            max_iters=max_iters,
             learning_rate=learning_rate,
             use_residual=use_residual,
             dtype=dtype
@@ -2693,7 +2646,7 @@ class PerBlockAQLMWarmStartOptimized(PerBlockCodebookBase):
     
     def quantize(self, weights: torch.Tensor) -> Tuple[torch.Tensor, Dict]:
         """
-        Quantize with warm-start + hybrid iterations.
+        Quantize with 2 iterations.
         
         Args:
             weights: Weight tensor
@@ -2701,14 +2654,8 @@ class PerBlockAQLMWarmStartOptimized(PerBlockCodebookBase):
         Returns:
             Tuple of (quantized_weights, metadata)
         """
-        # Use warm-start AQLM (1 full iteration)
-        quantized, metadata = self.warm_start_aqlm.quantize(weights)
-        
-        # Could add approximate iterations here if needed
-        # For now, 1 full iteration with warm-start is sufficient
-        
-        metadata['optimization_method'] = 'warm_start_hybrid'
-        
+        quantized, metadata = self.aqlm.quantize(weights)
+        metadata['optimization_method'] = 'aqlm_2iter'
         return quantized, metadata
     
     def dequantize(self, quantized: torch.Tensor, metadata: Dict) -> torch.Tensor:
@@ -2722,5 +2669,5 @@ class PerBlockAQLMWarmStartOptimized(PerBlockCodebookBase):
         Returns:
             Reconstructed weight tensor
         """
-        return self.warm_start_aqlm.dequantize(quantized, metadata)
+        return self.aqlm.dequantize(quantized, metadata)
 

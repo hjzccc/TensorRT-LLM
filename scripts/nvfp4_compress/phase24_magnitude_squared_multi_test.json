@@ -1,0 +1,34 @@
+{
+  "by_weight": {
+    "model.layers.13.mlp.experts.0.down_proj.weight": {
+      "2b075b_zero_fixed_weighted_abs": 0.6894853115081787,
+      "2b075b_zero_fixed_magnitude_squared": 1.0369517803192139
+    },
+    "model.layers.13.mlp.experts.1.down_proj.weight": {
+      "2b075b_zero_fixed_weighted_abs": 0.6927919387817383,
+      "2b075b_zero_fixed_magnitude_squared": 1.0374057292938232
+    },
+    "model.layers.13.mlp.experts.10.down_proj.weight": {
+      "2b075b_zero_fixed_weighted_abs": 0.6955101490020752,
+      "2b075b_zero_fixed_magnitude_squared": 1.0407161712646484
+    },
+    "model.layers.13.mlp.experts.100.down_proj.weight": {
+      "2b075b_zero_fixed_weighted_abs": 0.6908090114593506,
+      "2b075b_zero_fixed_magnitude_squared": 1.036787748336792
+    },
+    "model.layers.13.mlp.experts.101.down_proj.weight": {
+      "2b075b_zero_fixed_weighted_abs": 0.6905755996704102,
+      "2b075b_zero_fixed_magnitude_squared": 1.032125473022461
+    }
+  },
+  "summary": {
+    "2b075b_zero_fixed_weighted_abs": {
+      "total_mse": 3.459172010421753,
+      "count": 5
+    },
+    "2b075b_zero_fixed_magnitude_squared": {
+      "total_mse": 5.1839869022369385,
+      "count": 5
+    }
+  }
+}

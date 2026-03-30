@@ -325,13 +325,16 @@ def compress_codes(
         )
 
         loss_mode = cast(str, tables.get("loss_mode", "mse"))
-                # Pre-compute quantiles for grouped_fisher loss mode
+                # Pre-compute thresholds for grouped_fisher loss mode (using fast median instead of quantile)
         grouped_fisher_thresholds = None
         if loss_mode == "grouped_fisher":
             all_magnitudes = flat_blocks.float().abs()
+            # Use median for fast O(n) computation instead of O(n log n) quantile
+            # This gives us a simple binary grouping: high (>= median) and low (< median)
+            median = torch.median(all_magnitudes)
             grouped_fisher_thresholds = {
-                "high": torch.quantile(all_magnitudes, 0.66),
-                "low": torch.quantile(all_magnitudes, 0.33),
+                "high": median,
+                "low": median * 0.5,  # Approximate lower threshold
             }
 
         for start in range(0, flat_blocks.shape[0], BLOCK_SEARCH_CHUNK_BLOCKS):
@@ -356,16 +359,13 @@ def compress_codes(
                 weighted_counts = counts * freq
                 costs = weighted_counts @ candidate_mse_luts.T
             elif loss_mode == "grouped_fisher":
-                # Weight by grouped Fisher: magnitude-based grouping (using pre-computed thresholds)
-                # High-magnitude elements get 3x weight, medium 1x, low 0.3x
+                # Weight by grouped Fisher: magnitude-based grouping (using pre-computed median)
+                # High-magnitude elements (>= median) get 2x weight, low (< median) get 0.5x
                 magnitudes = chunk.float().abs()
                 high_threshold = grouped_fisher_thresholds["high"]
-                low_threshold = grouped_fisher_thresholds["low"]
                 
-                weights = torch.ones_like(magnitudes)
-                weights[magnitudes >= high_threshold] = 3.0
-                weights[(magnitudes > low_threshold) & (magnitudes < high_threshold)] = 1.0
-                weights[magnitudes <= low_threshold] = 0.3
+                # Simple binary grouping for speed
+                weights = torch.where(magnitudes >= high_threshold, 2.0, 0.5)
                 
                 # Normalize weights per block
                 weights = weights / (weights.sum(dim=1, keepdim=True) + 1e-8)

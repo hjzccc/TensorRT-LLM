@@ -1,0 +1,20 @@
+{
+  "rank1_only": {
+    "baseline_mse": 0.004795688204467297,
+    "rank1_mse": 0.004825476557016373,
+    "rank1_improvement": -0.6211486501838783
+  },
+  "rank2_only": {
+    "baseline_mse": 0.004795688204467297,
+    "rank2_mse": 0.004825476557016373,
+    "rank2_improvement": -0.6211486501838783
+  },
+  "rank1_plus_rank2": {
+    "baseline_mse": 0.004795688204467297,
+    "rank1_mse": 0.004825476557016373,
+    "rank1_improvement": -0.6211486501838783,
+    "rank12_mse": 0.0048260141629725695,
+    "rank12_improvement": -0.6323588442848207,
+    "additional_improvement_from_rank2": -0.011210194100942372
+  }
+}

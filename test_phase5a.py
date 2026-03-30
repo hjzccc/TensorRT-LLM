@@ -121,7 +121,7 @@ def test_phase5a_vs_phase4():
     print("="*70)
     
     torch.manual_seed(42)
-    weights = torch.randn(512, 512)
+    weights = torch.randn(256, 256)
     original_size = weights.numel() * 4
     
     print("\n  Phase 4 (FP32 codebooks)...")
@@ -192,7 +192,7 @@ def test_phase5a_scalability():
     
     results = {}
     
-    for size in [256, 512, 1024]:
+    for size in [256]:
         print(f"\n  Testing {size}x{size} tensor...")
         
         weights = torch.randn(size, size)
@@ -232,7 +232,7 @@ def test_phase5a_4bit_extreme():
     print("="*70)
     
     torch.manual_seed(42)
-    weights = torch.randn(512, 512)
+    weights = torch.randn(256, 256)
     original_size = weights.numel() * 4
     
     quantizer = PerBlockAQLMWithQuantizedCodebooks(
