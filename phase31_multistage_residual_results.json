@@ -1,0 +1,23 @@
+{
+  "test_type": "multistage_residual",
+  "num_blocks": 200,
+  "block_size": 128,
+  "mse_before": 0.04612079635262489,
+  "single_stage": {
+    "mse_after": 0.04574446380138397,
+    "improvement_percent": 0.8159714937210083
+  },
+  "multi_stage": {
+    "num_stages": 4,
+    "mse_after": 0.04574446380138397,
+    "improvement_percent": 0.8159714937210083,
+    "improvement_over_single": 0.0
+  },
+  "convergence": {
+    "mse_values": [
+      0.04612079635262489,
+      0.04574446380138397,
+      0.04574446380138397
+    ]
+  }
+}

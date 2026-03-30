@@ -1,0 +1,51 @@
+[
+  {
+    "test_type": "hybrid_affine_lowrank_synthetic",
+    "num_blocks": 200,
+    "block_size": 128,
+    "rank": 1,
+    "mse_before": 0.04612079635262489,
+    "results": {
+      "affine": {
+        "mse_after": 0.04310632744437783,
+        "improvement_percent": 6.536029614925537,
+        "storage_bytes": 1600
+      },
+      "per_block": {
+        "mse_after": 0.04574446380138397,
+        "improvement_percent": 0.8159714937210083,
+        "storage_bytes": 800
+      },
+      "hybrid": {
+        "mse_after": 4.102515324646108e-34,
+        "improvement_percent": 100.0,
+        "storage_bytes": 104800,
+        "improvement_over_affine": 100.0,
+        "improvement_over_block": 100.0
+      }
+    }
+  },
+  {
+    "test_type": "hybrid_affine_lowrank_realistic",
+    "num_blocks": 20,
+    "block_size": 128,
+    "rank": 1,
+    "mse_before": 0.00048003383562900126,
+    "results": {
+      "affine": {
+        "mse_after": 0.0004470073784985318,
+        "improvement_percent": 6.880026922934297
+      },
+      "per_block": {
+        "mse_after": 0.0004755989066325128,
+        "improvement_percent": 0.9238784313201904
+      },
+      "hybrid": {
+        "mse_after": 5.3302791338036626e-36,
+        "improvement_percent": 100.0,
+        "improvement_over_affine": 100.0,
+        "improvement_over_block": 100.0
+      }
+    }
+  }
+]
