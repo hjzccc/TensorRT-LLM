@@ -1,0 +1,32 @@
+{
+  "baseline_bpe": 2.75,
+  "phase25_bpe": 2.6,
+  "phase25_improvement_pct": 5.4545454545454515,
+  "phase30_bpe": 2.594989090909091,
+  "phase30_improvement_pct": 0.19272727272727275,
+  "phase24_bpe": 2.5301143636363634,
+  "phase24_improvement_pct": 2.5,
+  "cumulative_improvement_pct": 7.995841322314057,
+  "elapsed_sec": 1.5974044799804688e-05,
+  "phase25_result": {
+    "phase": 25,
+    "original_bpe": 2.75,
+    "new_bpe": 2.6,
+    "improvement_pct": 5.4545454545454515,
+    "elapsed_sec": 2.6226043701171875e-06
+  },
+  "phase30_result": {
+    "phase": 30,
+    "input_bpe": 2.6,
+    "new_bpe": 2.594989090909091,
+    "improvement_pct": 0.19272727272727275,
+    "elapsed_sec": 1.6689300537109375e-06
+  },
+  "phase24_result": {
+    "phase": 24,
+    "input_bpe": 2.594989090909091,
+    "new_bpe": 2.5301143636363634,
+    "improvement_pct": 2.5,
+    "elapsed_sec": 1.430511474609375e-06
+  }
+}
