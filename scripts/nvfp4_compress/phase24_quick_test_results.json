@@ -1,13 +1,13 @@
 {
   "phase": 24,
   "step": "quick_test",
-  "timestamp": "2026-03-30 05:42:58",
+  "timestamp": "2026-03-30 06:21:46",
   "num_experts": 10,
   "metrics": [
     {
-      "mse_stage1": 0.023010749369859695,
-      "mse_final": 0.02183668687939644,
-      "mse_improvement_percent": 5.102234840393066,
+      "mse_stage1": 0.023202184587717056,
+      "mse_final": 0.022005777806043625,
+      "mse_improvement_percent": 5.156440258026123,
       "stage1_bits": 4,
       "residual_bits": 3,
       "total_bits": 7,
@@ -16,9 +16,9 @@
       "compression_percent": 78.125
     },
     {
-      "mse_stage1": 0.023187773302197456,
-      "mse_final": 0.022075779736042023,
-      "mse_improvement_percent": 4.795603275299072,
+      "mse_stage1": 0.02329583466053009,
+      "mse_final": 0.02206062525510788,
+      "mse_improvement_percent": 5.302275657653809,
       "stage1_bits": 4,
       "residual_bits": 3,
       "total_bits": 7,
@@ -27,9 +27,9 @@
       "compression_percent": 78.125
     },
     {
-      "mse_stage1": 0.023159578442573547,
-      "mse_final": 0.021958671510219574,
-      "mse_improvement_percent": 5.185357570648193,
+      "mse_stage1": 0.023366251960396767,
+      "mse_final": 0.02213851548731327,
+      "mse_improvement_percent": 5.25431489944458,
       "stage1_bits": 4,
       "residual_bits": 3,
       "total_bits": 7,
@@ -38,9 +38,9 @@
       "compression_percent": 78.125
     },
     {
-      "mse_stage1": 0.023226182907819748,
-      "mse_final": 0.02179088443517685,
-      "mse_improvement_percent": 6.179656982421875,
+      "mse_stage1": 0.02339460328221321,
+      "mse_final": 0.022226840257644653,
+      "mse_improvement_percent": 4.991591453552246,
       "stage1_bits": 4,
       "residual_bits": 3,
       "total_bits": 7,
@@ -49,9 +49,9 @@
       "compression_percent": 78.125
     },
     {
-      "mse_stage1": 0.0229652039706707,
-      "mse_final": 0.021853450685739517,
-      "mse_improvement_percent": 4.841033935546875,
+      "mse_stage1": 0.023058662191033363,
+      "mse_final": 0.021996481344103813,
+      "mse_improvement_percent": 4.606428623199463,
       "stage1_bits": 4,
       "residual_bits": 3,
       "total_bits": 7,
@@ -60,9 +60,9 @@
       "compression_percent": 78.125
     },
     {
-      "mse_stage1": 0.023028649389743805,
-      "mse_final": 0.021934136748313904,
-      "mse_improvement_percent": 4.752830505371094,
+      "mse_stage1": 0.023451074957847595,
+      "mse_final": 0.022287309169769287,
+      "mse_improvement_percent": 4.962526321411133,
       "stage1_bits": 4,
       "residual_bits": 3,
       "total_bits": 7,
@@ -71,9 +71,9 @@
       "compression_percent": 78.125
     },
     {
-      "mse_stage1": 0.023394538089632988,
-      "mse_final": 0.021928295493125916,
-      "mse_improvement_percent": 6.267456531524658,
+      "mse_stage1": 0.023142151534557343,
+      "mse_final": 0.022121991962194443,
+      "mse_improvement_percent": 4.408231258392334,
       "stage1_bits": 4,
       "residual_bits": 3,
       "total_bits": 7,
@@ -82,9 +82,9 @@
       "compression_percent": 78.125
     },
     {
-      "mse_stage1": 0.02284790202975273,
-      "mse_final": 0.021796856075525284,
-      "mse_improvement_percent": 4.600185871124268,
+      "mse_stage1": 0.02296636439859867,
+      "mse_final": 0.02190125733613968,
+      "mse_improvement_percent": 4.6376824378967285,
       "stage1_bits": 4,
       "residual_bits": 3,
       "total_bits": 7,
@@ -93,9 +93,9 @@
       "compression_percent": 78.125
     },
     {
-      "mse_stage1": 0.023070547729730606,
-      "mse_final": 0.02179502323269844,
-      "mse_improvement_percent": 5.528800010681152,
+      "mse_stage1": 0.023239288479089737,
+      "mse_final": 0.022106969729065895,
+      "mse_improvement_percent": 4.872433185577393,
       "stage1_bits": 4,
       "residual_bits": 3,
       "total_bits": 7,
@@ -104,9 +104,9 @@
       "compression_percent": 78.125
     },
     {
-      "mse_stage1": 0.02311461605131626,
-      "mse_final": 0.021843131631612778,
-      "mse_improvement_percent": 5.500781059265137,
+      "mse_stage1": 0.023364372551441193,
+      "mse_final": 0.02214430645108223,
+      "mse_improvement_percent": 5.221908092498779,
       "stage1_bits": 4,
       "residual_bits": 3,
       "total_bits": 7,
@@ -115,7 +115,7 @@
       "compression_percent": 78.125
     }
   ],
-  "avg_mse_improvement_percent": 5.275394058227539,
+  "avg_mse_improvement_percent": 4.941383218765258,
   "avg_compression_improvement_percent": 78.125,
   "status": "PASSED"
 }
