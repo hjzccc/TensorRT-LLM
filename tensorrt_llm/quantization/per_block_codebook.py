@@ -2091,3 +2091,232 @@ class PerBlockAQLMScheduled(PerBlockCodebookBase):
             }
         
         return schedule
+
+
+class PerBlockAQLMWithQuantizedCodebooks(PerBlockCodebookBase):
+    """
+    Phase 5a: AQLM with Quantized Codebooks.
+    
+    Extends AQLM by quantizing the codebook entries themselves to 4-8 bits,
+    reducing codebook storage from 131KB (FP32) to 16-32KB (4-8 bits).
+    
+    This addresses the main bottleneck in Phase 4 compression:
+    - Phase 4 AQLM: 1.88x compression (131KB codebook + 8KB indices)
+    - Phase 5a: Target 4-8x compression (16-32KB codebook + 8KB indices)
+    
+    Key insight: Codebook entries don't need full FP32 precision.
+    Quantizing to 4-8 bits preserves reconstruction quality while
+    dramatically reducing storage.
+    """
+    
+    def __init__(self,
+                 block_size: int = 64,
+                 num_codebooks: int = 2,
+                 codebook_size: int = 256,
+                 codebook_bits: int = 8,
+                 max_iters: int = 10,
+                 learning_rate: float = 0.01,
+                 use_residual: bool = True,
+                 dtype: torch.dtype = torch.float32):
+        """
+        Initialize AQLM with quantized codebooks.
+        
+        Args:
+            block_size: Block size for quantization
+            num_codebooks: Number of codebooks
+            codebook_size: Size of each codebook (256 entries)
+            codebook_bits: Bits per codebook entry (4, 6, or 8)
+            max_iters: EM iterations
+            learning_rate: Learning rate for codebook optimization
+            use_residual: Use residual quantization
+            dtype: Data type for computations
+        """
+        super().__init__(block_size, dtype)
+        self.block_size = block_size
+        self.num_codebooks = num_codebooks
+        self.codebook_size = codebook_size
+        self.codebook_bits = codebook_bits
+        self.max_iters = max_iters
+        self.learning_rate = learning_rate
+        self.use_residual = use_residual
+        
+        # Validate codebook_bits
+        if codebook_bits not in [4, 6, 8]:
+            raise ValueError(f"codebook_bits must be 4, 6, or 8, got {codebook_bits}")
+    
+    def _quantize_codebook(self, codebook: torch.Tensor) -> Tuple[torch.Tensor, Dict]:
+        """
+        Quantize codebook entries to fixed bit-width.
+        
+        Args:
+            codebook: Codebook tensor (num_codebooks, codebook_size, block_size)
+            
+        Returns:
+            Tuple of (quantized_codebook, codebook_metadata)
+        """
+        # Flatten codebook for quantization
+        cb_flat = codebook.reshape(-1)
+        
+        # Compute min/max for quantization range
+        cb_min = cb_flat.min().item()
+        cb_max = cb_flat.max().item()
+        
+        # Compute quantization scale and zero point
+        max_val = 2 ** self.codebook_bits - 1
+        scale = (cb_max - cb_min) / max_val if cb_max > cb_min else 1.0
+        zero_point = cb_min
+        
+        # Quantize: map [cb_min, cb_max] to [0, 2^bits-1]
+        cb_quantized = torch.clamp(
+            torch.round((cb_flat - zero_point) / scale),
+            0, max_val
+        ).to(torch.uint8 if self.codebook_bits <= 8 else torch.int16)
+        
+        # Reshape back
+        cb_quantized = cb_quantized.reshape(codebook.shape)
+        
+        # Store metadata for dequantization
+        metadata = {
+            'cb_min': cb_min,
+            'cb_max': cb_max,
+            'scale': scale,
+            'zero_point': zero_point,
+            'bits': self.codebook_bits,
+            'shape': codebook.shape,
+        }
+        
+        return cb_quantized, metadata
+    
+    def _dequantize_codebook(self, cb_quantized: torch.Tensor, metadata: Dict) -> torch.Tensor:
+        """
+        Dequantize codebook entries from fixed bit-width back to FP32.
+        
+        Args:
+            cb_quantized: Quantized codebook tensor
+            metadata: Quantization metadata
+            
+        Returns:
+            Dequantized codebook (FP32)
+        """
+        # Convert to float for dequantization
+        cb_float = cb_quantized.float()
+        
+        # Dequantize: map [0, 2^bits-1] back to [cb_min, cb_max]
+        cb_dequantized = cb_float * metadata['scale'] + metadata['zero_point']
+        
+        return cb_dequantized
+    
+    def quantize(self, weights: torch.Tensor) -> Tuple[torch.Tensor, Dict]:
+        """
+        Quantize weights using AQLM with quantized codebooks.
+        
+        Args:
+            weights: Weight tensor
+            
+        Returns:
+            Tuple of (quantized_weights, metadata)
+        """
+        # Step 1: Use standard AQLM to learn codebooks
+        aqlm = PerBlockAQLM(
+            block_size=self.block_size,
+            num_codebooks=self.num_codebooks,
+            codebook_size=self.codebook_size,
+            max_iters=self.max_iters,
+            learning_rate=self.learning_rate,
+            use_residual=self.use_residual,
+            dtype=self.dtype
+        )
+        
+        quantized_aqlm, aqlm_metadata = aqlm.quantize(weights)
+        
+        # Step 2: Extract and quantize the codebooks
+        codebook = aqlm_metadata['codebook']  # (num_codebooks, codebook_size, block_size)
+        cb_quantized, cb_metadata = self._quantize_codebook(codebook)
+        
+        # Step 3: Create combined metadata
+        metadata = {
+            'method': 'aqlm_quantized_codebooks',
+            'block_size': self.block_size,
+            'num_codebooks': self.num_codebooks,
+            'codebook_size': self.codebook_size,
+            'codebook_bits': self.codebook_bits,
+            'codebook_quantized': cb_quantized,
+            'codebook_metadata': cb_metadata,
+            'indices': aqlm_metadata['indices'],
+            'block_scales': aqlm_metadata['block_scales'],
+            'global_scale': aqlm_metadata['global_scale'],
+            'dtype': self.dtype,
+        }
+        
+        return quantized_aqlm, metadata
+    
+    def dequantize(self, quantized: torch.Tensor, metadata: Dict) -> torch.Tensor:
+        """
+        Dequantize weights using AQLM with quantized codebooks.
+        
+        Args:
+            quantized: Quantized weight tensor
+            metadata: Metadata from quantization
+            
+        Returns:
+            Reconstructed weight tensor
+        """
+        # Step 1: Dequantize the codebook
+        cb_quantized = metadata['codebook_quantized']
+        cb_metadata = metadata['codebook_metadata']
+        codebook = self._dequantize_codebook(cb_quantized, cb_metadata)
+        
+        # Step 2: Create AQLM metadata with dequantized codebook
+        aqlm_metadata = {
+            'codebook': codebook,
+            'indices': metadata['indices'],
+            'block_scales': metadata['block_scales'],
+            'global_scale': metadata['global_scale'],
+            'block_size': metadata['block_size'],
+            'num_codebooks': metadata['num_codebooks'],
+            'codebook_size': metadata['codebook_size'],
+        }
+        
+        # Step 3: Use AQLM dequantization
+        aqlm = PerBlockAQLM(
+            block_size=metadata['block_size'],
+            num_codebooks=metadata['num_codebooks'],
+            codebook_size=metadata['codebook_size'],
+            dtype=metadata['dtype']
+        )
+        
+        return aqlm.dequantize(quantized, aqlm_metadata)
+    
+    def compute_compression_ratio(self, original_size_bytes: int, metadata: Dict) -> float:
+        """
+        Compute compression ratio with quantized codebooks.
+        
+        Args:
+            original_size_bytes: Original weight size in bytes
+            metadata: Quantization metadata
+            
+        Returns:
+            Compression ratio (original / compressed)
+        """
+        # Codebook size: (num_codebooks * codebook_size * block_size * bits) / 8
+        cb_quantized = metadata['codebook_quantized']
+        cb_bytes = (cb_quantized.numel() * metadata['codebook_bits']) / 8
+        
+        # Indices size: (num_indices * log2(codebook_size) * num_codebooks) / 8
+        indices = metadata['indices']
+        bits_per_index = np.log2(metadata['codebook_size'])
+        indices_bytes = (indices.numel() * bits_per_index * metadata['num_codebooks']) / 8
+        
+        # Block scales: (num_blocks * 1 byte for FP8)
+        block_scales = metadata['block_scales']
+        scales_bytes = block_scales.numel() * 1  # FP8
+        
+        # Global scale: 4 bytes (FP32)
+        global_scale_bytes = 4
+        
+        # Metadata overhead: ~100 bytes
+        metadata_bytes = 100
+        
+        total_compressed = cb_bytes + indices_bytes + scales_bytes + global_scale_bytes + metadata_bytes
+        
+        return original_size_bytes / total_compressed
