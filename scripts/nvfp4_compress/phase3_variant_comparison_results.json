@@ -1,0 +1,39 @@
+{
+  "A": {
+    "variant": "A_exact_mse",
+    "method": "Brute-force enumeration",
+    "avg_mse": 0.6133202910423279,
+    "num_blocks": 100,
+    "unique_codebooks": 26,
+    "elapsed_sec": 35.38699126243591,
+    "codes_per_sec": 361.7148433183549
+  },
+  "B": {
+    "variant": "B_weighted_mse",
+    "method": "Frequency-weighted MSE",
+    "avg_mse": 0.6133203125,
+    "num_blocks": 100,
+    "unique_codebooks": 26,
+    "elapsed_sec": 5.817009210586548,
+    "codes_per_sec": 2200.443481627105
+  },
+  "C": {
+    "variant": "C_frequency_regularized",
+    "method": "Frequency-regularized MSE (\u03bb=0.01)",
+    "avg_mse": 0.6133203125,
+    "num_blocks": 100,
+    "unique_codebooks": 26,
+    "elapsed_sec": 5.18285059928894,
+    "codes_per_sec": 2469.683382684442
+  },
+  "D": {
+    "variant": "D_signed_pair_constrained",
+    "method": "Signed-pair constrained search",
+    "avg_mse": 0.7578710913658142,
+    "num_blocks": 100,
+    "unique_codebooks": 4,
+    "elapsed_sec": 0.8487613201141357,
+    "codes_per_sec": 15080.800334160776,
+    "search_space_reduction": 0.015384615384615385
+  }
+}

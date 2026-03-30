@@ -104,7 +104,7 @@ def main() -> None:
         )
 
         if not compressed_bases:
-            os.symlink(shard_path.resolve(), output_dir / shard_file)
+            os.symlink(os.path.relpath(shard_path, output_dir), output_dir / shard_file)
             for key in shard_keys:
                 output_weight_map[key] = shard_file
             continue
@@ -182,7 +182,7 @@ def main() -> None:
         dst = output_dir / fn
         if dst.exists():
             continue
-        os.symlink(src.resolve(), dst)
+        os.symlink(os.path.relpath(src, output_dir), dst)
 
     print(f"Decompressed weights: {decompressed_count}", flush=True)
     print(f"Output: {output_dir}", flush=True)

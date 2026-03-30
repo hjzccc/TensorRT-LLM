@@ -82,6 +82,13 @@ SCHEMES: dict[str, dict[str, object]] = {
         "storage_mode": "per_block_codebook",
         "fixed_codes": [0],
     },
+    "2b075b_zero_fixed_weighted_abs": {
+        "description": "Per-block weighted MSE with 0 fixed and magnitude emphasis",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [0],
+        "loss_mode": "weighted_abs",
+    },
 }
 
 
@@ -165,9 +172,14 @@ def build_scheme_tables(scheme_name: str) -> dict[str, object]:
         best_idx = dists.argmin(dim=2).to(torch.uint8)
         candidate_best_codes = torch.gather(candidate_codebooks, 1, best_idx.long())
         candidate_mse_luts = (E2M1_TABLE.view(1, 16) - E2M1_TABLE[candidate_best_codes.long()]) ** 2
+        loss_mode = str(scheme.get("loss_mode", "mse"))
+        if loss_mode == "weighted_abs":
+            value_weights = 1.0 + E2M1_TABLE.abs()
+            candidate_mse_luts = candidate_mse_luts * value_weights.view(1, 16)
         return {
             "scheme_name": scheme_name,
             "storage_mode": storage_mode,
+            "loss_mode": loss_mode,
             "bits_per_index": int(cast(int, scheme["bits_per_index"])),
             "codebook_id_bits": 0,
             "fixed_codes": fixed_codes,
@@ -328,6 +340,7 @@ def main() -> None:
         "scheme": args.scheme,
         "description": cast(str, tables["description"]),
         "storage_mode": cast(str, tables["storage_mode"]),
+        "loss_mode": str(cast(str, tables.get("loss_mode", "mse"))),
         "block_size": BLOCK_SIZE,
         "bits_per_index": bits_per_index,
         "codebook_id_bits": codebook_id_bits,
@@ -349,7 +362,7 @@ def main() -> None:
         quantized_weight_keys = [k for k in shard_keys if is_quantized_weight(k, key_set)]
 
         if not quantized_weight_keys:
-            os.symlink(shard_path.resolve(), output_dir / shard_file)
+            os.symlink(os.path.relpath(shard_path, output_dir), output_dir / shard_file)
             for key in shard_keys:
                 output_weight_map[key] = shard_file
             continue
@@ -410,7 +423,7 @@ def main() -> None:
         dst = output_dir / fn
         if dst.exists():
             continue
-        os.symlink(src.resolve(), dst)
+        os.symlink(os.path.relpath(src, output_dir), dst)
 
     storage_mode = cast(str, tables["storage_mode"])
     bits_per_elem = bits_per_index + (codebook_id_bits / BLOCK_SIZE)
