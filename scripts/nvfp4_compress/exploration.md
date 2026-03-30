@@ -446,3 +446,42 @@ Entropy coding is NOT the high-value direction. The 4.1% savings don't justify t
 
 **Expected:** Both should improve accuracy vs exact MSE by better allocating codebook quality to important blocks.
 
+
+---
+
+## [Phase 3] MMLU Evaluation Results — IN PROGRESS
+
+**Status:** RUNNING (B complete, A/D/C in queue)
+
+**Baseline**: NVFP4 professional_law = 59.78% (917/1534)
+**Baseline**: NVFP4 full MMLU = 77.99% (10952/14042) [from B eval run on full MMLU]
+
+### Completed Results
+
+| Variant | Description | bits/elem | professional_law | Δ vs baseline |
+|---------|-------------|-----------|-----------------|---------------|
+| Baseline | NVFP4 (no compression) | 4.0 | 59.78% | — |
+| **B** | weighted_abs MSE (2b075b) | 2.75 | **62.71%** | **+2.93%** |
+
+**Key Finding**: B (weighted_abs MSE) achieves +2.93% improvement over baseline on professional_law at 2.75 bits/elem. This is a significant result — compression actually IMPROVES accuracy on this subject.
+
+**Hypothesis**: The weighted_abs objective (weighting by 1 + |value|) emphasizes large-magnitude codes, which may reduce noise from small-magnitude codes that contribute little to the output. This is consistent with the BOF4 literature finding that end-to-end MSE (which naturally weights by block scale^2) outperforms normalized-weight MSE.
+
+### In Queue
+
+| Variant | Description | bits/elem | Status |
+|---------|-------------|-----------|--------|
+| A | exact MSE (2b075b) | 2.75 | Running next |
+| D | scale_weighted MSE (2b075b) | 2.75 | Queued |
+| C | freq_symmetric (2b1b) | 2.0625 | Queued |
+| F | 3bit exact (no fixed zero) | 3.0 | Compressing |
+| G | 3bit weighted_abs | 3.0 | Compressing |
+
+### Next Steps After Results
+
+1. If D (scale_weighted) > B (weighted_abs): BOF4 block-scale weighting is the key
+2. If B > D: magnitude weighting (1 + |value|) is better than scale weighting
+3. If F/G (3-bit) >> A/B/D (2.75-bit): bits/elem is the bottleneck, not objective
+4. Explore: signed-pair structural constraint (BOF4-S analog)
+5. Explore: RaZeR-style redundant zero remapping (±5 special value)
+

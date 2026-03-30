@@ -966,21 +966,19 @@ class PerBlockAQLM(PerBlockCodebookBase):
             if self.use_residual and k < self.num_codebooks - 1:
                 residual = residual - codebooks[k][idx_k, 0].unsqueeze(1)
         
-        # M-step: Update codebooks as weighted averages
+        # M-step: Update codebooks as weighted averages (vectorized via scatter_add)
         updated_codebooks = []
         residual = block_flat.clone()
         
         for k in range(self.num_codebooks):
-            # Compute new codebook as average of assigned values
-            new_codebook = torch.zeros_like(codebooks[k])
-            
-            for j in range(self.codebook_size):
-                mask = indices[k] == j
-                if mask.sum() > 0:
-                    new_codebook[j, 0] = residual[mask].mean()
-                else:
-                    new_codebook[j, 0] = codebooks[k][j, 0]
-            
+            # Vectorized average: scatter_add sums residuals per codebook entry
+            idx_exp = indices[k].unsqueeze(1)  # (n, 1)
+            sum_vals = torch.zeros(self.codebook_size, 1, dtype=residual.dtype, device=residual.device)
+            count    = torch.zeros(self.codebook_size, 1, dtype=residual.dtype, device=residual.device)
+            sum_vals.scatter_add_(0, idx_exp, residual)
+            count.scatter_add_(0, idx_exp, torch.ones_like(residual))
+            # Average where assigned, keep old centroid otherwise
+            new_codebook = torch.where(count > 0, sum_vals / count.clamp(min=1), codebooks[k])
             updated_codebooks.append(new_codebook)
             
             # Update residual for next codebook

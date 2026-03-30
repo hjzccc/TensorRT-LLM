@@ -1,0 +1,7 @@
+{
+  "analysis": {
+    "num_blocks": 5000,
+    "high_magnitude_blocks": 4989,
+    "low_magnitude_blocks": 11,
+    "high_magnitude_mse": [
+      

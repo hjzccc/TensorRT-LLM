@@ -1,0 +1,7 @@
+{
+  "n_tensors": 20,
+  "exact_mse_mean": 0.28697147965431213,
+  "weighted_mse_mean": 0.3009749948978424,
+  "improvement_pct": -4.879758358001709,
+  "elapsed_sec": 26.983527183532715
+}
