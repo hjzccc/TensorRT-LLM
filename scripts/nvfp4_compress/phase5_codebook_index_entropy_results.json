@@ -1,0 +1,20 @@
+{
+  "total_indices": 781,
+  "original_bits": 1562,
+  "compressed_bits": 1468,
+  "compression_ratio": 1.064032697547684,
+  "bits_per_index": 1.879641485275288,
+  "improvement_percent": 6.017925736235597,
+  "index_frequencies": {
+    "0": 328,
+    "3": 79,
+    "2": 155,
+    "1": 219
+  },
+  "huffman_code_lengths": {
+    "0": 1,
+    "1": 2,
+    "3": 3,
+    "2": 3
+  }
+}

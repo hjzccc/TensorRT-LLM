@@ -1,0 +1,10 @@
+{
+  "n_tensors": 0,
+  "n_blocks": 0,
+  "nvfp4_mse_mean": 0,
+  "oracle_scale_mse_mean": 0,
+  "oracle_value_mse_mean": 0,
+  "scale_error_fraction": 0,
+  "value_error_fraction": 0,
+  "elapsed_sec": 0.0023469924926757812
+}

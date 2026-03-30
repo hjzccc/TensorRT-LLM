@@ -1,0 +1,182 @@
+{
+  "variant": "B_frequency_weighted_mse_greedy",
+  "validation_type": "sample_greedy_selection",
+  "selection_method": "most_frequent_codes",
+  "block_size": 128,
+  "num_codewords": 4,
+  "sample_size": 15,
+  "successfully_compressed": 15,
+  "avg_compression": 0.93359375,
+  "avg_bits_per_elem": 2.125,
+  "avg_mse": 0.008286285400390624,
+  "baseline_compression": 0.975,
+  "baseline_bits_per_elem": 0.8125,
+  "elapsed_seconds": 8.551098585128784,
+  "results": [
+    {
+      "weight": "model.layers.0.mlp.experts.0.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.007867813110351562
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.1.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.00693511962890625
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.10.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.008115768432617188
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.100.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.008344650268554688
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.101.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.010066986083984375
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.102.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.009946823120117188
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.103.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.00734710693359375
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.104.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.0068206787109375
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.105.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.010953903198242188
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.106.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.0073032379150390625
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.107.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.0073394775390625
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.108.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.0065326690673828125
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.109.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.008129119873046875
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.11.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.011384963989257812
+    },
+    {
+      "weight": "model.layers.0.mlp.experts.110.down_proj.weight",
+      "shape": [
+        2048,
+        256
+      ],
+      "numel": 524288,
+      "compression": 0.93359375,
+      "bits_per_elem": 2.125,
+      "avg_mse": 0.007205963134765625
+    }
+  ]
+}

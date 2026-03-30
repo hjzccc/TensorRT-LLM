@@ -668,7 +668,7 @@ class TestPerBlockAQLM:
         
         quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
         quantized, metadata = quantizer.quantize(weights)
-        dequantized = quantizer.dequantize(metadata)
+        dequantized = quantizer.dequantize(quantized, metadata)
         
         # Should handle small weights without NaN/Inf
         assert not torch.isnan(dequantized).any()
@@ -681,7 +681,7 @@ class TestPerBlockAQLM:
         
         quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
         quantized, metadata = quantizer.quantize(weights)
-        dequantized = quantizer.dequantize(metadata)
+        dequantized = quantizer.dequantize(quantized, metadata)
         
         # Should handle large weights without NaN/Inf
         assert not torch.isnan(dequantized).any()
@@ -807,7 +807,7 @@ class TestPerBlockAQLM:
         
         quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
         quantized, metadata = quantizer.quantize(weights)
-        dequantized = quantizer.dequantize(metadata)
+        dequantized = quantizer.dequantize(quantized, metadata)
         
         # Check shapes
         assert quantized.shape == weights.shape
@@ -833,7 +833,7 @@ class TestPerBlockAQLM:
                 codebook_size=256
             )
             quantized, metadata = quantizer.quantize(weights)
-            dequantized = quantizer.dequantize(metadata)
+            dequantized = quantizer.dequantize(quantized, metadata)
             
             assert dequantized.shape == weights.shape
             assert metadata['block_size'] == block_size
@@ -849,7 +849,7 @@ class TestPerBlockAQLM:
                 codebook_size=codebook_size
             )
             quantized, metadata = quantizer.quantize(weights)
-            dequantized = quantizer.dequantize(metadata)
+            dequantized = quantizer.dequantize(quantized, metadata)
             
             assert dequantized.shape == weights.shape
             assert metadata['codebook_size'] == codebook_size
