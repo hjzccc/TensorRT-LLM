@@ -1,0 +1,26 @@
+{
+  "baseline_mse": 0.00025449602981097996,
+  "phase25_improvement": 0.3927648921591914,
+  "phase1_improvement": 0.024621424161267697,
+  "phase18b_improvement": 0.018102979306682195,
+  "phase25_phase1": {
+    "improvement": 0.41703180440731497,
+    "expected": 0.4173863163204591,
+    "orthogonality": 0.9991506383911447
+  },
+  "phase25_phase18b": {
+    "improvement": 0.41074207691604825,
+    "expected": 0.4108678714658736,
+    "orthogonality": 0.9996938321086617
+  },
+  "phase1_phase18b": {
+    "improvement": 0.024621424161267697,
+    "expected": 0.042724403467949895,
+    "orthogonality": 0.5762847965738758
+  },
+  "phase25_phase1_phase18b": {
+    "improvement": 0.41703180440731497,
+    "expected": 0.4354892956271413,
+    "orthogonality": 0.9576166592263858
+  }
+}

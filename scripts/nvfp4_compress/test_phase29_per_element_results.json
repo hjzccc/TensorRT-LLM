@@ -1,0 +1,24 @@
+{
+  "baseline_mse": 0.00025449602981097996,
+  "per_block": {
+    "improvement": 100.0,
+    "storage_bytes": 131072,
+    "storage_kb": 128.0
+  },
+  "per_channel": {
+    "improvement": 100.0,
+    "storage_bytes": 131072,
+    "storage_kb": 128.0
+  },
+  "per_element": {
+    "improvement": 100.0,
+    "storage_bytes": 33554432,
+    "storage_mb": 32.0
+  },
+  "additional_improvements": {
+    "per_channel_vs_per_block": 0.0,
+    "per_element_vs_per_block": 0.0
+  },
+  "best_by_improvement": "per_block",
+  "best_by_efficiency": "per_block"
+}
