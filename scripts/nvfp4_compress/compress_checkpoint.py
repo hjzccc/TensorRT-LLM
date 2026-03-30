@@ -441,6 +441,7 @@ def main() -> None:
     parser.add_argument("--input", type=str, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=str, default=None)
     parser.add_argument("--scheme", type=str, default="identity", choices=sorted(SCHEMES))
+    parser.add_argument("--resume", action="store_true", help="Resume interrupted compression (skip existing shards)")
     args = parser.parse_args()
 
     input_dir = Path(args.input)
@@ -448,9 +449,9 @@ def main() -> None:
         args.output = str(input_dir.parent / f"compressed_{args.scheme}")
     output_dir = Path(args.output)
 
-    if output_dir.exists():
+    if output_dir.exists() and not args.resume:
         shutil.rmtree(output_dir)
-    output_dir.mkdir(parents=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     tables = build_scheme_tables(args.scheme)
     bits_per_index = int(cast(int, tables["bits_per_index"]))
@@ -488,6 +489,13 @@ def main() -> None:
         shard_keys = [k for k, v in input_weight_map.items() if v == shard_file]
         key_set = set(shard_keys)
         quantized_weight_keys = [k for k in shard_keys if is_quantized_weight(k, key_set)]
+
+        # Skip already-processed shards when resuming
+        if args.resume and (output_dir / shard_file).exists():
+            with safe_open(str(output_dir / shard_file), framework="pt", device="cpu") as sf:
+                for key in sf.keys():
+                    output_weight_map[key] = shard_file
+            continue
 
         if not quantized_weight_keys:
             os.symlink(os.path.relpath(shard_path, output_dir), output_dir / shard_file)
