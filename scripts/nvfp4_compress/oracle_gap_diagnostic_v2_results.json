@@ -1,0 +1,13 @@
+{
+  "n_tensors": 0,
+  "n_blocks": 0,
+  "fp8_scale_relative_error_mean": 0,
+  "scale_mse_contribution_mean": 0,
+  "near_maximal_fraction_mean": 0,
+  "scale_ratio_mean": 0,
+  "elapsed_sec": 0.00525665283203125,
+  "interpretation": {
+    "scale_error_negligible": null,
+    "value_assignment_dominates": null
+  }
+}
