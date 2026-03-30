@@ -1,0 +1,44 @@
+{
+  "synthetic": {
+    "test_type": "huffman_encoding_synthetic",
+    "num_blocks": 200,
+    "block_size": 128,
+    "num_codebooks": 256,
+    "unique_codebooks": 8,
+    "entropy": 2.638393919289235,
+    "original_bits": 204800,
+    "encoded_bits": 69078,
+    "compression_ratio": 2.964764469150815,
+    "bits_per_index": 2.698359375,
+    "encode_time_ms": 5.00798225402832,
+    "decode_time_ms": 5.798101425170898,
+    "tree_overhead_bytes": 16,
+    "effective_compression": 2.959280987197642,
+    "verification": "FAIL"
+  },
+  "realistic": {
+    "test_type": "huffman_encoding_realistic",
+    "num_blocks": 1000,
+    "block_size": 128,
+    "unique_codebooks": 26,
+    "entropy": 2.987237134509132,
+    "original_bits": 1024000,
+    "encoded_bits": 385465,
+    "compression_ratio": 2.656531721427367,
+    "bits_per_index": 3.0114453125,
+    "encode_time_ms": 11.912107467651367,
+    "decode_time_ms": 15.651226043701172,
+    "tree_overhead_bytes": 52,
+    "effective_compression": 2.6536678406037093,
+    "verification": "FAIL"
+  },
+  "integration": {
+    "test_type": "phase5a_phase5b_integration",
+    "phase5a_total_kb": 24.5,
+    "phase5a_compression": 10.693877551020408,
+    "phase5b_index_compression": 2.5,
+    "phase5b_total_kb": 19.7,
+    "phase5b_compression": 13.299492385786802,
+    "improvement_pct": -19.591836734693878
+  }
+}

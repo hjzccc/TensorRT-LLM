@@ -1,0 +1,64 @@
+{
+  "basic": {
+    "mse_before": 0.2501484751701355,
+    "mse_after": 0.002150693442672491,
+    "mse_improvement_percent": 99.1402359008789,
+    "num_channels": 256,
+    "num_outliers": 64,
+    "outlier_percent": 25.0,
+    "avg_bits": 5.0,
+    "compression_ratio": 0.15625,
+    "compression_percent": 84.375,
+    "activation_variance_range": [
+      0.6920344829559326,
+      12.012524604797363
+    ]
+  },
+  "realistic": {
+    "attention": {
+      "mse_before": 0.2501484751701355,
+      "mse_after": 0.0020833113230764866,
+      "mse_improvement_percent": 99.16716766357422,
+      "num_channels": 256,
+      "num_outliers": 64,
+      "outlier_percent": 25.0,
+      "avg_bits": 5.0,
+      "compression_ratio": 0.15625,
+      "compression_percent": 84.375,
+      "activation_variance_range": [
+        0.6920344829559326,
+        11.502811431884766
+      ]
+    },
+    "mlp": {
+      "mse_before": 0.9994410276412964,
+      "mse_after": 0.003146725706756115,
+      "mse_improvement_percent": 99.68515014648438,
+      "num_channels": 512,
+      "num_outliers": 128,
+      "outlier_percent": 25.0,
+      "avg_bits": 5.0,
+      "compression_ratio": 0.15625,
+      "compression_percent": 84.375,
+      "activation_variance_range": [
+        0.6676034331321716,
+        12.355790138244629
+      ]
+    },
+    "expert": {
+      "mse_before": 4.018935203552246,
+      "mse_after": 0.00512471841648221,
+      "mse_improvement_percent": 99.87248992919922,
+      "num_channels": 1024,
+      "num_outliers": 256,
+      "outlier_percent": 25.0,
+      "avg_bits": 5.0,
+      "compression_ratio": 0.15625,
+      "compression_percent": 84.375,
+      "activation_variance_range": [
+        0.621218740940094,
+        15.094411849975586
+      ]
+    }
+  }
+}

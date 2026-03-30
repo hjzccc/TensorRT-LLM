@@ -1,0 +1,259 @@
+{
+  "synthetic": {
+    "test_type": "expert_specific_affine_synthetic",
+    "num_experts": 8,
+    "num_blocks_per_expert": 16,
+    "block_size": 128,
+    "results_by_expert": {
+      "expert_0": {
+        "scale_factor": 0.5,
+        "baseline_mse": 0.01114478800445795,
+        "uniform_bias": {
+          "mse": 0.011035081188833831,
+          "improvement_percent": 0.9843777699516276
+        },
+        "expert_affine": {
+          "mse": 0.01041170419498378,
+          "improvement_percent": 6.5778174441805,
+          "avg_scale": 0.9539002887904644,
+          "avg_bias": -0.0018739032816339103
+        },
+        "variance_weighted": {
+          "mse": 0.0110422139678623,
+          "improvement_percent": 0.9203767407206076,
+          "variance_weight": 0.4900319576263428
+        }
+      },
+      "expert_1": {
+        "scale_factor": 0.75,
+        "baseline_mse": 0.026866333559155464,
+        "uniform_bias": {
+          "mse": 0.026694858054382757,
+          "improvement_percent": 0.6382542091020516
+        },
+        "expert_affine": {
+          "mse": 0.02531998777663669,
+          "improvement_percent": 5.755700825771259,
+          "avg_scale": 0.9563257955014706,
+          "avg_bias": -0.0011717019539384775
+        },
+        "variance_weighted": {
+          "mse": 0.026694858054382757,
+          "improvement_percent": 0.6382542091020516,
+          "variance_weight": 1.0
+        }
+      },
+      "expert_2": {
+        "scale_factor": 1.0,
+        "baseline_mse": 0.04438714683055878,
+        "uniform_bias": {
+          "mse": 0.04417816671730926,
+          "improvement_percent": 0.4708122241946944
+        },
+        "expert_affine": {
+          "mse": 0.040820942388521506,
+          "improvement_percent": 8.034317807474123,
+          "avg_scale": 0.950960136950016,
+          "avg_bias": -0.007166424237673309
+        },
+        "variance_weighted": {
+          "mse": 0.04417816671730926,
+          "improvement_percent": 0.4708122241946944,
+          "variance_weight": 1.0
+        }
+      },
+      "expert_3": {
+        "scale_factor": 1.25,
+        "baseline_mse": 0.08004747331142426,
+        "uniform_bias": {
+          "mse": 0.07929542528456551,
+          "improvement_percent": 0.9395025173785321
+        },
+        "expert_affine": {
+          "mse": 0.07370056594912056,
+          "improvement_percent": 7.928929046406119,
+          "avg_scale": 0.9479079358279705,
+          "avg_bias": 0.008286494352859892
+        },
+        "variance_weighted": {
+          "mse": 0.07929542528456551,
+          "improvement_percent": 0.9395025173785321,
+          "variance_weight": 1.0
+        }
+      },
+      "expert_4": {
+        "scale_factor": 1.5,
+        "baseline_mse": 0.09890686720609665,
+        "uniform_bias": {
+          "mse": 0.09756240594524537,
+          "improvement_percent": 1.359320438336964
+        },
+        "expert_affine": {
+          "mse": 0.09181275073551372,
+          "improvement_percent": 7.172521656965037,
+          "avg_scale": 0.9564597606658936,
+          "avg_bias": -0.006988710076149596
+        },
+        "variance_weighted": {
+          "mse": 0.09756240594524537,
+          "improvement_percent": 1.359320438336964,
+          "variance_weight": 1.0
+        }
+      },
+      "expert_5": {
+        "scale_factor": 1.75,
+        "baseline_mse": 0.14447368681430817,
+        "uniform_bias": {
+          "mse": 0.1435808750155332,
+          "improvement_percent": 0.6179753687067469
+        },
+        "expert_affine": {
+          "mse": 0.1375749648541214,
+          "improvement_percent": 4.775071580372748,
+          "avg_scale": 0.9582759886980057,
+          "avg_bias": 0.0064154384973808265
+        },
+        "variance_weighted": {
+          "mse": 0.1435808750155332,
+          "improvement_percent": 0.6179753687067469,
+          "variance_weight": 1.0
+        }
+      },
+      "expert_6": {
+        "scale_factor": 2.0,
+        "baseline_mse": 0.19267015159130096,
+        "uniform_bias": {
+          "mse": 0.19165954339908928,
+          "improvement_percent": 0.5245276364111762
+        },
+        "expert_affine": {
+          "mse": 0.179801077850662,
+          "improvement_percent": 6.679329223728092,
+          "avg_scale": 0.949881125241518,
+          "avg_bias": -0.003409056898016044
+        },
+        "variance_weighted": {
+          "mse": 0.19165954339908928,
+          "improvement_percent": 0.5245276364111762,
+          "variance_weight": 1.0
+        }
+      },
+      "expert_7": {
+        "scale_factor": 2.25,
+        "baseline_mse": 0.2489892542362213,
+        "uniform_bias": {
+          "mse": 0.24626473402666557,
+          "improvement_percent": 1.0942320454403798
+        },
+        "expert_affine": {
+          "mse": 0.23299694776424848,
+          "improvement_percent": 6.422890225134214,
+          "avg_scale": 0.9544843956828117,
+          "avg_bias": -0.004677398895073237
+        },
+        "variance_weighted": {
+          "mse": 0.24626473402666557,
+          "improvement_percent": 1.0942320454403798,
+          "variance_weight": 1.0
+        }
+      }
+    },
+    "aggregate": {
+      "uniform_bias": {
+        "mean_improvement": 0.8286252761902715,
+        "min_improvement": 0.4708122241946944,
+        "max_improvement": 1.359320438336964
+      },
+      "expert_affine": {
+        "mean_improvement": 6.668322226254012,
+        "min_improvement": 4.775071580372748,
+        "max_improvement": 8.034317807474123,
+        "improvement_over_uniform": 5.839696950063741
+      },
+      "variance_weighted": {
+        "mean_improvement": 0.820625147536394,
+        "min_improvement": 0.4708122241946944,
+        "max_improvement": 1.359320438336964,
+        "improvement_over_uniform": -0.008000128653877447
+      }
+    }
+  },
+  "realistic": {
+    "test_type": "expert_specific_affine_realistic",
+    "num_experts": 8,
+    "num_blocks_per_expert": 4,
+    "block_size": 128,
+    "results_by_expert": {
+      "expert_0": {
+        "sparsity": 0.1,
+        "baseline_mse": 0.040941838175058365,
+        "corrected_mse": 0.03693989858464063,
+        "improvement_percent": 9.774694466101675,
+        "avg_scale": 0.9467949271202087,
+        "avg_bias": -0.0029751134588138495
+      },
+      "expert_1": {
+        "sparsity": 0.30000000000000004,
+        "baseline_mse": 0.04534946382045746,
+        "corrected_mse": 0.036485038604471595,
+        "improvement_percent": 19.54692397484765,
+        "avg_scale": 0.9276655465364456,
+        "avg_bias": -0.01915829011557224
+      },
+      "expert_2": {
+        "sparsity": 0.5,
+        "baseline_mse": 0.03442283719778061,
+        "corrected_mse": 0.025948073098871646,
+        "improvement_percent": 24.619597885601852,
+        "avg_scale": 0.9350996017456055,
+        "avg_bias": -0.018663077904114533
+      },
+      "expert_3": {
+        "sparsity": 0.1,
+        "baseline_mse": 0.03612309321761131,
+        "corrected_mse": 0.03359168687726715,
+        "improvement_percent": 7.0077230792351175,
+        "avg_scale": 0.9527784883975983,
+        "avg_bias": 0.009318657844201272
+      },
+      "expert_4": {
+        "sparsity": 0.30000000000000004,
+        "baseline_mse": 0.041386496275663376,
+        "corrected_mse": 0.033793777927884544,
+        "improvement_percent": 18.34588339444332,
+        "avg_scale": 0.9351753741502762,
+        "avg_bias": 0.028514571129651223
+      },
+      "expert_5": {
+        "sparsity": 0.5,
+        "baseline_mse": 0.022930298000574112,
+        "corrected_mse": 0.017382702520989984,
+        "improvement_percent": 24.19329866295341,
+        "avg_scale": 0.9776169210672379,
+        "avg_bias": -0.061426993874980296
+      },
+      "expert_6": {
+        "sparsity": 0.1,
+        "baseline_mse": 0.038323234766721725,
+        "corrected_mse": 0.03588347906984575,
+        "improvement_percent": 6.36625721113333,
+        "avg_scale": 0.9541492462158203,
+        "avg_bias": -0.013666469079508525
+      },
+      "expert_7": {
+        "sparsity": 0.30000000000000004,
+        "baseline_mse": 0.04707369953393936,
+        "corrected_mse": 0.040387375346765286,
+        "improvement_percent": 14.203948815098643,
+        "avg_scale": 0.942323625087738,
+        "avg_bias": 0.032369175502362735
+      }
+    },
+    "aggregate": {
+      "mean_improvement": 15.507290936176874,
+      "min_improvement": 6.36625721113333,
+      "max_improvement": 24.619597885601852,
+      "std_improvement": 6.830260103867241
+    }
+  }
+}

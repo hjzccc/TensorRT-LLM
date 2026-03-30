@@ -1,0 +1,19 @@
+{
+  "subjects": {
+    "abstract_algebra": {
+      "acc": 0.61,
+      "correct": 61,
+      "elapsed_sec": 40.51451015472412,
+      "total": 100
+    }
+  },
+  "config": {
+    "batch_size": 64,
+    "limit": null,
+    "max_batch_total_tokens": 12000,
+    "offline": true
+  },
+  "mmlu_acc": 0.61,
+  "total_correct": 61,
+  "total_total": 100
+}

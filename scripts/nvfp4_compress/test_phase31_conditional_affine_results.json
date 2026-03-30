@@ -1,0 +1,18 @@
+{
+  "baseline_mse": 0.00025449602981097996,
+  "phase25_improvement": 100.0,
+  "phase31a_conditional_4": {
+    "improvement": 0.02523896104222843,
+    "additional_vs_phase25": -99.97476103895777
+  },
+  "phase31b_conditional_8": {
+    "improvement": 0.02611952289100577,
+    "additional_vs_phase25": -99.97388047710899
+  },
+  "phase31c_piecewise_linear_4": {
+    "improvement": 0.02523896104222843,
+    "additional_vs_phase25": -99.97476103895777
+  },
+  "best_technique": "phase25",
+  "best_improvement": 100.0
+}

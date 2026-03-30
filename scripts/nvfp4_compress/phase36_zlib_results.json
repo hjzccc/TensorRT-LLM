@@ -1,0 +1,104 @@
+{
+  "results": [
+    {
+      "key": "model.layers.0.mlp.experts.0.down_proj.weight",
+      "n_elements": 1048576,
+      "orig_total": 360448,
+      "comp_total": 291539,
+      "bits_orig": 2.75,
+      "bits_comp": 2.2242660522460938,
+      "savings_pct": 19.117598100142043,
+      "compress_time": 0.02076244354248047,
+      "decompress_time": 0.0012340545654296875,
+      "correct": true
+    },
+    {
+      "key": "model.layers.0.mlp.experts.1.down_proj.weight",
+      "n_elements": 1048576,
+      "orig_total": 360448,
+      "comp_total": 287263,
+      "bits_orig": 2.75,
+      "bits_comp": 2.1916427612304688,
+      "savings_pct": 20.303899591619317,
+      "compress_time": 0.02370166778564453,
+      "decompress_time": 0.0012841224670410156,
+      "correct": true
+    },
+    {
+      "key": "model.layers.0.mlp.experts.10.down_proj.weight",
+      "n_elements": 1048576,
+      "orig_total": 360448,
+      "comp_total": 292525,
+      "bits_orig": 2.75,
+      "bits_comp": 2.2317886352539062,
+      "savings_pct": 18.844049627130683,
+      "compress_time": 0.01923990249633789,
+      "decompress_time": 0.0011980533599853516,
+      "correct": true
+    },
+    {
+      "key": "model.layers.0.mlp.experts.100.down_proj.weight",
+      "n_elements": 1048576,
+      "orig_total": 360448,
+      "comp_total": 338102,
+      "bits_orig": 2.75,
+      "bits_comp": 2.5795135498046875,
+      "savings_pct": 6.199507279829546,
+      "compress_time": 0.00684809684753418,
+      "decompress_time": 0.0010707378387451172,
+      "correct": true
+    },
+    {
+      "key": "model.layers.0.mlp.experts.101.down_proj.weight",
+      "n_elements": 1048576,
+      "orig_total": 360448,
+      "comp_total": 318392,
+      "bits_orig": 2.75,
+      "bits_comp": 2.42913818359375,
+      "savings_pct": 11.667702414772728,
+      "compress_time": 0.01250147819519043,
+      "decompress_time": 0.0011444091796875,
+      "correct": true
+    },
+    {
+      "key": "model.layers.0.mlp.experts.102.down_proj.weight",
+      "n_elements": 1048576,
+      "orig_total": 360448,
+      "comp_total": 298878,
+      "bits_orig": 2.75,
+      "bits_comp": 2.2802581787109375,
+      "savings_pct": 17.081520774147727,
+      "compress_time": 0.0170285701751709,
+      "decompress_time": 0.0012221336364746094,
+      "correct": true
+    },
+    {
+      "key": "model.layers.0.mlp.experts.103.down_proj.weight",
+      "n_elements": 1048576,
+      "orig_total": 360448,
+      "comp_total": 305958,
+      "bits_orig": 2.75,
+      "bits_comp": 2.3342742919921875,
+      "savings_pct": 15.117298473011365,
+      "compress_time": 0.027765989303588867,
+      "decompress_time": 0.004198789596557617,
+      "correct": true
+    },
+    {
+      "key": "model.layers.0.mlp.experts.104.down_proj.weight",
+      "n_elements": 1048576,
+      "orig_total": 360448,
+      "comp_total": 344985,
+      "bits_orig": 2.75,
+      "bits_comp": 2.6320266723632812,
+      "savings_pct": 4.2899391867897725,
+      "compress_time": 0.008269786834716797,
+      "decompress_time": 0.0010654926300048828,
+      "correct": true
+    }
+  ],
+  "summary": {
+    "avg_bits": 2.362863540649414,
+    "avg_savings": 14.077689430930398
+  }
+}

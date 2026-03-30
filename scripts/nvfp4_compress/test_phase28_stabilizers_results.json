@@ -1,0 +1,22 @@
+{
+  "baseline_mse": 0.7915164232254028,
+  "phase25_improvement": 99.99999999999993,
+  "outlier_clipping": {
+    "improvement": 99.99999999999999,
+    "additional_vs_phase25": 74.74689617903756
+  },
+  "quantile_scaling": {
+    "improvement": 99.99999999999994,
+    "additional_vs_phase25": 16.3647986530861
+  },
+  "variance_normalization": {
+    "improvement": 36.33902689585903,
+    "additional_vs_phase25": -9.39121725771333e+16
+  },
+  "combined": {
+    "improvement": 76.43265244126975,
+    "additional_vs_phase25": -3.4766367889164204e+16
+  },
+  "best_technique": "clipping",
+  "best_improvement": 99.99999999999999
+}
