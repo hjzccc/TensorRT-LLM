@@ -27,7 +27,7 @@ def test_phase23c_on_real_model():
     
     # Initialize Phase 22 pipeline
     print("\n[1/5] Initializing Phase 22 pipeline...")
-    phase22 = Phase22HybridPipeline()
+    phase22 = Phase22HybridPipeline('phase21_layer_sensitivity_analysis.json')
     
     # Initialize Phase 23C quantizer
     print("[2/5] Initializing Phase 23C quantizer...")

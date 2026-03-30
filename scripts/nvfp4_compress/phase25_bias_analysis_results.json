@@ -1,0 +1,75 @@
+{
+  "phase": "25_analysis",
+  "method": "Bias-Only Correction Analysis",
+  "timestamp": "2026-03-30 04:54:38",
+  "duration_seconds": 0.019580841064453125,
+  "tests": [
+    {
+      "test_type": "bias_all_vs_selective",
+      "num_blocks": 200,
+      "block_size": 128,
+      "results": {
+        "bias_all_blocks": {
+          "mse_before": 0.017403872683644295,
+          "mse_after": 0.01725805977072188,
+          "error_reduction_percent": 0.8378187750100241
+        },
+        "bias_selective_high_error": {
+          "mse_before": 0.017403872683644295,
+          "mse_after": 0.017321161184061736,
+          "error_reduction_percent": 0.4752476709410147,
+          "num_blocks_corrected": 60
+        },
+        "bias_selective_low_error": {
+          "mse_before": 0.017403872683644295,
+          "mse_after": 0.017389876853126283,
+          "error_reduction_percent": 0.0804179091195234,
+          "num_blocks_corrected": 60
+        }
+      }
+    },
+    {
+      "test_type": "different_thresholds",
+      "num_blocks": 200,
+      "block_size": 128,
+      "results": {
+        "Top 50%": {
+          "percentile": 50,
+          "num_blocks_corrected": 100,
+          "error_reduction_percent": 0.6410848628274679
+        },
+        "Top 40%": {
+          "percentile": 60,
+          "num_blocks_corrected": 80,
+          "error_reduction_percent": 0.5530456924156213
+        },
+        "Top 30%": {
+          "percentile": 70,
+          "num_blocks_corrected": 60,
+          "error_reduction_percent": 0.4752476709410147
+        },
+        "Top 20%": {
+          "percentile": 80,
+          "num_blocks_corrected": 40,
+          "error_reduction_percent": 0.3801824966033096
+        },
+        "Top 10%": {
+          "percentile": 90,
+          "num_blocks_corrected": 20,
+          "error_reduction_percent": 0.20389696784991473
+        },
+        "All blocks": {
+          "percentile": 100,
+          "num_blocks_corrected": 200,
+          "error_reduction_percent": 0.8378187750100241
+        }
+      }
+    }
+  ],
+  "key_findings": {
+    "bias_all_blocks_improvement": 0.8378187750100241,
+    "bias_selective_improvement": 0.4752476709410147,
+    "best_threshold": "All blocks (100%)",
+    "best_improvement": 0.8378187750100241
+  }
+}

@@ -165,7 +165,10 @@ def test_phase5a_vs_phase4():
     compression_p5a = aqlm_phase5a.compute_compression_ratio(original_size, metadata_p5a)
     
     cb_quantized = metadata_p5a['codebook_quantized']
-    cb_bytes_p5a = (cb_quantized.numel() * 8) / 8
+    cb_bytes_p5a = 0
+    for cb_list in cb_quantized:
+        for cb_tensor in cb_list:
+            cb_bytes_p5a += (cb_tensor.numel() * 8) / 8
     
     print(f"    Codebook size: {cb_bytes_p5a / 1024:.1f} KB (8-bit)")
     print(f"    Compression: {compression_p5a:.2f}x")
