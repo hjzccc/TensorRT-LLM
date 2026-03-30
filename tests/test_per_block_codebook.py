@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from tensorrt_llm.quantization.per_block_codebook import (
     PerBlockAdaptiveScaling,
+    PerBlockBOF4,
     PerBlockQuantizationConfig,
     quantize_weights,
     dequantize_weights,
@@ -222,6 +223,163 @@ class TestIntegration:
         avg_error = total_error / len(layer_shapes)
         print(f"Average error: {avg_error:.6f}")
         assert avg_error < 0.2
+
+
+class TestPerBlockBOF4:
+    """Test BOF4 EM-optimized learned codebook quantization."""
+    
+    def test_quantize_simple(self):
+        """Test basic BOF4 quantization."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockBOF4(block_size=128)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        assert quantized.shape == weights.shape
+        assert metadata['method'] == 'bof4'
+        assert metadata['num_codewords'] == 16
+        assert len(metadata['codebooks']) == 4
+        assert len(metadata['outlier_masks']) == 4
+        assert len(metadata['scales']) == 4
+    
+    def test_dequantize(self):
+        """Test BOF4 dequantization."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockBOF4(block_size=128)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(quantized, metadata)
+        
+        assert dequantized.shape == weights.shape
+        
+        error = torch.abs(weights - dequantized).mean()
+        print(f"BOF4 mean reconstruction error: {error:.6f}")
+        assert error < 0.15
+    
+    def test_quantize_dequantize_roundtrip(self):
+        """Test full BOF4 quantize-dequantize roundtrip."""
+        weights = torch.randn(512, 512)
+        
+        config = PerBlockQuantizationConfig(method='bof4', block_size=128)
+        quantized, metadata = quantize_weights(weights, config)
+        dequantized = dequantize_weights(quantized, metadata)
+        
+        error = torch.abs(weights - dequantized).mean()
+        print(f"BOF4 roundtrip error: {error:.6f}")
+        assert error < 0.2
+    
+    def test_codebook_learning(self):
+        """Test that EM learns reasonable codebooks."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockBOF4(block_size=128)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        for i, codebook in enumerate(metadata['codebooks']):
+            assert codebook.shape == (16,)
+            assert torch.all(torch.isfinite(codebook))
+            print(f"Block {i} codebook range: [{codebook.min():.4f}, {codebook.max():.4f}]")
+    
+    def test_outlier_detection(self):
+        """Test outlier detection mechanism."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockBOF4(block_size=128, outlier_threshold=1.5)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        total_outliers = 0
+        for i, outlier_mask in enumerate(metadata['outlier_masks']):
+            num_outliers = outlier_mask.sum().item()
+            total_outliers += num_outliers
+            print(f"Block {i}: {num_outliers} outliers out of {outlier_mask.numel()}")
+        
+        outlier_ratio = total_outliers / (256 * 256)
+        print(f"Total outlier ratio: {outlier_ratio:.4f}")
+        assert 0 <= outlier_ratio <= 0.5
+    
+    def test_different_block_sizes(self):
+        """Test BOF4 with different block sizes."""
+        weights = torch.randn(256, 256)
+        
+        for block_size in [64, 128, 256]:
+            quantizer = PerBlockBOF4(block_size=block_size)
+            quantized, metadata = quantizer.quantize(weights)
+            dequantized = quantizer.dequantize(quantized, metadata)
+            
+            error = torch.abs(weights - dequantized).mean()
+            print(f"BOF4 block size {block_size}: error = {error:.6f}")
+            assert error < 0.2
+    
+    def test_small_weights(self):
+        """Test BOF4 with small weight values."""
+        weights = torch.randn(128, 128) * 0.01
+        
+        quantizer = PerBlockBOF4(block_size=64)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(quantized, metadata)
+        
+        error = torch.abs(weights - dequantized).mean()
+        print(f"BOF4 small weights error: {error:.6f}")
+        assert error < 0.01
+    
+    def test_large_weights(self):
+        """Test BOF4 with large weight values."""
+        weights = torch.randn(128, 128) * 100
+        
+        quantizer = PerBlockBOF4(block_size=64)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(quantized, metadata)
+        
+        error = torch.abs(weights - dequantized).mean()
+        print(f"BOF4 large weights error: {error:.6f}")
+        assert error < 20
+    
+    def test_compression_ratio(self):
+        """Test BOF4 compression ratio calculation."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockBOF4(block_size=128)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        ratio = quantizer.get_compression_ratio(metadata)
+        print(f"BOF4 compression ratio: {ratio:.2f}x")
+        
+        assert 2.0 < ratio < 8.0
+    
+    def test_batch_quantization(self):
+        """Test BOF4 on batch of weights."""
+        layer_shapes = [
+            (4096, 4096),
+            (4096, 12288),
+            (12288, 4096),
+        ]
+        
+        config = PerBlockQuantizationConfig(method='bof4', block_size=128)
+        
+        total_error = 0
+        for shape in layer_shapes:
+            weights = torch.randn(*shape)
+            quantized, metadata = quantize_weights(weights, config)
+            dequantized = dequantize_weights(quantized, metadata)
+            
+            error = torch.abs(weights - dequantized).mean()
+            total_error += error
+            print(f"BOF4 layer {shape}: error = {error:.6f}")
+        
+        avg_error = total_error / len(layer_shapes)
+        print(f"BOF4 average error: {avg_error:.6f}")
+        assert avg_error < 0.2
+    
+    def test_em_convergence(self):
+        """Test that EM algorithm converges."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockBOF4(block_size=128, max_em_iters=50)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        for i, codebook in enumerate(metadata['codebooks']):
+            assert torch.all(torch.isfinite(codebook))
+            print(f"Block {i} codebook learned successfully")
 
 
 if __name__ == '__main__':
