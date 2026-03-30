@@ -1,0 +1,26 @@
+[
+  {
+    "rank": 1,
+    "technique": "Full Affine",
+    "calib_time": 4.0025224685668945,
+    "calib_mse_baseline": 0.022164124180562794,
+    "calib_mse_corrected": 0.022009041684214026,
+    "calib_ppl_improvement": 0.69970053896725,
+    "test_mse_baseline": 0.02216817397857085,
+    "test_mse_corrected": 0.022015074006048962,
+    "test_ppl_improvement": 0.6906296056223769,
+    "storage_bytes": 64
+  },
+  {
+    "rank": 3,
+    "technique": "Clustered Affine",
+    "calib_time": 4.697469711303711,
+    "calib_mse_baseline": 0.022164124180562794,
+    "calib_mse_corrected": 0.02195883757667616,
+    "calib_ppl_improvement": 0.9262112150890388,
+    "test_mse_baseline": 0.02216817397857085,
+    "test_mse_corrected": 0.021965240099234506,
+    "test_ppl_improvement": 0.9154289366932562,
+    "storage_bytes": 64
+  }
+]

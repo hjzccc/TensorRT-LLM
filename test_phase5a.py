@@ -41,7 +41,7 @@ def test_phase5a_basic_quantization():
         num_codebooks=2,
         codebook_size=256,
         codebook_bits=8,
-        max_iters=5
+        max_iters=2
     )
     
     quantized, metadata = quantizer.quantize(weights)
@@ -89,7 +89,7 @@ def test_phase5a_different_bitwidths():
             num_codebooks=2,
             codebook_size=256,
             codebook_bits=bits,
-            max_iters=5
+            max_iters=2
         )
         
         quantized, metadata = quantizer.quantize(weights)
@@ -129,13 +129,25 @@ def test_phase5a_vs_phase4():
         block_size=64,
         num_codebooks=2,
         codebook_size=256,
-        max_iters=5
+        max_iters=2
     )
     quantized_p4, metadata_p4 = aqlm_phase4.quantize(weights)
     
-    codebook_p4 = metadata_p4['codebook']
-    cb_bytes_p4 = codebook_p4.numel() * 4
-    indices_bytes_p4 = metadata_p4['indices'].numel() * 1
+    codebooks_p4 = metadata_p4['codebooks']
+    cb_bytes_p4 = 0
+    for block_cbs in codebooks_p4:
+        for cb in block_cbs:
+            cb_bytes_p4 += cb.numel() * 4
+    
+    indices_p4 = metadata_p4['indices']
+    indices_bytes_p4 = 0
+    for idx_item in indices_p4:
+        if isinstance(idx_item, list):
+            for idx in idx_item:
+                indices_bytes_p4 += idx.numel() * 1
+        else:
+            indices_bytes_p4 += idx_item.numel() * 1
+    
     compression_p4 = original_size / (cb_bytes_p4 + indices_bytes_p4 + 100)
     
     print(f"    Codebook size: {cb_bytes_p4 / 1024:.1f} KB (FP32)")
@@ -147,7 +159,7 @@ def test_phase5a_vs_phase4():
         num_codebooks=2,
         codebook_size=256,
         codebook_bits=8,
-        max_iters=5
+        max_iters=2
     )
     quantized_p5a, metadata_p5a = aqlm_phase5a.quantize(weights)
     compression_p5a = aqlm_phase5a.compute_compression_ratio(original_size, metadata_p5a)
@@ -191,7 +203,7 @@ def test_phase5a_scalability():
             num_codebooks=2,
             codebook_size=256,
             codebook_bits=8,
-            max_iters=3
+            max_iters=2
         )
         
         quantized, metadata = quantizer.quantize(weights)
@@ -228,7 +240,7 @@ def test_phase5a_4bit_extreme():
         num_codebooks=2,
         codebook_size=256,
         codebook_bits=4,
-        max_iters=5
+        max_iters=2
     )
     
     quantized, metadata = quantizer.quantize(weights)

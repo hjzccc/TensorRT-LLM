@@ -1,0 +1,12 @@
+{
+  "status": "implementation_test",
+  "num_codebooks": 26,
+  "bits_per_index": 4.700439718141092,
+  "bits_saved_per_block": 6.129560281858908,
+  "bits_saved_per_elem": 0.04788718970202272,
+  "avg_mse": 43.26475524902344,
+  "throughput_blocks_per_sec": 173.57088557359697,
+  "compression_ratio": 16.16967805033147,
+  "improvement_pct": 719.3401596316934,
+  "blocks_tested": 100
+}

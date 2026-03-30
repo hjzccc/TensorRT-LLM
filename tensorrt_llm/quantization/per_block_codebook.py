@@ -2548,9 +2548,10 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
         self.dtype = dtype
         
         # Initialize BOF4 for warm-start codebook generation
+        # BOF4 uses num_codewords (16 for 4-bit), not codebook_size
         self.bof4 = PerBlockBOF4(
             block_size=block_size,
-            codebook_size=codebook_size,
+            num_codewords=16,  # 4-bit quantization
             dtype=dtype
         )
         

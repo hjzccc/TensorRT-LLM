@@ -130,7 +130,27 @@ SCHEMES: dict[str, dict[str, object]] = {
         "fixed_codes": [0],
         "loss_mode": "magnitude_squared",
     },
-
+    "2b075b_zero_fixed_scale_linear": {
+        "description": "Per-block MSE weighted by block scale (linear, not squared) — more moderate than scale^2",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [0],
+        "loss_mode": "scale_linear",
+    },
+    "3b1b_4free_scale_weighted": {
+        "description": "Exact per-block MSE with 4 free codes + scale^2 weighting, 3.0 bits/elem",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [],
+        "loss_mode": "scale_weighted",
+    },
+    "3b1b_4free_freq_sq": {
+        "description": "Exact per-block MSE with 4 free codes + freq^2 weighting, 3.0 bits/elem",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [],
+        "loss_mode": "freq_sq",
+    },
 }
 
 
@@ -315,6 +335,12 @@ def compress_codes(
                 scales_chunk = block_scales[start:end].to(torch.float32).unsqueeze(1)
                 weighted_counts = counts * (scales_chunk ** 2)
                 costs = weighted_counts @ candidate_mse_luts.T
+            elif loss_mode == "scale_linear" and block_scales is not None:
+                # Weight each block's code counts by its block scale (linear, not squared)
+                # More moderate than scale^2: reduces dynamic range from 357000x to 600x
+                scales_chunk = block_scales[start:end].to(torch.float32).unsqueeze(1)
+                weighted_counts = counts * scales_chunk
+                costs = weighted_counts @ candidate_mse_luts.T
             elif loss_mode == "freq_sq":
                 # Weight by frequency^2: emphasize dominant codes more
                 freq = counts / counts.sum(dim=1, keepdim=True).clamp(min=1)
@@ -470,7 +496,7 @@ def main() -> None:
                     # Load block scales for scale-weighted compression
                     scale_key = f"{base}.weight_scale"
                     blk_scales: torch.Tensor | None = None
-                    if scale_key in key_set and cast(str, tables.get("loss_mode", "mse")) == "scale_weighted":
+                    if scale_key in key_set and cast(str, tables.get("loss_mode", "mse")) in ("scale_weighted", "scale_linear"):
                         blk_scales_raw = sf.get_tensor(scale_key)
                         # Decode FP8 E4M3: sign=bit7, exp=bits6-3, mant=bits2-0
                         v = blk_scales_raw.long()

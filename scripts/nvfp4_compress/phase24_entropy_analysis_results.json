@@ -1,0 +1,13 @@
+{
+  "total_elements": 32338083840,
+  "global_counts": [
+    10712746512,
+    8579757250,
+    6655924554,
+    6389655524
+  ],
+  "entropy_bits_per_index": 1.9675192754890591,
+  "current_bits_per_elem": 2.75,
+  "entropy_coded_bits_per_elem": 2.7175192754890594,
+  "bits_reduction": 0.03248072451094064
+}

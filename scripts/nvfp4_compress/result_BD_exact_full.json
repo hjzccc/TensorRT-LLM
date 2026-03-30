@@ -5,19 +5,31 @@
     "max_batch_total_tokens": 12000,
     "offline": true
   },
-  "mmlu_acc": 0.6638297872340425,
+  "mmlu_acc": 0.7638603696098563,
   "subjects": {
     "abstract_algebra": {
       "acc": 0.52,
       "correct": 52,
-      "elapsed_sec": 40.46669578552246,
+      "elapsed_sec": 40.20714259147644,
       "total": 100
     },
     "anatomy": {
       "acc": 0.7703703703703704,
       "correct": 104,
-      "elapsed_sec": 63.44417452812195,
+      "elapsed_sec": 49.00760102272034,
       "total": 135
+    },
+    "astronomy": {
+      "acc": 0.8881578947368421,
+      "correct": 135,
+      "elapsed_sec": 59.96276068687439,
+      "total": 152
+    },
+    "business_ethics": {
+      "acc": 0.81,
+      "correct": 81,
+      "elapsed_sec": 43.83863019943237,
+      "total": 100
     }
   }
 }
