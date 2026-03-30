@@ -964,7 +964,7 @@ class PerBlockAQLM(PerBlockCodebookBase):
             
             # Update residual for next codebook
             if self.use_residual and k < self.num_codebooks - 1:
-                residual = residual - codebooks[k][idx_k].unsqueeze(1)
+                residual = residual - codebooks[k][idx_k, 0].unsqueeze(1)
         
         # M-step: Update codebooks as weighted averages
         updated_codebooks = []
@@ -985,7 +985,7 @@ class PerBlockAQLM(PerBlockCodebookBase):
             
             # Update residual for next codebook
             if self.use_residual and k < self.num_codebooks - 1:
-                residual = residual - new_codebook[indices[k]].unsqueeze(1)
+                residual = residual - new_codebook[indices[k], 0].unsqueeze(1)
         
         return updated_codebooks, indices
     
@@ -1013,7 +1013,7 @@ class PerBlockAQLM(PerBlockCodebookBase):
             
             # Update residual
             if self.use_residual and k < self.num_codebooks - 1:
-                residual = residual - codebooks[k][idx_k].unsqueeze(1)
+                residual = residual - codebooks[k][idx_k, 0].unsqueeze(1)
         
         return indices_list, residual
     
@@ -1059,7 +1059,7 @@ class PerBlockAQLM(PerBlockCodebookBase):
             block_quant = torch.zeros_like(block_norm)
             for k in range(self.num_codebooks):
                 idx_k = indices_list[k]
-                block_quant = block_quant + codebooks[k][idx_k].reshape(block.shape)
+                block_quant = block_quant + codebooks[k][idx_k, 0].reshape(block.shape)
             
             # Denormalize
             block_quant_scaled = block_quant * block_scale
@@ -1090,18 +1090,18 @@ class PerBlockAQLM(PerBlockCodebookBase):
         
         return quantized_weights, metadata
     
-    def dequantize(self, quantized: torch.Tensor, metadata: Dict) -> torch.Tensor:
+    def dequantize(self, metadata: Dict) -> torch.Tensor:
         """
         Dequantize weights using AQLM metadata.
         
         Args:
-            quantized: Quantized weight tensor
             metadata: Metadata from quantization
             
         Returns:
             Reconstructed weight tensor
         """
         M, N = metadata['original_shape']
+        quantized = torch.zeros((M, N), dtype=metadata['dtype'])
         blocks = self._reshape_into_blocks(quantized)
         
         reconstructed_blocks = []
@@ -1119,7 +1119,7 @@ class PerBlockAQLM(PerBlockCodebookBase):
             block_recon = torch.zeros_like(block)
             for k in range(self.num_codebooks):
                 idx_k = block_indices[k]
-                block_recon = block_recon + block_codebooks[k][torch.arange(len(idx_k)), idx_k].reshape(block.shape)
+                block_recon = block_recon + block_codebooks[k][idx_k, 0].reshape(block.shape)
             
             # Denormalize
             block_recon_scaled = block_recon * block_scale
@@ -1373,11 +1373,13 @@ class PerBlockWeightedMSE(PerBlockCodebookBase):
     def _weighted_em(self, block: torch.Tensor,
                      elem_weights: torch.Tensor) -> torch.Tensor:
         """
-        Weighted EM (k-means) for codebook learning.
+        Weighted EM (k-means) for codebook learning — fully vectorised.
 
         Objective: min_C  sum_i  w_i * (x_i - C(x_i))^2
 
-        Uses fully vectorised operations — no Python loops over codewords.
+        E-step uses the identity (x-c)^2 = x^2 - 2xc + c^2 to avoid
+        materialising the full (n, K) distance matrix.
+        M-step uses scatter_add_ for O(n) vectorised weighted mean per cluster.
 
         Args:
             block: Scaled weight block, shape (R, C)
@@ -1389,42 +1391,47 @@ class PerBlockWeightedMSE(PerBlockCodebookBase):
         x = block.flatten()                    # (n,)
         w = elem_weights.flatten()             # (n,)
         w = w / w.sum().clamp(min=1e-12)       # normalise to sum=1
+        K = self.num_codewords
+        x_sq = x * x                           # (n,) — precompute
 
-        # Initialise codebook via weighted quantiles
+        # Initialise codebook via weighted quantiles (vectorised)
         codebook = self._weighted_quantile_init(x, w)
 
+        prev_assignments = torch.full((len(x),), -1, dtype=torch.long, device=x.device)
+
         for _ in range(self.max_em_iters):
-            # E-step: assign each element to nearest codeword
-            # x: (n,), codebook: (K,)  →  dists: (n, K)
-            dists = (x.unsqueeze(1) - codebook.unsqueeze(0)) ** 2  # (n, K)
-            assignments = dists.argmin(dim=1)                       # (n,)
+            # E-step: (x-c)^2 = x^2 - 2xc + c^2  →  argmin over c^2 - 2xc
+            # Shape: (n, K) via broadcasting
+            c_sq = codebook * codebook          # (K,)
+            scores = c_sq.unsqueeze(0) - 2.0 * x.unsqueeze(1) * codebook.unsqueeze(0)
+            # x^2 term is constant across K, so omit for argmin
+            assignments = scores.argmin(dim=1)  # (n,)
 
-            # M-step: weighted mean per cluster
-            new_codebook = codebook.clone()
-            for k in range(self.num_codewords):
-                mask = (assignments == k)
-                if mask.any():
-                    w_k = w[mask]
-                    x_k = x[mask]
-                    new_codebook[k] = (w_k * x_k).sum() / w_k.sum().clamp(min=1e-12)
-                # else: keep previous codeword (handles empty clusters)
-
-            # Convergence check
-            if (new_codebook - codebook).abs().max() < self.tol:
-                codebook = new_codebook
+            # Early exit if assignments unchanged
+            if (assignments == prev_assignments).all():
                 break
-            codebook = new_codebook
+            prev_assignments = assignments
+
+            # M-step: vectorised weighted mean via scatter_add_
+            num = torch.zeros(K, dtype=x.dtype, device=x.device)
+            den = torch.zeros(K, dtype=x.dtype, device=x.device)
+            num.scatter_add_(0, assignments, w * x)
+            den.scatter_add_(0, assignments, w)
+
+            # Update only non-empty clusters; keep previous value for empty ones
+            non_empty = den > 0
+            codebook = codebook.clone()
+            codebook[non_empty] = num[non_empty] / den[non_empty]
 
         return codebook
 
     def _weighted_quantile_init(self, x: torch.Tensor,
                                  w: torch.Tensor) -> torch.Tensor:
         """
-        Initialise codebook using weighted quantiles.
+        Initialise codebook using weighted quantiles — fully vectorised.
 
         Sorts x by value, computes cumulative weight, then picks K evenly
-        spaced quantile points.  This gives a better starting point than
-        uniform quantiles when the weight distribution is skewed.
+        spaced quantile points via searchsorted (no Python loop over K).
 
         Args:
             x: Flattened weight values, shape (n,)
@@ -1438,12 +1445,11 @@ class PerBlockWeightedMSE(PerBlockCodebookBase):
         w_sorted = w[sort_idx]
         cum_w = w_sorted.cumsum(0)
 
-        # Pick K evenly spaced quantile targets
+        # Pick K evenly spaced quantile targets via searchsorted (vectorised)
         targets = torch.linspace(0, 1, self.num_codewords, device=x.device)
-        codebook = torch.zeros(self.num_codewords, dtype=x.dtype, device=x.device)
-        for k, t in enumerate(targets):
-            idx = (cum_w >= t).nonzero(as_tuple=True)[0]
-            codebook[k] = x_sorted[idx[0]] if len(idx) > 0 else x_sorted[-1]
+        indices = torch.searchsorted(cum_w.contiguous(), targets.contiguous())
+        indices = indices.clamp(0, len(x_sorted) - 1)
+        codebook = x_sorted[indices]
 
         return codebook
 

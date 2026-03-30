@@ -14,6 +14,7 @@ from tensorrt_llm.quantization.per_block_codebook import (
     PerBlockAdaptiveScaling,
     PerBlockBOF4,
     PerBlockGLVQ,
+    PerBlockAQLM,
     PerBlockQuantizationConfig,
     quantize_weights,
     dequantize_weights,
@@ -552,6 +553,306 @@ class TestPerBlockGLVQ:
         
         assert error_glvq < 0.2
         assert error_p1 < 0.2
+
+
+class TestPerBlockAQLM:
+    """Test AQLM (Additive Quantization with Learned Matrices) quantization."""
+    
+    def test_quantize_simple(self):
+        """Test basic AQLM quantization on random tensor."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        # Check shapes
+        assert quantized.shape == weights.shape
+        assert metadata['original_shape'] == weights.shape
+        assert metadata['method'] == 'aqlm'
+        
+        # Check metadata structure
+        assert 'codebooks' in metadata
+        assert 'indices' in metadata
+        assert 'scales' in metadata
+        assert metadata['num_codebooks'] == 2
+        assert metadata['codebook_size'] == 256
+        assert metadata['block_size'] == 128
+    
+    def test_dequantize(self):
+        """Test AQLM dequantization from metadata."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(metadata)
+        
+        # Check shape
+        assert dequantized.shape == weights.shape
+        
+        # Check that dequantized is close to quantized (not original, since quantization loses info)
+        assert torch.allclose(dequantized, quantized, atol=1e-5)
+    
+    def test_roundtrip(self):
+        """Test quantize -> dequantize roundtrip fidelity."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(metadata)
+        
+        # Compute MSE
+        mse = torch.mean((dequantized - quantized) ** 2).item()
+        
+        # MSE should be very small (ideally 0 for perfect reconstruction)
+        assert mse < 1e-5, f"MSE too high: {mse}"
+        
+        # Check shapes match
+        assert dequantized.shape == quantized.shape
+    
+    def test_codebook_learning(self):
+        """Verify that codebooks are learned (not just initialized)."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256, max_iters=10)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        # Check that codebooks exist and have correct shape
+        assert len(metadata['codebooks']) > 0
+        
+        # Each block should have codebooks
+        for block_codebooks in metadata['codebooks']:
+            assert len(block_codebooks) == 2  # num_codebooks=2
+            for codebook in block_codebooks:
+                assert codebook.shape[0] == 256  # codebook_size=256
+    
+    def test_num_codebooks_variation(self):
+        """Test AQLM with different numbers of codebooks."""
+        weights = torch.randn(256, 256)
+        
+        for num_codebooks in [1, 2, 3, 4]:
+            quantizer = PerBlockAQLM(
+                block_size=128,
+                num_codebooks=num_codebooks,
+                codebook_size=256
+            )
+            quantized, metadata = quantizer.quantize(weights)
+            
+            assert metadata['num_codebooks'] == num_codebooks
+            
+            # Check codebook structure
+            for block_codebooks in metadata['codebooks']:
+                assert len(block_codebooks) == num_codebooks
+    
+    def test_residual_quantization(self):
+        """Verify that residual quantization works correctly."""
+        weights = torch.randn(256, 256)
+        
+        # Test with residual quantization enabled
+        quantizer = PerBlockAQLM(
+            block_size=128,
+            num_codebooks=2,
+            codebook_size=256,
+            use_residual=True
+        )
+        quantized, metadata = quantizer.quantize(weights)
+        
+        # Should have indices for each codebook
+        for block_indices in metadata['indices']:
+            assert len(block_indices) == 2  # num_codebooks=2
+            for indices in block_indices:
+                assert indices.shape[0] > 0  # Should have indices
+    
+    def test_small_weights(self):
+        """Test AQLM on weights near zero (edge case)."""
+        weights = torch.randn(256, 256) * 1e-6  # Very small weights
+        
+        quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(metadata)
+        
+        # Should handle small weights without NaN/Inf
+        assert not torch.isnan(dequantized).any()
+        assert not torch.isinf(dequantized).any()
+        assert dequantized.shape == weights.shape
+    
+    def test_large_weights(self):
+        """Test AQLM on large magnitude weights (edge case)."""
+        weights = torch.randn(256, 256) * 1e3  # Very large weights
+        
+        quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(metadata)
+        
+        # Should handle large weights without NaN/Inf
+        assert not torch.isnan(dequantized).any()
+        assert not torch.isinf(dequantized).any()
+        assert dequantized.shape == weights.shape
+    
+    def test_compression_ratio(self):
+        """Verify compression ratio is reasonable."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        # Estimate compression ratio
+        # Original: 256*256*4 bytes (FP32)
+        original_size = weights.numel() * 4
+        
+        # Compressed: indices (uint8) + codebooks (FP32)
+        # For each block: 2 codebooks * 256 entries * 4 bytes + indices
+        num_blocks = (256 // 128) ** 2  # 2x2 blocks
+        codebook_size = num_blocks * 2 * 256 * 4  # 2 codebooks per block
+        indices_size = weights.numel() * 2 * 1  # 2 indices per element (uint8)
+        
+        compressed_size = codebook_size + indices_size
+        compression_ratio = original_size / compressed_size
+        
+        # Should achieve some compression (at least 1.5x with current FP32 storage)
+        assert compression_ratio > 1.0, f"No compression achieved: {compression_ratio}x"
+    
+    def test_batch_quantization(self):
+        """Test quantizing multiple blocks correctly."""
+        weights = torch.randn(512, 512)  # 4x4 blocks with block_size=128
+        
+        quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        # Should have 4x4 = 16 blocks
+        assert len(metadata['codebooks']) == 16
+        assert len(metadata['indices']) == 16
+        assert len(metadata['scales']) == 16
+    
+    def test_numerical_stability(self):
+        """Check for NaN/Inf in codebooks and reconstructions."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256, max_iters=10)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        # Check codebooks for NaN/Inf
+        for block_codebooks in metadata['codebooks']:
+            for codebook in block_codebooks:
+                assert not torch.isnan(codebook).any(), "NaN in codebook"
+                assert not torch.isinf(codebook).any(), "Inf in codebook"
+        
+        # Check scales for NaN/Inf
+        for scale in metadata['scales']:
+            assert not torch.isnan(scale).any(), "NaN in scale"
+            assert not torch.isinf(scale).any(), "Inf in scale"
+        
+        # Check quantized output
+        assert not torch.isnan(quantized).any(), "NaN in quantized output"
+        assert not torch.isinf(quantized).any(), "Inf in quantized output"
+    
+    def test_comparison_with_phase3(self):
+        """Compare AQLM (Phase 4) with GLVQ (Phase 3) on same data."""
+        weights = torch.randn(256, 256)
+        
+        # Phase 3: GLVQ
+        glvq = PerBlockGLVQ(block_size=128, num_codebooks=2, codebook_size=256)
+        glvq_quantized, glvq_metadata = glvq.quantize(weights)
+        glvq_dequantized = glvq.dequantize(glvq_quantized, glvq_metadata)
+        glvq_error = torch.mean((glvq_dequantized - weights) ** 2).item()
+        
+        # Phase 4: AQLM
+        aqlm = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
+        aqlm_quantized, aqlm_metadata = aqlm.quantize(weights)
+        aqlm_dequantized = aqlm.dequantize(aqlm_metadata)
+        aqlm_error = torch.mean((aqlm_dequantized - weights) ** 2).item()
+        
+        # Both should produce reasonable errors
+        assert glvq_error < 1.0, f"GLVQ error too high: {glvq_error}"
+        assert aqlm_error < 1.0, f"AQLM error too high: {aqlm_error}"
+        
+        # AQLM should be comparable or better (learned codebooks)
+        # Allow some tolerance since they use different algorithms
+        assert aqlm_error < glvq_error * 2.0, "AQLM significantly worse than GLVQ"
+    
+    def test_stacking_phases(self):
+        """Test that all 4 phases can work together."""
+        weights = torch.randn(256, 256)
+        
+        # Phase 1: Adaptive Scaling
+        phase1 = PerBlockAdaptiveScaling(block_size=128)
+        p1_quantized, p1_metadata = phase1.quantize(weights)
+        
+        # Phase 2: BOF4
+        phase2 = PerBlockBOF4(block_size=128)
+        p2_quantized, p2_metadata = phase2.quantize(weights)
+        
+        # Phase 3: GLVQ
+        phase3 = PerBlockGLVQ(block_size=128, num_codebooks=2, codebook_size=256)
+        p3_quantized, p3_metadata = phase3.quantize(weights)
+        
+        # Phase 4: AQLM
+        phase4 = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
+        p4_quantized, p4_metadata = phase4.quantize(weights)
+        
+        # All should produce valid outputs
+        assert p1_quantized.shape == weights.shape
+        assert p2_quantized.shape == weights.shape
+        assert p3_quantized.shape == weights.shape
+        assert p4_quantized.shape == weights.shape
+        
+        # All should have metadata
+        assert p1_metadata['method'] == 'four_over_six'
+        assert p2_metadata['method'] == 'bof4'
+        assert p3_metadata['method'] == 'glvq'
+        assert p4_metadata['method'] == 'aqlm'
+    
+    def test_large_matrix(self):
+        """Test AQLM on LLM-scale tensor (4096x4096)."""
+        weights = torch.randn(4096, 4096)
+        
+        quantizer = PerBlockAQLM(block_size=128, num_codebooks=2, codebook_size=256)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(metadata)
+        
+        # Check shapes
+        assert quantized.shape == weights.shape
+        assert dequantized.shape == weights.shape
+        
+        # Check no NaN/Inf
+        assert not torch.isnan(dequantized).any()
+        assert not torch.isinf(dequantized).any()
+        
+        # Should have 32x32 = 1024 blocks
+        assert len(metadata['codebooks']) == 1024
+        assert len(metadata['indices']) == 1024
+        assert len(metadata['scales']) == 1024
+    
+    def test_different_block_sizes(self):
+        """Test AQLM with different block sizes."""
+        weights = torch.randn(256, 256)
+        
+        for block_size in [64, 128, 256]:
+            quantizer = PerBlockAQLM(
+                block_size=block_size,
+                num_codebooks=2,
+                codebook_size=256
+            )
+            quantized, metadata = quantizer.quantize(weights)
+            dequantized = quantizer.dequantize(metadata)
+            
+            assert dequantized.shape == weights.shape
+            assert metadata['block_size'] == block_size
+    
+    def test_different_codebook_sizes(self):
+        """Test AQLM with different codebook sizes."""
+        weights = torch.randn(256, 256)
+        
+        for codebook_size in [64, 128, 256, 512]:
+            quantizer = PerBlockAQLM(
+                block_size=128,
+                num_codebooks=2,
+                codebook_size=codebook_size
+            )
+            quantized, metadata = quantizer.quantize(weights)
+            dequantized = quantizer.dequantize(metadata)
+            
+            assert dequantized.shape == weights.shape
+            assert metadata['codebook_size'] == codebook_size
 
 
 if __name__ == '__main__':

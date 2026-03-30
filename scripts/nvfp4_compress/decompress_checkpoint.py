@@ -130,8 +130,11 @@ def main() -> None:
                         4,
                         num_blocks * stored_codebook_codes_per_block,
                     ).view(num_blocks, stored_codebook_codes_per_block)
-                    fixed = fixed_codes.view(1, -1).expand(num_blocks, -1)
-                    block_codebooks = torch.cat([fixed, extra_codes], dim=1)
+                    if fixed_codes.numel() > 0:
+                        fixed = fixed_codes.view(1, -1).expand(num_blocks, -1)
+                        block_codebooks = torch.cat([fixed, extra_codes], dim=1)
+                    else:
+                        block_codebooks = extra_codes
                     flat_indices = indices.view(num_blocks, -1).long()
                     recon_blocks = torch.gather(block_codebooks, 1, flat_indices)
                 elif codebook_id_bits > 0:

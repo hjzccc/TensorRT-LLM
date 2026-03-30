@@ -1,0 +1,120 @@
+{
+  "phase": "18A",
+  "method": "Activation-Weighted MSE",
+  "synthetic_tests": {
+    "Uniform distribution": {
+      "exact_mse": 18.90625,
+      "weighted_mse": 0.0,
+      "improvement": 100.0,
+      "subset_exact": [
+        2,
+        5,
+        6,
+        7
+      ],
+      "subset_weighted": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "weights_used": [
+        0.0,
+        0.0,
+        0.009920635260641575,
+        0.0,
+        0.011904762126505375,
+        0.02678571455180645,
+        0.065476194024086,
+        0.8859127163887024,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Skewed distribution (high codes)": {
+      "exact_mse": 27.58203125,
+      "weighted_mse": 0.0,
+      "improvement": 100.0,
+      "subset_exact": [
+        0,
+        3,
+        5,
+        7
+      ],
+      "subset_weighted": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "weights_used": [
+        0.0,
+        0.0,
+        0.0024916944094002247,
+        0.0,
+        0.004983388818800449,
+        0.01744186133146286,
+        0.03488372266292572,
+        0.9401993155479431,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "With activation weighting": {
+      "exact_mse": 17.2265625,
+      "weighted_mse": 0.0,
+      "improvement": 100.0,
+      "subset_exact": [
+        0,
+        3,
+        5,
+        7
+      ],
+      "subset_weighted": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "weights_used": [
+        0.12742607295513153,
+        0.0,
+        0.0767449364066124,
+        0.0,
+        0.07922795414924622,
+        0.06244548037648201,
+        0.15085327625274658,
+        0.5033022165298462,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "real_blocks_test": {
+    "avg_improvement": 100.0,
+    "std_improvement": 0.0,
+    "min_improvement": 100.0,
+    "max_improvement": 100.0,
+    "num_blocks": 100,
+    "blocks_with_improvement": 100
+  },
+  "timestamp": "2026-03-30 03:13:36"
+}

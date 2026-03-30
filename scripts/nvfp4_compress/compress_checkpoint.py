@@ -89,6 +89,33 @@ SCHEMES: dict[str, dict[str, object]] = {
         "fixed_codes": [0],
         "loss_mode": "weighted_abs",
     },
+    "2b075b_zero_fixed_scale_weighted": {
+        "description": "Per-block MSE weighted by block scale^2 (high-scale blocks get better codebooks)",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [0],
+        "loss_mode": "scale_weighted",
+    },
+    "2b075b_zero_fixed_freq_sq": {
+        "description": "Per-block MSE with frequency-squared weighting (dominant codes emphasized)",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [0],
+        "loss_mode": "freq_sq",
+    },
+    "3b1b_4free_exact": {
+        "description": "Exact per-block MSE search with 4 free FP4 codes (no fixed zero), 3.0 bits/elem",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [],
+    },
+    "3b1b_4free_weighted_abs": {
+        "description": "Per-block weighted MSE with 4 free FP4 codes and magnitude emphasis, 3.0 bits/elem",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [],
+        "loss_mode": "weighted_abs",
+    },
 }
 
 
@@ -154,19 +181,25 @@ def build_scheme_tables(scheme_name: str) -> dict[str, object]:
     storage_mode = str(scheme.get("storage_mode", "global_id"))
 
     if storage_mode == "per_block_codebook":
-        fixed_codes = torch.tensor(cast(list[int], scheme["fixed_codes"]), dtype=torch.uint8)
-        nonzero_codes = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15]
+        fixed_codes_list = cast(list[int], scheme["fixed_codes"])
+        fixed_codes = torch.tensor(fixed_codes_list, dtype=torch.uint8)
+        n_fixed = len(fixed_codes_list)
+        n_free = 4 - n_fixed  # total codebook size is always 4
+        all_candidate_codes = [c for c in range(16) if c not in fixed_codes_list]
         candidate_extra_codes = torch.tensor(
-            list(itertools.combinations(nonzero_codes, 3)),
+            list(itertools.combinations(all_candidate_codes, n_free)),
             dtype=torch.uint8,
         )
-        candidate_codebooks = torch.cat(
-            [
-                fixed_codes.unsqueeze(0).expand(candidate_extra_codes.shape[0], -1),
-                candidate_extra_codes,
-            ],
-            dim=1,
-        )
+        if n_fixed > 0:
+            candidate_codebooks = torch.cat(
+                [
+                    fixed_codes.unsqueeze(0).expand(candidate_extra_codes.shape[0], -1),
+                    candidate_extra_codes,
+                ],
+                dim=1,
+            )
+        else:
+            candidate_codebooks = candidate_extra_codes
         candidate_values = E2M1_TABLE[candidate_codebooks.long()]
         dists = (E2M1_TABLE.view(1, 16, 1) - candidate_values[:, None, :]).abs()
         best_idx = dists.argmin(dim=2).to(torch.uint8)
@@ -176,6 +209,7 @@ def build_scheme_tables(scheme_name: str) -> dict[str, object]:
         if loss_mode == "weighted_abs":
             value_weights = 1.0 + E2M1_TABLE.abs()
             candidate_mse_luts = candidate_mse_luts * value_weights.view(1, 16)
+        # scale_weighted and freq_sq: base LUT is plain MSE; weighting applied per-block in compress_codes
         return {
             "scheme_name": scheme_name,
             "storage_mode": storage_mode,
@@ -183,7 +217,7 @@ def build_scheme_tables(scheme_name: str) -> dict[str, object]:
             "bits_per_index": int(cast(int, scheme["bits_per_index"])),
             "codebook_id_bits": 0,
             "fixed_codes": fixed_codes,
-            "stored_codebook_codes_per_block": int(candidate_extra_codes.shape[1]),
+            "stored_codebook_codes_per_block": int(n_free),
             "candidate_extra_codes": candidate_extra_codes,
             "candidate_best_index_luts": best_idx,
             "candidate_best_code_luts": candidate_best_codes.to(torch.uint8),
@@ -225,6 +259,7 @@ def build_scheme_tables(scheme_name: str) -> dict[str, object]:
 def compress_codes(
     codes: torch.Tensor,
     tables: dict[str, object],
+    block_scales: torch.Tensor | None = None,
 ) -> dict[str, torch.Tensor | None]:
     if codes.shape[1] % BLOCK_SIZE != 0:
         raise ValueError(f"Expected K divisible by {BLOCK_SIZE}, got {tuple(codes.shape)}")
@@ -254,11 +289,24 @@ def compress_codes(
             dtype=torch.uint8,
         )
 
+        loss_mode = cast(str, tables.get("loss_mode", "mse"))
         for start in range(0, flat_blocks.shape[0], BLOCK_SEARCH_CHUNK_BLOCKS):
             end = min(start + BLOCK_SEARCH_CHUNK_BLOCKS, flat_blocks.shape[0])
             chunk = flat_blocks[start:end].to(torch.long)
             counts = torch.nn.functional.one_hot(chunk, num_classes=16).sum(dim=1).to(torch.float32)
-            costs = counts @ candidate_mse_luts.T
+            if loss_mode == "scale_weighted" and block_scales is not None:
+                # Weight each block's code counts by its block scale^2
+                # block_scales shape: [num_blocks] (one per 16-element block)
+                scales_chunk = block_scales[start:end].to(torch.float32).unsqueeze(1)
+                weighted_counts = counts * (scales_chunk ** 2)
+                costs = weighted_counts @ candidate_mse_luts.T
+            elif loss_mode == "freq_sq":
+                # Weight by frequency^2: emphasize dominant codes more
+                freq = counts / counts.sum(dim=1, keepdim=True).clamp(min=1)
+                weighted_counts = counts * freq
+                costs = weighted_counts @ candidate_mse_luts.T
+            else:
+                costs = counts @ candidate_mse_luts.T
             chosen = costs.argmin(dim=1)
             chosen_index_luts = candidate_best_index_luts[chosen]
             chosen_code_luts = candidate_best_code_luts[chosen]
@@ -374,7 +422,18 @@ def main() -> None:
                 if key in quantized_weight_keys:
                     base = key[: -len(".weight")]
                     codes = unpack_fp4_codes(tensor)
-                    compressed = compress_codes(codes, tables)
+                    # Load block scales for scale-weighted compression
+                    scale_key = f"{base}.weight_scale"
+                    blk_scales: torch.Tensor | None = None
+                    if scale_key in key_set and cast(str, tables.get("loss_mode", "mse")) == "scale_weighted":
+                        blk_scales_raw = sf.get_tensor(scale_key)
+                        # Decode FP8 E4M3: sign=bit7, exp=bits6-3, mant=bits2-0
+                        v = blk_scales_raw.long()
+                        sign = (v >> 7) & 1
+                        exp_bits = (v >> 3) & 0xF
+                        mant_bits = v & 0x7
+                        blk_scales = ((1 - 2 * sign.float()) * (2.0 ** (exp_bits.float() - 7)) * (1 + mant_bits.float() / 8))
+                    compressed = compress_codes(codes, tables, block_scales=blk_scales)
                     indices = cast(torch.Tensor, compressed["indices"])
                     codebook_ids = cast(torch.Tensor | None, compressed["codebook_ids"])
                     codebook_entries = cast(torch.Tensor | None, compressed["codebook_entries"])
