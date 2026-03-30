@@ -144,6 +144,20 @@ SCHEMES: dict[str, dict[str, object]] = {
         "fixed_codes": [],
         "loss_mode": "freq_sq",
     },
+    "2b075b_zero_fixed_entropy": {
+        "description": "Per-block entropy-based codebook selection with 0 fixed and magnitude emphasis",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [0],
+        "loss_mode": "entropy",
+    },
+    "3b1b_4free_entropy": {
+        "description": "Per-block entropy-based codebook selection with 4 free FP4 codes, 3.0 bits/elem",
+        "bits_per_index": 2,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [],
+        "loss_mode": "entropy",
+    },
 }
 
 
@@ -340,6 +354,24 @@ def compress_codes(
                 scales_chunk = block_scales[start:end].to(torch.float32).unsqueeze(1)
                 weighted_counts = counts * (scales_chunk ** 2)
                 costs = weighted_counts @ candidate_mse_luts.T
+            elif loss_mode == "entropy":
+                # Entropy-based codebook selection: choose codebook that minimizes
+                # Shannon entropy of reconstructed code distribution
+                entropy_costs = torch.zeros(chunk.shape[0], candidate_best_code_luts.shape[0], device=chunk.device)
+                
+                for block_idx in range(chunk.shape[0]):
+                    block = chunk[block_idx]  # [16]
+                    for cand_idx in range(candidate_best_code_luts.shape[0]):
+                        # Get reconstruction LUT for this candidate
+                        recon_lut = candidate_best_code_luts[cand_idx]  # [16, 16]
+                        # Map original codes through reconstruction LUT
+                        recon_codes = recon_lut[block.long()]  # [16]
+                        # Compute entropy of reconstructed codes
+                        entropy = compute_code_entropy(recon_codes)
+                        entropy_costs[block_idx, cand_idx] = entropy
+                
+                # Use entropy as cost (lower entropy = lower cost)
+                costs = entropy_costs
             elif loss_mode == "scale_linear" and block_scales is not None:
                 # Weight each block's code counts by its block scale (linear, not squared)
                 # More moderate than scale^2: reduces dynamic range from 357000x to 600x

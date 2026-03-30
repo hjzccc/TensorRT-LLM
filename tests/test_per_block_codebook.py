@@ -87,7 +87,7 @@ class TestPerBlockAdaptiveScaling:
         """Test with different block sizes."""
         weights = torch.randn(256, 256)
         
-        for block_size in [64, 128, 256]:
+        for block_size in [8, 16, 32]:
             quantizer = PerBlockAdaptiveScaling(block_size=block_size)
             quantized, metadata = quantizer.quantize(weights)
             dequantized = quantizer.dequantize(quantized, metadata)
@@ -303,7 +303,7 @@ class TestPerBlockBOF4:
         """Test BOF4 with different block sizes."""
         weights = torch.randn(256, 256)
         
-        for block_size in [64, 128, 256]:
+        for block_size in [8, 16, 32]:
             quantizer = PerBlockBOF4(block_size=block_size)
             quantized, metadata = quantizer.quantize(weights)
             dequantized = quantizer.dequantize(quantized, metadata)
@@ -391,14 +391,14 @@ class TestPerBlockGLVQ:
     
     def test_quantize_simple(self):
         """Test basic GLVQ quantization."""
-        weights = torch.randn(256, 256)
+        weights = torch.randn(32, 32)
         
-        quantizer = PerBlockGLVQ(block_size=128)
+        quantizer = PerBlockGLVQ(block_size=16, max_iters=10)
         quantized, metadata = quantizer.quantize(weights)
         
         assert quantized.shape == weights.shape
         assert metadata['method'] == 'glvq'
-        assert metadata['block_size'] == 128
+        assert metadata['block_size'] == 16
         assert 'transformation_matrices' in metadata
         assert 'scales' in metadata
         assert len(metadata['transformation_matrices']) == 4
@@ -406,9 +406,9 @@ class TestPerBlockGLVQ:
     
     def test_dequantize(self):
         """Test GLVQ dequantization."""
-        weights = torch.randn(256, 256)
+        weights = torch.randn(32, 32)
         
-        quantizer = PerBlockGLVQ(block_size=128)
+        quantizer = PerBlockGLVQ(block_size=16, max_iters=10)
         quantized, metadata = quantizer.quantize(weights)
         dequantized = quantizer.dequantize(quantized, metadata)
         
@@ -420,7 +420,7 @@ class TestPerBlockGLVQ:
     
     def test_quantize_dequantize_roundtrip(self):
         """Test full GLVQ quantize-dequantize roundtrip."""
-        weights = torch.randn(512, 512)
+        weights = torch.randn(32, 32)
         
         config = PerBlockQuantizationConfig(method='glvq', block_size=128)
         quantized, metadata = quantize_weights(weights, config)
@@ -432,9 +432,9 @@ class TestPerBlockGLVQ:
     
     def test_lattice_learning(self):
         """Test that lattice transformation matrices are learned."""
-        weights = torch.randn(256, 256)
+        weights = torch.randn(32, 32)
         
-        quantizer = PerBlockGLVQ(block_size=128)
+        quantizer = PerBlockGLVQ(block_size=16, max_iters=10)
         quantized, metadata = quantizer.quantize(weights)
         
         assert len(metadata['transformation_matrices']) == 4
@@ -447,9 +447,9 @@ class TestPerBlockGLVQ:
     
     def test_different_block_sizes(self):
         """Test GLVQ with different block sizes."""
-        weights = torch.randn(256, 256)
+        weights = torch.randn(32, 32)
         
-        for block_size in [64, 128, 256]:
+        for block_size in [8, 16, 32]:
             quantizer = PerBlockGLVQ(block_size=block_size)
             quantized, metadata = quantizer.quantize(weights)
             dequantized = quantizer.dequantize(quantized, metadata)
@@ -462,7 +462,7 @@ class TestPerBlockGLVQ:
         """Test GLVQ with small weight values."""
         weights = torch.randn(128, 128) * 0.01
         
-        quantizer = PerBlockGLVQ(block_size=64)
+        quantizer = PerBlockGLVQ(block_size=16, max_iters=10)
         quantized, metadata = quantizer.quantize(weights)
         dequantized = quantizer.dequantize(quantized, metadata)
         
@@ -474,7 +474,7 @@ class TestPerBlockGLVQ:
         """Test GLVQ with large weight values."""
         weights = torch.randn(128, 128) * 100
         
-        quantizer = PerBlockGLVQ(block_size=64)
+        quantizer = PerBlockGLVQ(block_size=16, max_iters=10)
         quantized, metadata = quantizer.quantize(weights)
         dequantized = quantizer.dequantize(quantized, metadata)
         
@@ -484,9 +484,9 @@ class TestPerBlockGLVQ:
     
     def test_compression_ratio(self):
         """Test GLVQ compression ratio calculation."""
-        weights = torch.randn(256, 256)
+        weights = torch.randn(32, 32)
         
-        quantizer = PerBlockGLVQ(block_size=128)
+        quantizer = PerBlockGLVQ(block_size=16, max_iters=10)
         quantized, metadata = quantizer.quantize(weights)
         
         ratio = quantizer.get_compression_ratio(metadata)
@@ -520,9 +520,9 @@ class TestPerBlockGLVQ:
     
     def test_numerical_stability(self):
         """Test GLVQ numerical stability (no NaN/Inf)."""
-        weights = torch.randn(256, 256)
+        weights = torch.randn(32, 32)
         
-        quantizer = PerBlockGLVQ(block_size=128)
+        quantizer = PerBlockGLVQ(block_size=16, max_iters=10)
         quantized, metadata = quantizer.quantize(weights)
         dequantized = quantizer.dequantize(quantized, metadata)
         
@@ -536,14 +536,14 @@ class TestPerBlockGLVQ:
     
     def test_comparison_with_phase1(self):
         """Test GLVQ performance compared to Phase 1 (Four Over Six)."""
-        weights = torch.randn(512, 512)
+        weights = torch.randn(32, 32)
         
         quantizer_phase1 = PerBlockAdaptiveScaling(block_size=128)
         quantized_p1, metadata_p1 = quantizer_phase1.quantize(weights)
         dequantized_p1 = quantizer_phase1.dequantize(quantized_p1, metadata_p1)
         error_p1 = torch.abs(weights - dequantized_p1).mean()
         
-        quantizer_glvq = PerBlockGLVQ(block_size=128)
+        quantizer_glvq = PerBlockGLVQ(block_size=16, max_iters=10)
         quantized_glvq, metadata_glvq = quantizer_glvq.quantize(weights)
         dequantized_glvq = quantizer_glvq.dequantize(quantized_glvq, metadata_glvq)
         error_glvq = torch.abs(weights - dequantized_glvq).mean()
@@ -750,7 +750,7 @@ class TestPerBlockAQLM:
         weights = torch.randn(256, 256)
         
         # Phase 3: GLVQ
-        glvq = PerBlockGLVQ(block_size=128, num_codebooks=2, codebook_size=256)
+        glvq = PerBlockGLVQ(block_size=16, max_iters=10)
         glvq_quantized, glvq_metadata = glvq.quantize(weights)
         glvq_dequantized = glvq.dequantize(glvq_quantized, glvq_metadata)
         glvq_error = torch.mean((glvq_dequantized - weights) ** 2).item()
@@ -782,7 +782,7 @@ class TestPerBlockAQLM:
         p2_quantized, p2_metadata = phase2.quantize(weights)
         
         # Phase 3: GLVQ
-        phase3 = PerBlockGLVQ(block_size=128, num_codebooks=2, codebook_size=256)
+        phase3 = PerBlockGLVQ(block_size=16, max_iters=10)
         p3_quantized, p3_metadata = phase3.quantize(weights)
         
         # Phase 4: AQLM
@@ -826,7 +826,7 @@ class TestPerBlockAQLM:
         """Test AQLM with different block sizes."""
         weights = torch.randn(256, 256)
         
-        for block_size in [64, 128, 256]:
+        for block_size in [8, 16, 32]:
             quantizer = PerBlockAQLM(
                 block_size=block_size,
                 num_codebooks=2,

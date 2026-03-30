@@ -17,7 +17,7 @@ import sys
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import torch
 import torch.nn.functional as F
@@ -474,6 +474,57 @@ class NVFP4LM(TemplateLM):
         elif self.store.has_key(weight_key):
             keys.append(weight_key)
 
+    def _collect_expert_projection(
+        self,
+        layer: dict[str, Any],
+        proj_name: str,
+    ) -> dict[str, torch.Tensor]:
+        stacked_weight: torch.Tensor | None = None
+        stacked_weight_scale: torch.Tensor | None = None
+        stacked_weight_scale_2: torch.Tensor | None = None
+
+        for expert_idx in range(self.model_config.num_experts):
+            expert_prefix = f"mlp.experts.{expert_idx}.{proj_name}"
+            weight = cast(torch.Tensor, layer.pop(f"{expert_prefix}.weight"))
+            weight_scale = cast(torch.Tensor, layer.pop(f"{expert_prefix}.weight_scale"))
+            weight_scale_2 = cast(torch.Tensor, layer.pop(f"{expert_prefix}.weight_scale_2"))
+
+            if stacked_weight is None:
+                stacked_weight = torch.empty(
+                    (self.model_config.num_experts, *weight.shape),
+                    dtype=weight.dtype,
+                    device=weight.device,
+                )
+                stacked_weight_scale = torch.empty(
+                    (self.model_config.num_experts, *weight_scale.shape),
+                    dtype=weight_scale.dtype,
+                    device=weight_scale.device,
+                )
+                stacked_weight_scale_2 = torch.empty(
+                    (self.model_config.num_experts, *weight_scale_2.shape),
+                    dtype=weight_scale_2.dtype,
+                    device=weight_scale_2.device,
+                )
+
+            assert stacked_weight is not None
+            assert stacked_weight_scale is not None
+            assert stacked_weight_scale_2 is not None
+
+            stacked_weight[expert_idx].copy_(weight)
+            stacked_weight_scale[expert_idx].copy_(weight_scale)
+            stacked_weight_scale_2[expert_idx].copy_(weight_scale_2)
+
+            del weight, weight_scale, weight_scale_2
+
+        assert stacked_weight is not None
+        assert stacked_weight_scale is not None
+        assert stacked_weight_scale_2 is not None
+        return {
+            "weight": stacked_weight,
+            "weight_scale": stacked_weight_scale,
+            "weight_scale_2": stacked_weight_scale_2,
+        }
+
     def _load_layer(self, layer_idx: int) -> dict[str, Any]:
         prefix = f"model.layers.{layer_idx}"
         layer_type = self.layer_types[layer_idx]
@@ -548,19 +599,7 @@ class NVFP4LM(TemplateLM):
 
         experts: dict[str, dict[str, torch.Tensor]] = {}
         for proj_name in proj_names:
-            weights = []
-            weight_scales = []
-            weight_scale_2 = []
-            for expert_idx in range(self.model_config.num_experts):
-                expert_prefix = f"mlp.experts.{expert_idx}.{proj_name}"
-                weights.append(layer.pop(f"{expert_prefix}.weight"))
-                weight_scales.append(layer.pop(f"{expert_prefix}.weight_scale"))
-                weight_scale_2.append(layer.pop(f"{expert_prefix}.weight_scale_2"))
-            experts[proj_name] = {
-                "weight": torch.stack(weights, dim=0).contiguous(),
-                "weight_scale": torch.stack(weight_scales, dim=0).contiguous(),
-                "weight_scale_2": torch.stack(weight_scale_2, dim=0).contiguous(),
-            }
+            experts[proj_name] = self._collect_expert_projection(layer, proj_name)
         layer["experts"] = experts
         return layer
 

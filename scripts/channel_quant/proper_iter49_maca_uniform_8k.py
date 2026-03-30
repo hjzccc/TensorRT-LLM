@@ -17,9 +17,10 @@ Risk: LOW — minimal code change, same mask builder
 from __future__ import annotations
 
 import argparse
+import gc
 import json
+import random
 import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -42,13 +43,10 @@ from proper_iter01 import build_plan_from_masks
 from proper_iter07 import JOINT_MEDIUM_TOPUP_FRACTION, build_joint_with_topup_masks
 from proper_iter11_push_router_affinity import evaluate_and_record_plan
 from proper_iter26_maca_calibration import (
-    MACA_PAD_LENGTH,
-    build_maca_calibration_set,
     run_maca_calibration,
+    CalibrationArtifacts,
 )
 from baselines_comparison import (
-    LayerMetricBundle,
-    quantize_linear_weight,
     resolve_non_expert_bytes,
     resolve_terminal_keys,
 )
@@ -58,13 +56,13 @@ SCRIPT_DIR = Path(__file__).parent
 SECTION_MARKER = "## Iteration 49: MaCa Uniform 8K"
 
 # Configuration
-CALIB_CHUNKS = 128
+CALIB_CHUNKS = 32
 CALIB_LENGTH = 8192  # KEY CHANGE: 8K instead of 4K
 TOPUP_FRACTION = JOINT_MEDIUM_TOPUP_FRACTION  # 0.05 (same as Iter29)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Iter49: MaCa Uniform 8K calibration")
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-id", default="Qwen/Qwen3.5-35B-A3B")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="bfloat16")
@@ -102,6 +100,37 @@ def maybe_slice_eval_chunks(
         return test_ids, {}
     n = max_chunks * SEQLEN
     return test_ids[:n], {"eval_max_chunks": max_chunks, "truncated": True}
+
+
+def build_8k_calibration_set(
+    tokenizer: Any,
+    train_ids: torch.Tensor,
+    seed: int,
+    num_chunks: int,
+    chunk_length: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Build calibration set with 8K-token chunks, padded to chunk_length."""
+    rng = random.Random(f"iter49:{seed}:uniform_{chunk_length}")
+    padded_chunks: list[torch.Tensor] = []
+    actual_lengths: list[int] = []
+
+    # train_ids is 1D tensor
+    total_tokens = int(train_ids.shape[0])
+    max_start = total_tokens - chunk_length - 1
+    if max_start < 0:
+        raise RuntimeError(f"WikiText-2 train is too short for {chunk_length}-token chunks")
+
+    for _ in range(num_chunks):
+        start = rng.randint(0, max_start)
+        sample = train_ids[start : start + chunk_length]
+        padded = torch.zeros(chunk_length, dtype=torch.long)
+        padded[:chunk_length] = sample[:chunk_length]
+        padded_chunks.append(padded.unsqueeze(0))
+        actual_lengths.append(chunk_length)
+
+    chunks = torch.cat(padded_chunks, dim=0).contiguous()  # (N, chunk_length)
+    actual_lengths_t = torch.tensor(actual_lengths, dtype=torch.long)
+    return chunks, actual_lengths_t
 
 
 def main() -> None:
@@ -157,23 +186,97 @@ def main() -> None:
 
     # Build 8K calibration set
     print(f"[iter49] Building 8K calibration set ({CALIB_CHUNKS} chunks × {CALIB_LENGTH} tokens)...")
-    calib_chunks = build_maca_calibration_set(
+    calib_chunks, actual_lengths = build_8k_calibration_set(
         tokenizer,
         train_ids,
         seed=args.seed,
-        length_counts=((CALIB_LENGTH, CALIB_CHUNKS),),
+        num_chunks=CALIB_CHUNKS,
+        chunk_length=CALIB_LENGTH,
     )
-    print(f"[iter49] Built {len(calib_chunks)} calibration chunks")
+    print(f"[iter49] Built {calib_chunks.shape[0]} calibration chunks of length {calib_chunks.shape[1]}")
 
     # Run MaCa calibration with 8K chunks
-    print(f"[iter49] Running MaCa calibration...")
-    calib_artifacts = run_maca_calibration(
-        weight_map,
-        calib_chunks,
-        snapshot_dir,
-        text_config,
-        device,
-        dtype,
+    # Note: run_maca_calibration expects (chunks, actual_lengths) where chunks is (N, L)
+    print(f"[iter49] Running MaCa calibration with 8K chunks...")
+    from proper_iter26_maca_calibration import WeightStore, layer_keys, shorten_layer_tensors, release_tensors, collect_layer_calibration_valid_tokens, should_log_chunk
+    from spike1_ground_truth import rms_norm_qwen3_next, full_attention_forward, linear_attention_forward
+    from baselines_comparison import quantize_linear_weight, LayerMetricBundle
+
+    store = WeightStore(args.model_id, snapshot_dir, weight_map)
+    embed_key, _, _ = resolve_terminal_keys(weight_map)
+    inps = embed_chunks(store, embed_key, calib_chunks, device, dtype)
+    outs = torch.zeros_like(inps)
+    causal_mask, position_embeddings = build_position_context(text_config, inps[0:1], device)
+
+    routing_counts: dict[int, torch.Tensor] = {}
+    activation_cache: dict[int, Any] = {}
+    mxmoe_w1_deltas: dict[int, torch.Tensor] = {}
+    mxmoe_w2_deltas: dict[int, torch.Tensor] = {}
+    mc_moe_scores: dict[int, torch.Tensor] = {}
+
+    for layer_idx in range(text_config.num_hidden_layers):
+        layer_type = layer_type_at(text_config, layer_idx)
+        print(f"[maca-calib-8k] load layer {layer_idx + 1}/{text_config.num_hidden_layers} ({layer_type})", flush=True)
+        raw_tensors = store.load_tensors(layer_keys(layer_idx, layer_type))
+        tensors = shorten_layer_tensors(layer_idx, raw_tensors, device, dtype)
+        del raw_tensors
+
+        gate_up_proj = tensors["mlp.experts.gate_up_proj"]
+        down_proj = tensors["mlp.experts.down_proj"]
+        fp4_gate_up = torch.stack([quantize_linear_weight(gate_up_proj[expert_idx], "fp4") for expert_idx in range(text_config.num_experts)], dim=0)
+        fp4_down = torch.stack([quantize_linear_weight(down_proj[expert_idx], "fp4") for expert_idx in range(text_config.num_experts)], dim=0)
+        state = init_expert_moment_state(text_config, device)
+
+        for chunk_idx in range(inps.shape[0]):
+            actual_length = int(actual_lengths[chunk_idx].item())
+            hidden_states = inps[chunk_idx].unsqueeze(0)
+            residual = hidden_states
+            hidden_norm = rms_norm_qwen3_next(hidden_states, tensors["input_layernorm.weight"], text_config.rms_norm_eps)
+            if layer_type == "full_attention":
+                attn_tensors = {k.replace("self_attn.", "", 1): v for k, v in tensors.items() if k.startswith("self_attn.")}
+                mixed = full_attention_forward(hidden_norm, attn_tensors, text_config, position_embeddings, causal_mask)
+            else:
+                attn_tensors = {k.replace("linear_attn.", "", 1): v for k, v in tensors.items() if k.startswith("linear_attn.")}
+                mixed = linear_attention_forward(hidden_norm, attn_tensors, text_config)
+            hidden_states = residual + mixed
+
+            residual = hidden_states
+            mlp_input = rms_norm_qwen3_next(hidden_states, tensors["post_attention_layernorm.weight"], text_config.rms_norm_eps)
+            moe_tensors = {k.replace("mlp.", "", 1): v for k, v in tensors.items() if k.startswith("mlp.")}
+            moe_out = collect_layer_calibration_valid_tokens(mlp_input, moe_tensors, fp4_gate_up, fp4_down, text_config, state, actual_length)
+            outs[chunk_idx] = residual + moe_out
+            if should_log_chunk(chunk_idx, int(inps.shape[0])):
+                print(
+                    f"[maca-calib-8k] layer {layer_idx + 1}/{text_config.num_hidden_layers} chunk {chunk_idx + 1}/{inps.shape[0]} | actual_len={actual_length}",
+                    flush=True,
+                )
+
+        bundle, layer_w1, layer_w2, layer_mc = finalize_layer_metrics(gate_up_proj, down_proj, fp4_gate_up, fp4_down, state, text_config)
+        routing_counts[layer_idx] = bundle.routing_counts
+        activation_cache[layer_idx] = bundle
+        mxmoe_w1_deltas[layer_idx] = layer_w1
+        mxmoe_w2_deltas[layer_idx] = layer_w2
+        mc_moe_scores[layer_idx] = layer_mc
+
+        release_tensors({"fp4_gate_up": fp4_gate_up, "fp4_down": fp4_down})
+        release_tensors(tensors)
+        inps, outs = outs, inps
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    release_tensors({"inps": inps, "outs": outs, "causal_mask": causal_mask})
+    del store
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    calib_artifacts = CalibrationArtifacts(
+        routing_counts=routing_counts,
+        activation_cache=activation_cache,
+        mxmoe_w1_deltas=mxmoe_w1_deltas,
+        mxmoe_w2_deltas=mxmoe_w2_deltas,
+        mc_moe_scores=mc_moe_scores,
     )
 
     # Build masks using same joint_w1w2_with_topup as Iter29
@@ -197,7 +300,6 @@ def main() -> None:
 
     # Evaluate
     print(f"[iter49] Evaluating plan on WikiText-2 test set...")
-    test_ids_eval = test_ids
     evaluate_and_record_plan(
         payload,
         plan,
@@ -205,7 +307,7 @@ def main() -> None:
         args.output_json,
         text_config,
         total_expert_elems,
-        test_ids_eval,
+        test_ids,
         snapshot_dir,
         weight_map,
         device,
