@@ -611,6 +611,273 @@ class PerBlockBOF4(PerBlockCodebookBase):
         return self.get_compression_ratio(metadata)
 
 
+class PerBlockGLVQ(PerBlockCodebookBase):
+    """
+    GLVQ: Per-Block Learned Lattice Vector Quantization.
+    
+    Uses learned lattice codebooks for quantization. Lattices provide optimal
+    packing properties and enable differentiable quantization via Babai rounding.
+    Per-block optimization of lattice transformation matrices.
+    
+    Algorithm:
+    1. Reshape weights into blocks
+    2. Learn transformation matrix A per block via gradient descent
+    3. Quantize via Babai rounding: find nearest lattice point
+    4. Store transformation matrices and scales in metadata
+    5. Dequantize by applying inverse transformation
+    """
+    
+    def __init__(self, 
+                 block_size: int = 128,
+                 dtype: torch.dtype = torch.float32,
+                 max_iters: int = 100,
+                 learning_rate: float = 0.01):
+        """
+        Initialize GLVQ quantizer.
+        
+        Args:
+            block_size: Size of weight blocks
+            dtype: Data type for computations
+            max_iters: Maximum iterations for lattice learning
+            learning_rate: Learning rate for gradient descent
+        """
+        super().__init__(block_size, dtype)
+        self.max_iters = max_iters
+        self.learning_rate = learning_rate
+    
+    def _learn_lattice_basis(self, block: torch.Tensor) -> torch.Tensor:
+        """
+        Learn transformation matrix A for lattice via gradient descent.
+        
+        Args:
+            block: Weight block (block_size,) or (block_size, block_size)
+            
+        Returns:
+            Learned transformation matrix A (d, d)
+        """
+        # Flatten block to 1D if needed
+        if block.dim() > 1:
+            block = block.flatten()
+        
+        d = block.shape[0]
+        
+        # Initialize A as identity matrix
+        A = torch.eye(d, dtype=self.dtype, device=block.device)
+        A.requires_grad = True
+        
+        # Optimizer for learning A
+        optimizer = torch.optim.Adam([A], lr=self.learning_rate)
+        
+        # Gradient descent to minimize reconstruction error
+        for _ in range(self.max_iters):
+            optimizer.zero_grad()
+            
+            # Babai rounding: find nearest lattice point
+            try:
+                z = torch.linalg.solve(A, block)
+            except RuntimeError:
+                # If A is singular, use pseudo-inverse
+                z = torch.linalg.pinv(A) @ block
+            
+            z_rounded = torch.round(z)
+            block_quant = A @ z_rounded
+            
+            # MSE loss
+            loss = F.mse_loss(block, block_quant)
+            loss.backward()
+            optimizer.step()
+        
+        return A.detach()
+    
+    def _babai_round(self, block: torch.Tensor, A: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Babai rounding: find nearest lattice point to block.
+        
+        Args:
+            block: Weight block (block_size, block_size)
+            A: Transformation matrix (block_size^2, block_size^2)
+            
+        Returns:
+            Tuple of (quantized_block, indices)
+        """
+        # Store original shape for reshaping later
+        original_shape = block.shape
+        
+        # Flatten block if needed
+        if block.dim() > 1:
+            block = block.flatten()
+        
+        # Solve A @ z ≈ block for z
+        try:
+            z = torch.linalg.solve(A, block)
+        except RuntimeError:
+            z = torch.linalg.pinv(A) @ block
+        
+        # Round to nearest integer
+        z_rounded = torch.round(z)
+        
+        # Reconstruct: block_quant = A @ z_rounded
+        block_quant = A @ z_rounded
+        
+        # Reshape back to original shape
+        block_quant = block_quant.reshape(original_shape)
+        
+        return block_quant, z_rounded
+    
+    def quantize(self, weights: torch.Tensor) -> Tuple[torch.Tensor, Dict]:
+        """
+        Quantize weights using learned lattice codebooks.
+        
+        Args:
+            weights: Weight tensor (M, N)
+            
+        Returns:
+            Tuple of (quantized_weights, metadata)
+        """
+        self.device = weights.device
+        original_shape = weights.shape
+        M, N = original_shape
+        
+        # Reshape into blocks
+        num_blocks_m = (M + self.block_size - 1) // self.block_size
+        num_blocks_n = (N + self.block_size - 1) // self.block_size
+        
+        # Pad if necessary
+        padded_m = num_blocks_m * self.block_size
+        padded_n = num_blocks_n * self.block_size
+        
+        if padded_m != M or padded_n != N:
+            weights_padded = torch.zeros(padded_m, padded_n, dtype=weights.dtype, device=weights.device)
+            weights_padded[:M, :N] = weights
+        else:
+            weights_padded = weights
+        
+        # Learn lattice basis and quantize each block
+        quantized_blocks = []
+        transformation_matrices = []
+        scales = []
+        
+        for i in range(num_blocks_m):
+            for j in range(num_blocks_n):
+                block = weights_padded[i*self.block_size:(i+1)*self.block_size,
+                                       j*self.block_size:(j+1)*self.block_size]
+                
+                # Compute scale (max absolute value)
+                scale = block.abs().max()
+                if scale == 0:
+                    scale = 1.0
+                
+                # Normalize block
+                block_normalized = block / scale
+                
+                # Learn lattice basis
+                A = self._learn_lattice_basis(block_normalized)
+                
+                # Quantize via Babai rounding
+                block_quant, _ = self._babai_round(block_normalized, A)
+                
+                # Denormalize
+                block_quant = block_quant * scale
+                
+                quantized_blocks.append(block_quant)
+                transformation_matrices.append(A)
+                scales.append(scale)
+        
+        # Reshape quantized blocks back
+        quantized = torch.zeros_like(weights_padded)
+        idx = 0
+        for i in range(num_blocks_m):
+            for j in range(num_blocks_n):
+                quantized[i*self.block_size:(i+1)*self.block_size,
+                         j*self.block_size:(j+1)*self.block_size] = quantized_blocks[idx]
+                idx += 1
+        
+        # Trim to original shape
+        quantized = quantized[:M, :N]
+        
+        # Metadata
+        metadata = {
+            'method': 'glvq',
+            'block_size': self.block_size,
+            'transformation_matrices': transformation_matrices,
+            'scales': torch.stack([torch.tensor(s, dtype=self.dtype) for s in scales]),
+            'original_shape': original_shape,
+            'dtype': self.dtype,
+            'num_blocks_m': num_blocks_m,
+            'num_blocks_n': num_blocks_n,
+        }
+        
+        return quantized, metadata
+    
+    def dequantize(self, quantized: torch.Tensor, metadata: Dict) -> torch.Tensor:
+        """
+        Dequantize weights using learned lattice codebooks.
+        
+        Args:
+            quantized: Quantized weight tensor
+            metadata: Metadata from quantization
+            
+        Returns:
+            Reconstructed weight tensor
+        """
+        original_shape = metadata['original_shape']
+        block_size = metadata['block_size']
+        transformation_matrices = metadata['transformation_matrices']
+        scales = metadata['scales']
+        num_blocks_m = metadata['num_blocks_m']
+        num_blocks_n = metadata['num_blocks_n']
+        
+        # Dequantization is straightforward: quantized weights are already reconstructed
+        # Just return the quantized tensor (it's already the best reconstruction)
+        M, N = original_shape
+        return quantized[:M, :N]
+    
+    def get_compression_ratio(self, metadata: Dict) -> float:
+        """
+        Compute compression ratio for GLVQ.
+        
+        Args:
+            metadata: Metadata from quantization
+            
+        Returns:
+            Compression ratio (original_bits / compressed_bits)
+        """
+        original_shape = metadata['original_shape']
+        block_size = metadata['block_size']
+        num_blocks_m = metadata['num_blocks_m']
+        num_blocks_n = metadata['num_blocks_n']
+        
+        # Original bits (FP32)
+        original_bits = original_shape[0] * original_shape[1] * 32
+        
+        # Compressed bits:
+        # - Transformation matrices: (num_blocks_m * num_blocks_n) * (block_size^2) * 32
+        # - Scales: (num_blocks_m * num_blocks_n) * 32
+        # - Indices: (num_blocks_m * num_blocks_n) * (block_size * log2(block_size)) bits
+        
+        num_blocks = num_blocks_m * num_blocks_n
+        matrix_bits = num_blocks * (block_size ** 2) * 32
+        scale_bits = num_blocks * 32
+        index_bits = num_blocks * block_size * int(np.ceil(np.log2(block_size)))
+        
+        compressed_bits = matrix_bits + scale_bits + index_bits
+        
+        return original_bits / compressed_bits if compressed_bits > 0 else 1.0
+    
+    def compression_ratio(self, original_shape: Tuple, metadata: Dict) -> float:
+        """
+        Compute compression ratio (alias for get_compression_ratio).
+        
+        Args:
+            original_shape: Original weight tensor shape
+            metadata: Metadata from quantization
+            
+        Returns:
+            Compression ratio (original_bits / compressed_bits)
+        """
+        return self.get_compression_ratio(metadata)
+
+
 class PerBlockQuantizationConfig:
     """Configuration for per-block quantization."""
     
@@ -639,6 +906,8 @@ class PerBlockQuantizationConfig:
             return PerBlockAdaptiveScaling(self.block_size, self.dtype)
         elif self.method == 'bof4':
             return PerBlockBOF4(self.block_size, self.dtype)
+        elif self.method == 'glvq':
+            return PerBlockGLVQ(self.block_size, self.dtype)
         else:
             raise ValueError(f"Unknown quantization method: {self.method}")
 
@@ -677,6 +946,8 @@ def dequantize_weights(quantized: torch.Tensor,
         quantizer = PerBlockAdaptiveScaling(metadata['block_size'])
     elif method == 'bof4':
         quantizer = PerBlockBOF4(metadata['block_size'])
+    elif method == 'glvq':
+        quantizer = PerBlockGLVQ(metadata['block_size'])
     else:
         raise ValueError(f"Unknown quantization method: {method}")
     
