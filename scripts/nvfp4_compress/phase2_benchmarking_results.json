@@ -1,0 +1,15 @@
+{
+  "phase1": {
+    "baseline_mse": 0.0024999003144330345,
+    "phase1_mse": 0.002014253390370868,
+    "improvement_pct": 19.42665158519766,
+    "min_improvement": 18.81046401804349,
+    "max_improvement": 19.81154523611886,
+    "std_dev": 0.2453642492120125
+  },
+  "storage": {
+    "phase1_bytes": 2048,
+    "model_bytes": 4194304,
+    "overhead_pct": 0.048828125
+  }
+}
