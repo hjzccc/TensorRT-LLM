@@ -123,13 +123,6 @@ SCHEMES: dict[str, dict[str, object]] = {
         "fixed_codes": [0],
         "loss_mode": "grouped_fisher",
     },
-    "2b075b_zero_fixed_magnitude_squared": {
-        "description": "Per-block MSE with magnitude-squared weighting (large values emphasized)",
-        "bits_per_index": 2,
-        "storage_mode": "per_block_codebook",
-        "fixed_codes": [0],
-        "loss_mode": "magnitude_squared",
-    },
     "2b075b_zero_fixed_scale_linear": {
         "description": "Per-block MSE weighted by block scale (linear, not squared) — more moderate than scale^2",
         "bits_per_index": 2,
@@ -373,18 +366,6 @@ def compress_codes(
                 # Compute weighted costs
                 weighted_counts = counts * weights
                 costs = weighted_counts @ candidate_mse_luts.T
-            elif loss_mode == "magnitude_squared":
-                # Weight by magnitude^2: emphasize large-magnitude elements more
-                magnitudes = chunk.float().abs()
-                weights = magnitudes ** 2
-                
-                # Normalize weights per block
-                weights = weights / (weights.sum(dim=1, keepdim=True) + 1e-8)
-                
-                # Compute weighted costs
-                weighted_counts = counts * weights
-                costs = weighted_counts @ candidate_mse_luts.T
-
             else:
                 costs = counts @ candidate_mse_luts.T
             chosen = costs.argmin(dim=1)
