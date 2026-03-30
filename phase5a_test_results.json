@@ -1,0 +1,21 @@
+{
+  "test1_basic": "PASSED",
+  "test2_bitwidths": {
+    "4": "{'mse': 0.08596539497375488, 'compression': 1.9377309955353184, 'codebook_bits': 4}",
+    "6": "{'mse': 0.0042957342229783535, 'compression': 1.9088340663501588, 'codebook_bits': 6}",
+    "8": "{'mse': 0.0001705442846287042, 'compression': 1.8807863395035156, 'codebook_bits': 8}"
+  },
+  "test3_vs_phase4": {
+    "phase4_compression": 1.5990240331828718,
+    "phase5a_compression": 1.8807863395035156,
+    "improvement": 1.17620892524035
+  },
+  "test4_scalability": {
+    "256": "{'mse': 0.0001705442846287042, 'compression': 1.8807863395035156, 'original_bytes': 262144}"
+  },
+  "test5_4bit": {
+    "compression": 1.9377309955353184,
+    "mse": 0.08596539497375488,
+    "bits": 4.0
+  }
+}
