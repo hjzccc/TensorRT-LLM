@@ -1,0 +1,16 @@
+{
+  "baseline_mse": 0.0024902159348130226,
+  "baseline_mae": 0.042517196387052536,
+  "phase30_32": {
+    "mse": 0.0024283744860440493,
+    "improvement_percent": 2.483376979827881
+  },
+  "phase33_2stage": {
+    "mse": 0.00035413060686551034,
+    "improvement_percent": 85.77912139892578
+  },
+  "phase33_3stage": {
+    "mse": 2.0686236894107424e-05,
+    "improvement_percent": 99.16929626464844
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "basic": {
+    "num_stages": 3,
+    "codebook_sizes": [
+      16,
+      8,
+      4
+    ],
+    "original_mse": 0.2501484751701355,
+    "final_mse": 4.696436371887103e-05,
+    "mse_improvement_percent": 99.9812240600586,
+    "mse_by_stage": [
+      0.020693887025117874,
+      0.0004223352298140526,
+      4.69643491669558e-05
+    ],
+    "total_bits": 9.0,
+    "compression_ratio": 0.28125,
+    "compression_percent": 71.875
+  },
+  "stage_comparison": {
+    "1_stages": {
+      "num_stages": 1,
+      "codebook_sizes": [
+        16
+      ],
+      "original_mse": 0.2501484751701355,
+      "final_mse": 0.020693887025117874,
+      "mse_improvement_percent": 91.72735595703125,
+      "mse_by_stage": [
+        0.020693887025117874
+      ],
+      "total_bits": 4.0,
+      "compression_ratio": 0.125,
+      "compression_percent": 87.5
+    },
+    "2_stages": {
+      "num_stages": 2,
+      "codebook_sizes": [
+        16,
+        8
+      ],
+      "original_mse": 0.2501484751701355,
+      "final_mse": 0.0004223352298140526,
+      "mse_improvement_percent": 99.83116912841797,
+      "mse_by_stage": [
+        0.020693887025117874,
+        0.0004223352298140526
+      ],
+      "total_bits": 7.0,
+      "compression_ratio": 0.21875,
+      "compression_percent": 78.125
+    },
+    "3_stages": {
+      "num_stages": 3,
+      "codebook_sizes": [
+        16,
+        8,
+        4
+      ],
+      "original_mse": 0.2501484751701355,
+      "final_mse": 4.696436371887103e-05,
+      "mse_improvement_percent": 99.9812240600586,
+      "mse_by_stage": [
+        0.020693887025117874,
+        0.0004223352298140526,
+        4.69643491669558e-05
+      ],
+      "total_bits": 9.0,
+      "compression_ratio": 0.28125,
+      "compression_percent": 71.875
+    },
+    "4_stages": {
+      "num_stages": 4,
+      "codebook_sizes": [
+        16,
+        8,
+        4,
+        2
+      ],
+      "original_mse": 0.2501484751701355,
+      "final_mse": 4.743680983665399e-05,
+      "mse_improvement_percent": 99.98103332519531,
+      "mse_by_stage": [
+        0.020693887025117874,
+        0.0004223352298140526,
+        4.69643491669558e-05,
+        4.74368644063361e-05
+      ],
+      "total_bits": 10.0,
+      "compression_ratio": 0.3125,
+      "compression_percent": 68.75
+    }
+  }
+}

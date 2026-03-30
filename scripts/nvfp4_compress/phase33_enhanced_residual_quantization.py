@@ -129,7 +129,6 @@ class Phase33EnhancedResidualQuantizer:
                 residual_min = np.min(residuals)
                 residual_max = np.max(residuals)
                 codebook = self.create_codebook(codebook_sizes[stage], (residual_min, residual_max))
-            codebook = self.create_codebook(codebook_sizes[stage])
             
             # Quantize residuals
             quantized, indices = self.quantize_stage(residuals, codebook)

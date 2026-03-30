@@ -1,0 +1,90 @@
+{
+  "results": [
+    {
+      "shard": 12,
+      "key": "model.layers.0.mlp.experts.0.down_proj",
+      "n_elements": 1048576,
+      "orig_bytes": 360448,
+      "comp_bytes": 266679,
+      "bits_orig": 2.75,
+      "bits_comp": 2.0345993041992188,
+      "savings_pct": 26.014570756392047
+    },
+    {
+      "shard": 12,
+      "key": "model.layers.0.mlp.experts.1.down_proj",
+      "n_elements": 1048576,
+      "orig_bytes": 360448,
+      "comp_bytes": 262369,
+      "bits_orig": 2.75,
+      "bits_comp": 2.0017166137695312,
+      "savings_pct": 27.21030495383523
+    },
+    {
+      "shard": 12,
+      "key": "model.layers.0.mlp.experts.10.down_proj",
+      "n_elements": 1048576,
+      "orig_bytes": 360448,
+      "comp_bytes": 266889,
+      "bits_orig": 2.75,
+      "bits_comp": 2.0362014770507812,
+      "savings_pct": 25.956309925426137
+    },
+    {
+      "shard": 17,
+      "key": "model.layers.0.mlp.shared_expert.gate_proj",
+      "n_elements": 1048576,
+      "orig_bytes": 360448,
+      "comp_bytes": 324224,
+      "bits_orig": 2.75,
+      "bits_comp": 2.4736328125,
+      "savings_pct": 10.049715909090908
+    },
+    {
+      "shard": 32,
+      "key": "model.layers.1.mlp.experts.0.gate_proj",
+      "n_elements": 1048576,
+      "orig_bytes": 360448,
+      "comp_bytes": 323222,
+      "bits_orig": 2.75,
+      "bits_comp": 2.4659881591796875,
+      "savings_pct": 10.327703302556818
+    },
+    {
+      "shard": 32,
+      "key": "model.layers.1.mlp.experts.1.gate_proj",
+      "n_elements": 1048576,
+      "orig_bytes": 360448,
+      "comp_bytes": 302948,
+      "bits_orig": 2.75,
+      "bits_comp": 2.311309814453125,
+      "savings_pct": 15.952370383522727
+    },
+    {
+      "shard": 32,
+      "key": "model.layers.1.mlp.experts.10.gate_proj",
+      "n_elements": 1048576,
+      "orig_bytes": 360448,
+      "comp_bytes": 323169,
+      "bits_orig": 2.75,
+      "bits_comp": 2.4655838012695312,
+      "savings_pct": 10.3424072265625
+    },
+    {
+      "shard": 37,
+      "key": "model.layers.1.mlp.shared_expert.up_proj",
+      "n_elements": 1048576,
+      "orig_bytes": 360448,
+      "comp_bytes": 323887,
+      "bits_orig": 2.75,
+      "bits_comp": 2.4710617065429688,
+      "savings_pct": 10.143210671164772
+    }
+  ],
+  "summary": {
+    "avg_bits": 2.2825117111206055,
+    "avg_savings": 16.999574141068894,
+    "min_bits": 2.0017166137695312,
+    "max_bits": 2.4736328125
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "phase": 33,
+  "test_type": "synthetic",
+  "tests": [
+    {
+      "sparsity": 0.1,
+      "original_error": 0.014983788132667542,
+      "corrected_error": 0.014775439165532589,
+      "improvement_percent": 1.3904031561229886
+    },
+    {
+      "sparsity": 0.3,
+      "original_error": 0.011675626039505005,
+      "corrected_error": 0.011486313305795193,
+      "improvement_percent": 1.6212965377954118
+    },
+    {
+      "sparsity": 0.5,
+      "original_error": 0.008301356807351112,
+      "corrected_error": 0.008139684796333313,
+      "improvement_percent": 1.9473026126105661
+    }
+  ],
+  "expert_tests": [
+    {
+      "expert_id": 0,
+      "scale": 0.5,
+      "improvement_percent": 1.288429215125393
+    },
+    {
+      "expert_id": 1,
+      "scale": 0.75,
+      "improvement_percent": 1.2845713840473196
+    },
+    {
+      "expert_id": 2,
+      "scale": 1.0,
+      "improvement_percent": 1.282547501191755
+    },
+    {
+      "expert_id": 3,
+      "scale": 1.25,
+      "improvement_percent": 1.2842454698346553
+    },
+    {
+      "expert_id": 4,
+      "scale": 1.5,
+      "improvement_percent": 1.289417589499837
+    },
+    {
+      "expert_id": 5,
+      "scale": 1.75,
+      "improvement_percent": 1.2876797993710176
+    },
+    {
+      "expert_id": 6,
+      "scale": 2.0,
+      "improvement_percent": 1.2887859873628404
+    },
+    {
+      "expert_id": 7,
+      "scale": 2.25,
+      "improvement_percent": 1.2882214468941418
+    }
+  ],
+  "mean_improvement_percent": 1.2867372991658699
+}

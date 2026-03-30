@@ -29,7 +29,7 @@ from safetensors.torch import save_file
 
 # Phase 30 + Phase 32: Layer-wise adaptive and expert-specific correction
 try:
-    from phase30_32_integration import (
+    from phase30_32_integration_v2 import (
         detect_layer_type,
         extract_expert_id,
         compute_layer_wise_correction_params,
