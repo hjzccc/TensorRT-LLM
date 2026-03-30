@@ -88,9 +88,9 @@ class LayerTypeDetector:
     def _extract_expert_id(weight_name: str) -> Optional[int]:
         """Extract expert ID from weight name."""
         import re
-        match = re.search(r'expert[_.]?(\d+)', weight_name.lower())
+        match = re.search(r"experts\.(d+)|expert[_.]?(d+)", weight_name.lower())
         if match:
-            return int(match.group(1))
+            return int(match.group(1) or match.group(2))
         return None
 
 

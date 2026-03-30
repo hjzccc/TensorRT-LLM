@@ -1,0 +1,80 @@
+{
+  "synthetic": {
+    "low": {
+      "entropy": 7.131355379144896,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    },
+    "medium": {
+      "entropy": 7.229092983402664,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    },
+    "high": {
+      "entropy": 7.804499298306744,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    }
+  },
+  "realistic": {
+    "expert_0": {
+      "expert_id": 0,
+      "entropy": 4.46282045174808,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    },
+    "expert_1": {
+      "expert_id": 1,
+      "entropy": 4.485774091066711,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    },
+    "expert_2": {
+      "expert_id": 2,
+      "entropy": 4.506934537566049,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    },
+    "expert_3": {
+      "expert_id": 3,
+      "entropy": 7.124908304437337,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    },
+    "expert_4": {
+      "expert_id": 4,
+      "entropy": 7.104354242868197,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    },
+    "expert_5": {
+      "expert_id": 5,
+      "entropy": 6.983264936699299,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    },
+    "expert_6": {
+      "expert_id": 6,
+      "entropy": 5.246696238325164,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    },
+    "expert_7": {
+      "expert_id": 7,
+      "entropy": 5.318410112453387,
+      "codebook_size": 128,
+      "bits_per_element": 4.02734375,
+      "compression_ratio": 0.1258544921875
+    }
+  }
+}

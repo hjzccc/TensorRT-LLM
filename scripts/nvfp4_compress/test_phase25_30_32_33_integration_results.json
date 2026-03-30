@@ -1,0 +1,55 @@
+{
+  "test_type": "cumulative_integration",
+  "phases": [
+    "25",
+    "30",
+    "32",
+    "33"
+  ],
+  "layer_types": [
+    "attention",
+    "mlp",
+    "expert"
+  ],
+  "results": {
+    "attention": {
+      "baseline_error": 0.14624333381652832,
+      "phase25_error": 0.14177919924259186,
+      "phase25_improvement": 3.0525388456591167,
+      "phase30_error": 0.14177919924259186,
+      "phase30_improvement": 3.0525388456591167,
+      "phase32_error": 0.14238345623016357,
+      "phase32_improvement": 2.639352841345378,
+      "phase33_error": 0.10582365095615387,
+      "phase33_improvement": 27.638649780155824
+    },
+    "mlp": {
+      "baseline_error": 0.1447013020515442,
+      "phase25_error": 0.1401701271533966,
+      "phase25_improvement": 3.1313988429306105,
+      "phase30_error": 0.14438392221927643,
+      "phase30_improvement": 0.21933446884583463,
+      "phase32_error": 0.14542268216609955,
+      "phase32_improvement": -0.498530493041725,
+      "phase33_error": 0.10781890153884888,
+      "phase33_improvement": 25.48864453172467
+    },
+    "expert": {
+      "baseline_error": 0.15025699138641357,
+      "phase25_error": 0.1454499065876007,
+      "phase25_improvement": 3.1992420149359715,
+      "phase30_error": 0.07272495329380035,
+      "phase30_improvement": 51.59962100746799,
+      "phase32_error": 0.0728192925453186,
+      "phase32_improvement": 51.536835741605955,
+      "phase33_error": 0.05405716970562935,
+      "phase33_improvement": 64.0235244917081
+    }
+  },
+  "mean_improvements": {
+    "phase25": 3.1277265678418993,
+    "phase30": 18.290498107324314,
+    "phase32": 17.892552696636535,
+    "phase33": 39.05027293452953
+  }
+}
