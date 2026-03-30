@@ -685,7 +685,9 @@ class PerBlockGLVQ(PerBlockCodebookBase):
                 # If A is singular, use pseudo-inverse
                 z = torch.linalg.pinv(A) @ block
             
-            z_rounded = torch.round(z)
+            # Scale by num_levels before rounding (same as _babai_round)
+            z_scaled = z * self.num_levels
+            z_rounded = torch.round(z_scaled) / self.num_levels
             block_quant = A @ z_rounded
             
             # MSE loss

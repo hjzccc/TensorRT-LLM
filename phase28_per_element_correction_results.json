@@ -1,0 +1,40 @@
+[
+  {
+    "test_type": "per_element_synthetic",
+    "num_blocks": 200,
+    "block_size": 128,
+    "mse_before": 0.04612079635262489,
+    "results": {
+      "per_block": {
+        "mse_after": 0.04574446380138397,
+        "improvement_percent": 0.8159714937210083,
+        "storage_bytes": 800,
+        "compression_ratio": 9.142857142857142
+      },
+      "per_element": {
+        "mse_after": 7.242568450387696e-18,
+        "improvement_percent": 100.0,
+        "storage_bytes": 102400,
+        "compression_ratio": 0.9078014184397163,
+        "relative_improvement_vs_block": 100.0
+      }
+    }
+  },
+  {
+    "test_type": "per_element_realistic",
+    "num_blocks": 20,
+    "block_size": 128,
+    "mse_before": 0.00048003383562900126,
+    "results": {
+      "per_block": {
+        "mse_after": 0.0004755989066325128,
+        "improvement_percent": 0.9238784313201904
+      },
+      "per_element": {
+        "mse_after": 5.104961629359776e-20,
+        "improvement_percent": 100.0,
+        "relative_improvement_vs_block": 100.0
+      }
+    }
+  }
+]
