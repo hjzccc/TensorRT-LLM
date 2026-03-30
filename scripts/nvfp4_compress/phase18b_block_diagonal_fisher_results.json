@@ -1,0 +1,36 @@
+{
+  "phase": "18B",
+  "method": "Block-Diagonal Fisher",
+  "synthetic_tests": {
+    "num_blocks": 3,
+    "avg_weighted_mse": 0.0,
+    "std_weighted_mse": 0.0,
+    "min_weighted_mse": 0.0,
+    "max_weighted_mse": 0.0,
+    "blocks_with_improvement": 0,
+    "improvement_percentages": []
+  },
+  "real_blocks_test": {
+    "num_blocks": 10,
+    "avg_weighted_mse": 0.3304297626018524,
+    "std_weighted_mse": 0.14914381504058838,
+    "min_weighted_mse": 0.10668836534023285,
+    "max_weighted_mse": 0.6085948348045349,
+    "blocks_with_improvement": 10,
+    "improvement_percentages": [
+      47.8404426574707,
+      78.06122589111328,
+      56.07090759277344,
+      46.683834075927734,
+      65.40573120117188,
+      71.6136245727539,
+      38.94961166381836,
+      11.127351760864258,
+      86.09236907958984,
+      68.09387969970703
+    ],
+    "avg_improvement": 56.99389781951904,
+    "std_improvement": 20.7810723198985
+  },
+  "timestamp": "2026-03-30 03:19:15"
+}
