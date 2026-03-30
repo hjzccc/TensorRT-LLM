@@ -1,0 +1,47 @@
+{
+  "layer1_uniform": {
+    "mse": 4.223250653012656e-05,
+    "compression_ratio": 4.092591297079028,
+    "codebook_size": 256,
+    "num_blocks": 7813,
+    "huffman_bits_per_code": 7.560315139831051
+  },
+  "layer2_normal": {
+    "mse": 1.0530816325626802e-05,
+    "compression_ratio": 4.092872914121678,
+    "codebook_size": 256,
+    "num_blocks": 7813,
+    "huffman_bits_per_code": 7.559777174260847
+  },
+  "layer3_exponential": {
+    "mse": 1.0122724233951885e-05,
+    "compression_ratio": 4.385318774988608,
+    "codebook_size": 256,
+    "num_blocks": 7813,
+    "huffman_bits_per_code": 7.038416541341354
+  },
+  "layer4_mixed": {
+    "mse": 6.374857548507862e-06,
+    "compression_ratio": 4.166450749036704,
+    "codebook_size": 256,
+    "num_blocks": 7813,
+    "huffman_bits_per_code": 7.421715010239344
+  },
+  "layer5_sparse": {
+    "mse": 4.2124355559280957e-07,
+    "compression_ratio": 4.092049633493017,
+    "codebook_size": 256,
+    "num_blocks": 7813,
+    "huffman_bits_per_code": 7.56135007359529
+  },
+  "overall": {
+    "phase6_bits_per_elem": 1.8329,
+    "phase6_compression": 17.458672049757215,
+    "phase7_bits_per_elem": 7.6869982,
+    "phase7_compression": 4.162873356728508,
+    "improvement_percent": -319.38993944023133,
+    "improvement_bits": -5.854098199999999,
+    "compression_time": 2.0321009159088135,
+    "num_layers": 5
+  }
+}

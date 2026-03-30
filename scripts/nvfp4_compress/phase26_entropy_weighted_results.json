@@ -1,0 +1,61 @@
+{
+  "phase": 26,
+  "technique": "entropy_weighted_correction",
+  "description": "Weight corrections by entropy of error distribution",
+  "reference": "EntroLLM (arXiv:2505.02380)",
+  "timestamp": 1774871852.6923945,
+  "tests": [
+    {
+      "test_type": "entropy_weighted_synthetic",
+      "num_blocks": 200,
+      "block_size": 128,
+      "mse_before": 0.007860947400331497,
+      "results": {
+        "uniform_correction": {
+          "mse_after": 0.006978428301432689,
+          "improvement_percent": 11.22662516303814
+        },
+        "entropy_weighted": {
+          "mse_after": 0.00718477641507742,
+          "improvement_percent": 8.60164749640181,
+          "entropy_stats": {
+            "min": -0.0,
+            "max": 3.752002554522289,
+            "mean": 2.3181081074344156,
+            "std": 1.6319628953274086
+          }
+        },
+        "inverse_entropy_weighted": {
+          "mse_after": 0.0071847764665099925,
+          "improvement_percent": 8.601646842122246
+        }
+      }
+    },
+    {
+      "test_type": "entropy_weighted_realistic",
+      "num_blocks": 20,
+      "block_size": 128,
+      "mse_before": 0.02272656001150608,
+      "results": {
+        "uniform_correction": {
+          "mse_after": 0.0225126583344298,
+          "improvement_percent": 0.9411968945937432
+        },
+        "entropy_weighted": {
+          "mse_after": 0.022529061845788123,
+          "improvement_percent": 0.8690191811605796,
+          "entropy_stats": {
+            "min": 2.9941139084695227,
+            "max": 3.9078438750055406,
+            "mean": 3.4731079280041977,
+            "std": 0.2678335507898571
+          }
+        },
+        "inverse_entropy_weighted": {
+          "mse_after": 0.02252906184975603,
+          "improvement_percent": 0.8690191637012457
+        }
+      }
+    }
+  ]
+}

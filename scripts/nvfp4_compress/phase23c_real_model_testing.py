@@ -14,6 +14,7 @@ import json
 import time
 from pathlib import Path
 from safetensors.torch import load_file
+import torch
 from phase22_hybrid_pipeline import Phase22HybridPipeline
 from phase23c_expert_aware_quantizer_FIXED import Phase23CExpertAwareQuantizer
 
@@ -39,7 +40,7 @@ def test_phase23c_on_real_model():
     sensitivity_classifications = []
     
     # Load first few layers to test
-    num_layers_to_test = 5
+    num_layers_to_test = 10
     for layer_idx in range(num_layers_to_test):
         try:
             # Load layer weights
@@ -48,25 +49,29 @@ def test_phase23c_on_real_model():
             # Extract weight matrices (skip biases and norms)
             for key, weight in ckpt.items():
                 if 'weight' in key and weight.ndim >= 2:
+                    # Convert to float32 for processing
+                    if weight.dtype != torch.float32:
+                        weight = weight.float()
+                    
                     # Convert to numpy
-                    weight_np = weight.cpu().numpy() if hasattr(weight, 'cpu') else np.array(weight)
+                    weight_np = weight.cpu().numpy() if hasattr(weight, 'cpu') else np.array(weight, dtype=np.float32)
                     
                     # Classify sensitivity
                     classification, sensitivity_score = phase23c.classify_expert_sensitivity(weight_np)
                     
                     sample_weights.append({
                         'key': key,
-                        'shape': weight_np.shape,
-                        'size': weight_np.size,
-                        'sensitivity_score': sensitivity_score,
+                        'shape': list(weight_np.shape),
+                        'size': int(weight_np.size),
+                        'sensitivity_score': float(sensitivity_score),
                         'classification': classification
                     })
                     sensitivity_classifications.append(classification)
                     
-                    if len(sample_weights) >= 20:  # Limit to 20 matrices
+                    if len(sample_weights) >= 30:  # Limit to 30 matrices
                         break
             
-            if len(sample_weights) >= 20:
+            if len(sample_weights) >= 30:
                 break
                 
         except Exception as e:
@@ -74,6 +79,10 @@ def test_phase23c_on_real_model():
             continue
     
     print(f"  Loaded {len(sample_weights)} weight matrices")
+    
+    if len(sample_weights) == 0:
+        print("ERROR: Could not load any weight matrices from model")
+        return None
     
     # Analyze sensitivity distribution
     print("\n[4/5] Analyzing sensitivity distribution...")

@@ -1,0 +1,42 @@
+{
+  "layer1_uniform": {
+    "mse": 4.199858449283056e-05,
+    "compression_ratio": 3.119258614612479,
+    "codebook_size": 256,
+    "num_blocks": 7813
+  },
+  "layer2_normal": {
+    "mse": 1.046073612087639e-05,
+    "compression_ratio": 3.119258614612479,
+    "codebook_size": 256,
+    "num_blocks": 7813
+  },
+  "layer3_exponential": {
+    "mse": 1.0122724233951885e-05,
+    "compression_ratio": 3.119258614612479,
+    "codebook_size": 256,
+    "num_blocks": 7813
+  },
+  "layer4_mixed": {
+    "mse": 5.794899152533617e-06,
+    "compression_ratio": 3.119258614612479,
+    "codebook_size": 256,
+    "num_blocks": 7813
+  },
+  "layer5_sparse": {
+    "mse": 4.2028048596876033e-07,
+    "compression_ratio": 3.119258614612479,
+    "codebook_size": 256,
+    "num_blocks": 7813
+  },
+  "overall": {
+    "phase6_bits_per_elem": 1.9423,
+    "phase6_compression": 16.475312773515935,
+    "phase7_bits_per_elem": 10.258848,
+    "phase7_compression": 3.119258614612479,
+    "improvement_percent": -428.1804046748701,
+    "improvement_bits": -8.316548000000001,
+    "compression_time": 1.6691327095031738,
+    "num_layers": 5
+  }
+}
