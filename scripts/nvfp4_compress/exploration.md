@@ -401,3 +401,48 @@ The earlier "expected" PPL values (+0.017) were from the buggy BF16-roundtrip pi
 - Optimizes the codebook values themselves (not just which E2M1 codes to use)
 - Could be adapted to find optimal 8-code subset
 
+
+---
+
+## [Phase 3 Analysis] Entropy Coding Potential — COMPLETED ✓
+
+**Status:** ANALYSIS COMPLETE
+
+**Key Findings:**
+
+### Index Distribution Analysis (2b075b_zero_fixed_exact)
+- Per-layer entropy: 1.07-2.00 bits (weighted mean: 1.89 bits)
+- Global entropy: 1.96 bits (nearly uniform)
+- Per-layer entropy coding savings: 0.11 bits/elem (4.1%)
+- Global entropy coding savings: 0.04 bits/elem (1.5%)
+
+### Why Entropy Coding Has Limited Benefit
+- Most layers (929/1540 sampled) have near-uniform index distributions (~2.0 bits)
+- Only down_proj layers show skewed distributions (1.3-1.6 bits)
+- gate_up_proj layers are near-uniform
+- The per-block codebook selection already exploits local structure
+
+### Conclusion
+Entropy coding is NOT the high-value direction. The 4.1% savings don't justify the implementation complexity.
+
+**Better directions:**
+1. Improve codebook selection quality (scale-weighted, freq-sq)
+2. Reduce codebook overhead (currently 0.75 bits/elem = 27% of total)
+3. Explore 3-bit indices with smaller codebook overhead
+
+---
+
+## [Phase 3 New Schemes] Scale-Weighted and Freq-Sq — IN PROGRESS
+
+**Status:** COMPRESSING (CPU, ~20 min remaining)
+
+**Schemes:**
+- `2b075b_zero_fixed_scale_weighted`: Weight MSE by block_scale² (high-scale blocks get better codebooks)
+  - Motivation: output_error ∝ (ΔW * block_scale)², so high-scale blocks matter more
+  - Block scale range: 0.75 to 448.0 (600x dynamic range!)
+  
+- `2b075b_zero_fixed_freq_sq`: Weight by frequency² (dominant codes emphasized)
+  - Motivation: codes that appear more often contribute more to total MSE
+
+**Expected:** Both should improve accuracy vs exact MSE by better allocating codebook quality to important blocks.
+
