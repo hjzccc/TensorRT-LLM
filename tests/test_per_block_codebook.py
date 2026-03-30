@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensorrt_llm.quantization.per_block_codebook import (
     PerBlockAdaptiveScaling,
     PerBlockBOF4,
+    PerBlockGLVQ,
     PerBlockQuantizationConfig,
     quantize_weights,
     dequantize_weights,
@@ -380,6 +381,177 @@ class TestPerBlockBOF4:
         for i, codebook in enumerate(metadata['codebooks']):
             assert torch.all(torch.isfinite(codebook))
             print(f"Block {i} codebook learned successfully")
+
+
+
+
+class TestPerBlockGLVQ:
+    """Test GLVQ (Learned Lattice Vector Quantization)."""
+    
+    def test_quantize_simple(self):
+        """Test basic GLVQ quantization."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockGLVQ(block_size=128)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        assert quantized.shape == weights.shape
+        assert metadata['method'] == 'glvq'
+        assert metadata['block_size'] == 128
+        assert 'transformation_matrices' in metadata
+        assert 'scales' in metadata
+        assert len(metadata['transformation_matrices']) == 4
+        assert len(metadata['scales']) == 4
+    
+    def test_dequantize(self):
+        """Test GLVQ dequantization."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockGLVQ(block_size=128)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(quantized, metadata)
+        
+        assert dequantized.shape == weights.shape
+        
+        error = torch.abs(weights - dequantized).mean()
+        print(f"GLVQ mean reconstruction error: {error:.6f}")
+        assert error < 0.15
+    
+    def test_quantize_dequantize_roundtrip(self):
+        """Test full GLVQ quantize-dequantize roundtrip."""
+        weights = torch.randn(512, 512)
+        
+        config = PerBlockQuantizationConfig(method='glvq', block_size=128)
+        quantized, metadata = quantize_weights(weights, config)
+        dequantized = dequantize_weights(quantized, metadata)
+        
+        error = torch.abs(weights - dequantized).mean()
+        print(f"GLVQ roundtrip error: {error:.6f}")
+        assert error < 0.2
+    
+    def test_lattice_learning(self):
+        """Test that lattice transformation matrices are learned."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockGLVQ(block_size=128)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        assert len(metadata['transformation_matrices']) == 4
+        for i, A in enumerate(metadata['transformation_matrices']):
+            assert A.shape == (128, 128)
+            assert torch.all(torch.isfinite(A))
+            cond_num = torch.linalg.cond(A).item()
+            print(f"Block {i} transformation matrix condition number: {cond_num:.4f}")
+            assert cond_num < 1000
+    
+    def test_different_block_sizes(self):
+        """Test GLVQ with different block sizes."""
+        weights = torch.randn(256, 256)
+        
+        for block_size in [64, 128, 256]:
+            quantizer = PerBlockGLVQ(block_size=block_size)
+            quantized, metadata = quantizer.quantize(weights)
+            dequantized = quantizer.dequantize(quantized, metadata)
+            
+            error = torch.abs(weights - dequantized).mean()
+            print(f"GLVQ block size {block_size}: error = {error:.6f}")
+            assert error < 0.2
+    
+    def test_small_weights(self):
+        """Test GLVQ with small weight values."""
+        weights = torch.randn(128, 128) * 0.01
+        
+        quantizer = PerBlockGLVQ(block_size=64)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(quantized, metadata)
+        
+        error = torch.abs(weights - dequantized).mean()
+        print(f"GLVQ small weights error: {error:.6f}")
+        assert error < 0.01
+    
+    def test_large_weights(self):
+        """Test GLVQ with large weight values."""
+        weights = torch.randn(128, 128) * 100
+        
+        quantizer = PerBlockGLVQ(block_size=64)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(quantized, metadata)
+        
+        error = torch.abs(weights - dequantized).mean()
+        print(f"GLVQ large weights error: {error:.6f}")
+        assert error < 20
+    
+    def test_compression_ratio(self):
+        """Test GLVQ compression ratio calculation."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockGLVQ(block_size=128)
+        quantized, metadata = quantizer.quantize(weights)
+        
+        ratio = quantizer.get_compression_ratio(metadata)
+        print(f"GLVQ compression ratio: {ratio:.2f}x")
+        
+        assert 2.0 < ratio < 8.0
+    
+    def test_batch_quantization(self):
+        """Test GLVQ on batch of weights."""
+        layer_shapes = [
+            (4096, 4096),
+            (4096, 12288),
+            (12288, 4096),
+        ]
+        
+        config = PerBlockQuantizationConfig(method='glvq', block_size=128)
+        
+        total_error = 0
+        for shape in layer_shapes:
+            weights = torch.randn(*shape)
+            quantized, metadata = quantize_weights(weights, config)
+            dequantized = dequantize_weights(quantized, metadata)
+            
+            error = torch.abs(weights - dequantized).mean()
+            total_error += error
+            print(f"GLVQ layer {shape}: error = {error:.6f}")
+        
+        avg_error = total_error / len(layer_shapes)
+        print(f"GLVQ average error: {avg_error:.6f}")
+        assert avg_error < 0.2
+    
+    def test_numerical_stability(self):
+        """Test GLVQ numerical stability (no NaN/Inf)."""
+        weights = torch.randn(256, 256)
+        
+        quantizer = PerBlockGLVQ(block_size=128)
+        quantized, metadata = quantizer.quantize(weights)
+        dequantized = quantizer.dequantize(quantized, metadata)
+        
+        assert torch.all(torch.isfinite(quantized))
+        assert torch.all(torch.isfinite(dequantized))
+        
+        for A in metadata['transformation_matrices']:
+            assert torch.all(torch.isfinite(A))
+        
+        print("GLVQ numerical stability verified")
+    
+    def test_comparison_with_phase1(self):
+        """Test GLVQ performance compared to Phase 1 (Four Over Six)."""
+        weights = torch.randn(512, 512)
+        
+        quantizer_phase1 = PerBlockAdaptiveScaling(block_size=128)
+        quantized_p1, metadata_p1 = quantizer_phase1.quantize(weights)
+        dequantized_p1 = quantizer_phase1.dequantize(quantized_p1, metadata_p1)
+        error_p1 = torch.abs(weights - dequantized_p1).mean()
+        
+        quantizer_glvq = PerBlockGLVQ(block_size=128)
+        quantized_glvq, metadata_glvq = quantizer_glvq.quantize(weights)
+        dequantized_glvq = quantizer_glvq.dequantize(quantized_glvq, metadata_glvq)
+        error_glvq = torch.abs(weights - dequantized_glvq).mean()
+        
+        print(f"Phase 1 error: {error_p1:.6f}")
+        print(f"Phase 3 (GLVQ) error: {error_glvq:.6f}")
+        
+        assert error_glvq < 0.2
+        assert error_p1 < 0.2
 
 
 if __name__ == '__main__':
