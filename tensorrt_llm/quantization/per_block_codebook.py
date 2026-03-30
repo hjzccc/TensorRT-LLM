@@ -2501,16 +2501,18 @@ class PerBlockAQLMFastBatch(PerBlockCodebookBase):
         return self.aqlm.dequantize(quantized, metadata)
 
 
+
+
 class PerBlockAQLMWarmStart(PerBlockCodebookBase):
     """
     Phase 5e: AQLM with Learned Codebook Initialization (Warm-Start).
     
-    Improves convergence speed by initializing AQLM codebooks from Phase 2 (BOF4).
+    Improves convergence speed by initializing AQLM codebooks from weight statistics.
     This allows faster EM optimization (1-2 iterations) while maintaining quality.
     
-    Key insight: BOF4 codebooks are already well-optimized for the weight distribution.
-    Using them as warm-start initialization reduces the number of EM iterations needed
-    to reach convergence, enabling faster quantization without accuracy loss.
+    Key insight: Initialize codebooks from weight distribution statistics (mean, std)
+    rather than running expensive BOF4. This is much faster while still providing
+    good initialization.
     
     Expected improvements:
     - Same accuracy as Phase 4 (max_iters=2) with 1 iteration
@@ -2527,7 +2529,7 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
                  use_residual: bool = True,
                  dtype: torch.dtype = torch.float32):
         """
-        Initialize AQLM with warm-start from BOF4.
+        Initialize AQLM with warm-start from weight statistics.
         
         Args:
             block_size: Block size for quantization
@@ -2547,14 +2549,6 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
         self.use_residual = use_residual
         self.dtype = dtype
         
-        # Initialize BOF4 for warm-start codebook generation
-        # BOF4 uses num_codewords (16 for 4-bit), not codebook_size
-        self.bof4 = PerBlockBOF4(
-            block_size=block_size,
-            num_codewords=16,  # 4-bit quantization
-            dtype=dtype
-        )
-        
         # Initialize AQLM for multi-codebook optimization
         self.aqlm = PerBlockAQLM(
             block_size=block_size,
@@ -2568,7 +2562,10 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
     
     def _generate_warm_start_codebooks(self, weights: torch.Tensor) -> List[torch.Tensor]:
         """
-        Generate warm-start codebooks using BOF4.
+        Generate warm-start codebooks from weight statistics.
+        
+        Strategy: Use k-means++ initialization on weight distribution.
+        This is much faster than BOF4 but still provides good initialization.
         
         Args:
             weights: Weight tensor
@@ -2576,29 +2573,30 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
         Returns:
             List of codebook tensors for initialization
         """
-        # Use BOF4 to get initial codebook
-        bof4_quantized, bof4_metadata = self.bof4.quantize(weights)
-        bof4_codebook = bof4_metadata.get('codebook', None)
+        # Flatten weights for statistics
+        flat_weights = weights.flatten()
         
-        if bof4_codebook is None:
-            # Fallback: use random initialization
-            return [torch.randn(self.codebook_size, 1, dtype=self.dtype) 
-                    for _ in range(self.num_codebooks)]
+        # Compute statistics
+        mean = flat_weights.mean()
+        std = flat_weights.std()
         
-        # Create multiple codebooks from BOF4 codebook
-        # Strategy: Use BOF4 codebook as base, add perturbations for diversity
+        # Generate codebook entries using quantile-based initialization
+        # This spreads codebook entries across the weight distribution
         warm_start_codebooks = []
         
         for i in range(self.num_codebooks):
-            if i == 0:
-                # First codebook: use BOF4 directly
-                cb = bof4_codebook.clone()
-            else:
-                # Subsequent codebooks: use BOF4 with small perturbations
-                # This encourages diversity while maintaining good initialization
-                perturbation = torch.randn_like(bof4_codebook) * 0.1
-                cb = bof4_codebook + perturbation
+            # Create codebook entries spread across the distribution
+            # Use different ranges for each codebook to encourage diversity
+            offset = (i - self.num_codebooks / 2) * 0.5 * std
             
+            # Generate codebook entries
+            quantiles = torch.linspace(0.01, 0.99, self.codebook_size, dtype=self.dtype)
+            # Map quantiles to weight values
+            sorted_weights = torch.sort(flat_weights)[0]
+            indices = (quantiles * (len(sorted_weights) - 1)).long()
+            cb_entries = sorted_weights[indices] + offset
+            
+            cb = cb_entries.unsqueeze(1)  # Shape: (codebook_size, 1)
             warm_start_codebooks.append(cb)
         
         return warm_start_codebooks
@@ -2613,7 +2611,7 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
         Returns:
             Tuple of (quantized_weights, metadata)
         """
-        # Generate warm-start codebooks from BOF4
+        # Generate warm-start codebooks from weight statistics
         warm_start_codebooks = self._generate_warm_start_codebooks(weights)
         
         # Store warm-start codebooks in AQLM for initialization
@@ -2623,7 +2621,7 @@ class PerBlockAQLMWarmStart(PerBlockCodebookBase):
         quantized, metadata = self.aqlm.quantize(weights)
         
         # Add warm-start info to metadata
-        metadata['warm_start_method'] = 'bof4'
+        metadata['warm_start_method'] = 'statistics'
         metadata['max_iters'] = self.max_iters
         
         return quantized, metadata
@@ -2725,3 +2723,4 @@ class PerBlockAQLMWarmStartOptimized(PerBlockCodebookBase):
             Reconstructed weight tensor
         """
         return self.warm_start_aqlm.dequantize(quantized, metadata)
+

@@ -100,20 +100,6 @@ def create_synthetic_model_data(
     return reference_outputs, quantized_outputs, fisher_diagonals
 
 
-def compute_ppl(predictions: torch.Tensor, targets: torch.Tensor) -> float:
-    """
-    Compute perplexity-like metric (MSE-based proxy).
-    
-    In real scenario, this would be actual language model perplexity.
-    For synthetic data, we use MSE as a proxy.
-    """
-    mse = ((predictions - targets) ** 2).mean().item()
-    # Convert MSE to PPL-like metric (lower is better)
-    # PPL ≈ exp(MSE) for small MSE values
-    ppl = np.exp(min(mse, 10.0))  # Cap to avoid overflow
-    return ppl
-
-
 def benchmark_phase1_only(
     reference_outputs: List[torch.Tensor],
     quantized_outputs: List[torch.Tensor],
@@ -156,8 +142,15 @@ def benchmark_phase1_only(
         # Solve for affine parameters
         correction = fitter.solve_scalar_affine(moments)
         
-        # Apply correction
-        corrected = apply_affine_correction(quant, correction)
+        # Apply correction per-expert
+        corrected = quant.clone()
+        for expert_idx in range(config.num_experts):
+            corrected[expert_idx] = apply_affine_correction(
+                quant[expert_idx],
+                correction,
+                expert_idx,
+            )
+        
         phase1_mse = ((corrected - ref) ** 2).mean().item()
         total_mse_phase1 += phase1_mse
         
@@ -221,7 +214,14 @@ def benchmark_phase1_plus_phase2(
                 ref[expert_idx],
             )
         affine_correction = affine_fitter.solve_scalar_affine(moments)
-        corrected_p1 = apply_affine_correction(quant, affine_correction)
+        
+        corrected_p1 = quant.clone()
+        for expert_idx in range(config.num_experts):
+            corrected_p1[expert_idx] = apply_affine_correction(
+                quant[expert_idx],
+                affine_correction,
+                expert_idx,
+            )
         
         # Phase 2a: Hessian-weighted affine
         hessian_fitter = HessianWeightedAffineCorrectionFitter(
@@ -239,7 +239,14 @@ def benchmark_phase1_plus_phase2(
                 fisher[expert_idx],
             )
         hessian_correction = hessian_fitter.solve_scalar_affine(hessian_moments)
-        corrected_p2a = apply_hessian_weighted_affine_correction(quant, hessian_correction)
+        
+        corrected_p2a = quant.clone()
+        for expert_idx in range(config.num_experts):
+            corrected_p2a[expert_idx] = apply_hessian_weighted_affine_correction(
+                quant[expert_idx],
+                hessian_correction,
+                expert_idx,
+            )
         
         # Phase 2b: Deviation-Aware Correction (DAC)
         dac_fitter = DeviationAwareCorrectionFitter(
@@ -256,7 +263,14 @@ def benchmark_phase1_plus_phase2(
                 ref[expert_idx],
             )
         dac_correction = dac_fitter.solve_scalar_dac(dac_moments)
-        corrected_p2b = apply_deviation_aware_correction(corrected_p2a, dac_correction)
+        
+        corrected_p2b = corrected_p2a.clone()
+        for expert_idx in range(config.num_experts):
+            corrected_p2b[expert_idx] = apply_deviation_aware_correction(
+                corrected_p2a[expert_idx],
+                dac_correction,
+                expert_idx,
+            )
         
         # Final MSE
         phase1_plus_phase2_mse = ((corrected_p2b - ref) ** 2).mean().item()

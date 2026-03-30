@@ -206,15 +206,29 @@ def main():
     
     start = time.time()
     
-    # Load sample shards (first 3 shards with actual weight data)
-    shard_files = sorted(CKPT_DIR.glob("model-*.safetensors"))
-    # Skip first 12 shards (they're symlinks to nvfp4_checkpoint, check shard 12+)
-    shard_files = [s for s in shard_files if not s.is_symlink()][:5]
-    if not shard_files:
-        # Fall back to first 5 shards
-        shard_files = sorted(CKPT_DIR.glob("model-*.safetensors"))[:5]
-    
-    print(f"Analyzing {len(shard_files)} shards...")
+    # Select shards that actually contain analyzable NVFP4 weights.
+    all_shards = sorted(CKPT_DIR.glob("model-*.safetensors"))
+    shard_files = []
+    for shard_path in all_shards:
+        with safe_open(str(shard_path), framework="pt", device="cpu") as f:
+            keys = list(f.keys())
+            key_set = set(keys)
+            has_analyzable_weight = False
+            for k in keys:
+                skip = any(pat in k for pat in SKIP_PATTERNS)
+                if skip or not k.endswith(".weight"):
+                    continue
+                scale_key = k.replace(".weight", ".weight_scale")
+                scale2_key = k.replace(".weight", ".weight_scale_2")
+                if scale_key in key_set and scale2_key in key_set:
+                    has_analyzable_weight = True
+                    break
+        if has_analyzable_weight:
+            shard_files.append(shard_path)
+        if len(shard_files) >= 5:
+            break
+
+    print(f"Analyzing {len(shard_files)} shards with analyzable tensors...")
     
     all_fp8_scale_errors = []
     all_scale_mse = []

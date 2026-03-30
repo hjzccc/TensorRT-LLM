@@ -1,0 +1,25 @@
+{
+  "layer1_uniform": {
+    "mse": 4.2146410123677924e-05,
+    "compression_ratio": 3.119258614612479,
+    "codebook_size": 256,
+    "num_blocks": 7813
+  },
+  "layer2_normal": {
+    "mse": 1.0459665645612404e-05,
+    "compression_ratio": 3.119258614612479,
+    "codebook_size": 256,
+    "num_blocks": 7813
+  },
+  "layer3_exponential": {
+    "mse": 1.0122724233951885e-05,
+    "compression_ratio": 3.119258614612479,
+    "codebook_size": 256,
+    "num_blocks": 7813
+  },
+  "overall": {
+    "overall_compression_ratio": 3.119258614612479,
+    "bits_per_element": 10.258848,
+    "compression_time": 0.8205277919769287
+  }
+}

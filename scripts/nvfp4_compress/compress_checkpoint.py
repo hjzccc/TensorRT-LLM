@@ -325,6 +325,15 @@ def compress_codes(
         )
 
         loss_mode = cast(str, tables.get("loss_mode", "mse"))
+                # Pre-compute quantiles for grouped_fisher loss mode
+        grouped_fisher_thresholds = None
+        if loss_mode == "grouped_fisher":
+            all_magnitudes = flat_blocks.float().abs()
+            grouped_fisher_thresholds = {
+                "high": torch.quantile(all_magnitudes, 0.66),
+                "low": torch.quantile(all_magnitudes, 0.33),
+            }
+
         for start in range(0, flat_blocks.shape[0], BLOCK_SEARCH_CHUNK_BLOCKS):
             end = min(start + BLOCK_SEARCH_CHUNK_BLOCKS, flat_blocks.shape[0])
             chunk = flat_blocks[start:end].to(torch.long)
@@ -347,11 +356,11 @@ def compress_codes(
                 weighted_counts = counts * freq
                 costs = weighted_counts @ candidate_mse_luts.T
             elif loss_mode == "grouped_fisher":
-                # Weight by grouped Fisher: magnitude-based grouping
+                # Weight by grouped Fisher: magnitude-based grouping (using pre-computed thresholds)
                 # High-magnitude elements get 3x weight, medium 1x, low 0.3x
                 magnitudes = chunk.float().abs()
-                high_threshold = torch.quantile(magnitudes, 0.66)
-                low_threshold = torch.quantile(magnitudes, 0.33)
+                high_threshold = grouped_fisher_thresholds["high"]
+                low_threshold = grouped_fisher_thresholds["low"]
                 
                 weights = torch.ones_like(magnitudes)
                 weights[magnitudes >= high_threshold] = 3.0

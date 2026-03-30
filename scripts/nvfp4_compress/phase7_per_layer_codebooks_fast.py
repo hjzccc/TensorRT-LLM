@@ -6,12 +6,11 @@ Uses fast codebook learning for per-layer quantization
 
 import torch
 import numpy as np
-from collections import Counter, defaultdict
 import json
 import time
 from pathlib import Path
 import logging
-from typing import Tuple, Dict, List, Optional
+from typing import Tuple, Dict
 
 # Configure logging
 logging.basicConfig(
@@ -19,12 +18,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-# FP4 E2M1 code table
-E2M1_TABLE = np.array([
-    0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0,
-    0.0, -0.5, -1.0, -1.5, -2.0, -3.0, -4.0, -6.0,
-], dtype=np.float32)
 
 class FastPerLayerCodebookQuantizer:
     """Fast per-layer codebook quantization using random sampling."""
@@ -63,6 +56,9 @@ class FastPerLayerCodebookQuantizer:
         # Use histogram-based approach
         hist, bin_edges = np.histogram(samples, bins=num_clusters)
         codebook = (bin_edges[:-1] + bin_edges[1:]) / 2
+        
+        # Store codebook
+        self.layer_codebooks[layer_name] = codebook
         
         logger.info(f"  Learned codebook for {layer_name} ({len(codebook)} clusters)")
         
