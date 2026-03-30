@@ -331,6 +331,17 @@ def compress_codes(
                 # Compute weighted costs
                 weighted_counts = counts * weights
                 costs = weighted_counts @ candidate_mse_luts.T
+            elif loss_mode == "magnitude_squared":
+                # Weight by magnitude^2: emphasize large-magnitude elements more
+                magnitudes = chunk.float().abs()
+                weights = magnitudes ** 2
+                
+                # Normalize weights per block
+                weights = weights / (weights.sum(dim=1, keepdim=True) + 1e-8)
+                
+                # Compute weighted costs
+                weighted_counts = counts * weights
+                costs = weighted_counts @ candidate_mse_luts.T
 
             else:
                 costs = counts @ candidate_mse_luts.T

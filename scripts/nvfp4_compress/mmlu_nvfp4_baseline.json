@@ -1,0 +1,17 @@
+{
+  "config": {
+    "batch_size": 64,
+    "limit": null,
+    "max_batch_total_tokens": 12000,
+    "offline": true
+  },
+  "mmlu_acc": 0.61,
+  "subjects": {
+    "abstract_algebra": {
+      "acc": 0.61,
+      "correct": 61,
+      "elapsed_sec": 36.558900594711304,
+      "total": 100
+    }
+  }
+}

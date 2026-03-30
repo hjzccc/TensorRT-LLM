@@ -15,6 +15,9 @@ Usage:
   python eval_perblock_fast.py --K 8
 """
 
+import os
+os.environ["HF_DATASETS_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
 import sys, math, time, json, argparse
 from pathlib import Path
 from itertools import combinations
