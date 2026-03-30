@@ -1175,7 +1175,7 @@ class PerBlockQuantizationConfig:
         elif self.method == 'bof4':
             return PerBlockBOF4(self.block_size, self.dtype)
         elif self.method == 'glvq':
-            return PerBlockGLVQ(self.block_size, self.dtype)
+            return PerBlockGLVQ(self.block_size, self.dtype, max_iters=10)
         elif self.method == 'aqlm':
             return PerBlockAQLM(
                 block_size=self.block_size,
