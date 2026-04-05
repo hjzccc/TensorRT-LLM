@@ -1,0 +1,1 @@
+{"source": "wikitext-2-raw-v1 TRAIN split", "nsamples": 128, "seqlen": 2048, "total_tokens": 262144, "metrics": ["weight_mag", "act_weighted", "output_sensitivity"]}
