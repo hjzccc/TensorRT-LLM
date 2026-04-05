@@ -1,6 +1,6 @@
 {
-  "enabled": true,
-  "message": "First, assess current state. If not finished, continue. If stuck (no progress or repeated errors), immediately diagnose the root cause from logs and resolve it. If all active tasks are complete, do not stop — search for new related works with @research-sweeper and resume exploration with @research-ideator. Systematically test untried directions, search for relevant papers to ground new ideas in evidence, and act on promising leads immediately without waiting for permission. Before committing to any new approach, present your plan to Hephaestus for approval. The goal is the strongest possible result — do not settle while plausible improvements remain untested. During long-running operations, poll status at most every 5 minutes (shorter for fast tasks) to catch failures early without fragmenting focus.",
+  "enabled": false,
+  "message": "First, assess current state, you must stick to our current goal and solve any problems you encounter. If stuck (no progress or repeated errors), immediately diagnose the root cause from logs and resolve it.",
   "cooldown_ms": 180000,
   "max_consecutive": 200
 }

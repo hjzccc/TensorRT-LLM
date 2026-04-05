@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import json
 import os
 import sys
@@ -21,17 +22,20 @@ from scripts.nvfp4_compress.lm_eval_nvfp4 import NVFP4LM, resolve_default_ckpt_d
 
 
 CHOICES = ["(A)", "(B)", "(C)", "(D)"]
+DEFAULT_LOCKFILE = THIS_DIR / ".mmlu_gpu_eval.lock"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--ckpt-dir", type=Path, default=None)
+    parser.add_argument("--lockfile", type=Path, default=DEFAULT_LOCKFILE)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--max-batch-total-tokens", type=int, default=17760)
     parser.add_argument("--subject", type=str, default=None)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--cpu-offload", action="store_true", help="Offload layers to CPU between forward passes (reduces GPU memory usage)")
+    parser.add_argument("--streaming-layers", action="store_true", help="Load each layer from disk on-demand (minimal GPU+RAM usage, slower)")
     parser.add_argument(
         "--output",
         type=Path,
@@ -67,6 +71,28 @@ def main() -> None:
     else:
         subjects = cached_subjects()
 
+    lockfile = args.lockfile
+    lockfile.parent.mkdir(parents=True, exist_ok=True)
+    if lockfile.exists():
+        try:
+            lock_pid = int(lockfile.read_text().strip())
+            os.kill(lock_pid, 0)
+        except (ValueError, ProcessLookupError, OSError):
+            lockfile.unlink(missing_ok=True)
+        else:
+            raise SystemExit(f"Another MMLU eval is active (pid={lock_pid}, lockfile={lockfile})")
+
+    lockfile.write_text(str(os.getpid()))
+
+    def _cleanup_lock() -> None:
+        try:
+            if lockfile.exists() and lockfile.read_text().strip() == str(os.getpid()):
+                lockfile.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    atexit.register(_cleanup_lock)
+
     print(f"DIRECT_MMLU: subjects={len(subjects)}", flush=True)
     ckpt_dir = args.ckpt_dir if args.ckpt_dir is not None else resolve_default_ckpt_dir()
     model = NVFP4LM(
@@ -74,6 +100,7 @@ def main() -> None:
         batch_size=args.batch_size,
         max_batch_total_tokens=args.max_batch_total_tokens,
         cpu_offload=args.cpu_offload,
+        streaming_layers=args.streaming_layers,
     )
 
     all_correct = 0

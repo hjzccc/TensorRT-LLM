@@ -148,6 +148,46 @@ LOOP FOREVER:
 
 **NEVER STOP** to ask the human if you should continue. The human may be away and expects you to keep exploring until manually stopped.
 
+## Compression strategies explored
+
+### Strategy 1: Global codebook pair (2b1b)
+
+- **Format**: 2-bit index per value + 1-bit codebook selector per 16-element block
+- **Effective bitrate**: 2.0625 bpe
+- **How it works**: Two 4-entry codebooks are shared across the entire checkpoint. Each block picks one of the two codebooks (1 bit), then each value is encoded as a 2-bit index into the chosen codebook. Codebooks are selected by data-driven search: sample 120k real blocks, enumerate all symmetric 4-code pairs of the form {−a, −b, +a, +b}, choose the pair that minimizes per-block MSE.
+- **Best variant**: `2b1b_freq_symmetric` with codebooks {−4, −0.5, +0.5, +4} and {−6, −0.5, +0.5, +6}
+- **Result**: professional_law = 0.5574 (baseline 0.6271), substantial accuracy loss
+
+### Strategy 2: Per-block exact MSE codebook (2b075b)
+
+- **Format**: 2-bit index per value + 3 stored FP4 codes per block (4 bits each) + 0 always fixed in codebook
+- **Effective bitrate**: 2.75 bpe
+- **How it works**: For each 16-element block, exhaustively search all C(14,3) = 364 candidate 4-entry codebooks (with 0 fixed), pick the one that minimizes block MSE. Store the 3 chosen FP4 codes explicitly per block (12 bits overhead per block = 0.75 bpe). Each value is a 2-bit index into that block's codebook.
+- **Key finding**: Only 250 unique codebook tuples appear across 2 billion blocks in the full checkpoint, despite 364 candidates. Most blocks converge to the same small set of codebooks.
+- **Result**: professional_law = 0.5978 (baseline 0.6271), much better than Strategy 1
+
+### Strategy 3: Shared codebook library
+
+- **Format**: 2-bit index per value + K-bit library ID per block (selecting from a global library of codebooks)
+- **Effective bitrate**: 2 + ceil(log2(K))/16 bpe
+- **How it works**: Cluster the per-block codebooks from Strategy 2 into a shared library of K prototypes. Each block stores only a library ID instead of explicit codebook entries. Decompression looks up the codebook from the library.
+- **Variants tested**:
+  - K=250 (8-bit ID → 2.50 bpe): bit-identical to Strategy 2, lossless compression of codebook metadata
+  - K=128 (7-bit ID → 2.4375 bpe): professional_law = 0.5880, ~1pp drop from pruning rare codebooks
+  - K=64 (6-bit ID → 2.375 bpe): professional_law = 0.5874, ~1pp drop, minimal loss from aggressive pruning
+- **Key finding**: Reducing library from 250 → 64 loses only ~1 percentage point, because the top codebooks by frequency cover the vast majority of blocks.
+
+### Summary table (spot-check on professional_law)
+
+| Scheme | professional_law | bits/elem | Delta vs baseline |
+|--------|-----------------|-----------|-------------------|
+| Baseline NVFP4 | 0.6271 | 4.0 | — |
+| 2b1b freq symmetric | 0.5574 | 2.0625 | −6.97pp |
+| Per-block exact MSE | 0.5978 | 2.75 | −2.93pp |
+| Shared library K=250 | 0.5978 | 2.50 | −2.93pp |
+| Shared library K=128 | 0.5880 | 2.50 | −3.91pp |
+| Shared library K=64 | 0.5874 | 2.375 | −3.97pp |
+
 ## Reference material
 
 ### Key findings from entropy analysis (verified, from `per_block_entropy.py` and `code_entropy_fast.py`)

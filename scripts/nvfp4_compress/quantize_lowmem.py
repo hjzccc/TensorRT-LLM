@@ -81,18 +81,33 @@ def read_tensor_direct(file_path, tensor_meta):
     return t
 
 
-def quantize_single(weight_bf16):
+def quantize_single(weight_bf16, global_scale=None):
     w = weight_bf16.cuda()
-    gs = fp4_global_scale(w).to(torch.float32)
+    if global_scale is None:
+        gs = fp4_global_scale(w).to(torch.float32)
+    else:
+        gs = global_scale.cuda().to(torch.float32)
     p, s = torch.ops.trtllm.fp4_quantize(w, gs, 16, False)
+    out_features = w.shape[0]
+    in_features = w.shape[1]
+    scale_cols = in_features // 16
     result = {
-        "weight": p.cpu(), "weight_scale": s.cpu(),
+        "weight": p.cpu(),
+        "weight_scale": s.cpu().view(torch.float8_e4m3fn).reshape(out_features, scale_cols),
         "weight_scale_2": gs.cpu().reshape(1),
         "input_scale": torch.ones(1, dtype=torch.float32),
     }
     del w, gs, p, s
     torch.cuda.empty_cache()
     return result
+
+
+def compute_shared_global_scale(weight_a_bf16, weight_b_bf16):
+    combined = torch.cat([weight_a_bf16, weight_b_bf16], dim=0).cuda()
+    gs = fp4_global_scale(combined).to(torch.float32).cpu()
+    del combined
+    torch.cuda.empty_cache()
+    return gs
 
 
 def main():
@@ -134,16 +149,37 @@ def main():
             half = out_features // 2 if is_gu else out_features
 
             if is_gu:
-                proj_configs = [("gate_proj", 0, half), ("up_proj", half, out_features)]
-            else:
-                proj_configs = [(fn, 0, out_features)]
+                for proj_name, row_start, row_end in [("gate_proj", 0, half), ("up_proj", half, out_features)]:
+                    shard_data = {}
+                    for ei in range(num_experts):
+                        gate_w = read_expert_slice(sf_path, meta, ei, 0, half, in_features)
+                        up_w = read_expert_slice(sf_path, meta, ei, half, out_features, in_features)
+                        shared_gs = compute_shared_global_scale(gate_w, up_w)
+                        if proj_name == "gate_proj":
+                            q = quantize_single(gate_w, global_scale=shared_gs)
+                        else:
+                            q = quantize_single(up_w, global_scale=shared_gs)
+                        base = f"{lp}{ei}.{proj_name}"
+                        for suffix, value in q.items():
+                            shard_data[f"{base}.{suffix}"] = value
+                        total_q += 1
+                        del gate_w, up_w, shared_gs, q
 
-            for proj_name, row_start, row_end in proj_configs:
+                    sn = f"model-{shard_idx:05d}-of-PLACEHOLDER.safetensors"
+                    save_file(shard_data, f"{CKPT}/{sn}")
+                    for k in shard_data:
+                        weight_map[k] = sn
+                    shard_idx += 1
+                    del shard_data
+                    gc.collect()
+                    libc.malloc_trim(0)
+                    print(f"  Shard {shard_idx-1}: {proj_name} {num_experts} experts ({time.time()-t0:.0f}s)", flush=True)
+            else:
                 shard_data = {}
                 for ei in range(num_experts):
-                    expert_w = read_expert_slice(sf_path, meta, ei, row_start, row_end, in_features)
+                    expert_w = read_expert_slice(sf_path, meta, ei, 0, out_features, in_features)
                     q = quantize_single(expert_w)
-                    base = f"{lp}{ei}.{proj_name}"
+                    base = f"{lp}{ei}.{fn}"
                     for suffix, value in q.items():
                         shard_data[f"{base}.{suffix}"] = value
                     total_q += 1
@@ -157,7 +193,7 @@ def main():
                 del shard_data
                 gc.collect()
                 libc.malloc_trim(0)
-                print(f"  Shard {shard_idx-1}: {proj_name} {num_experts} experts ({time.time()-t0:.0f}s)", flush=True)
+                print(f"  Shard {shard_idx-1}: {fn} {num_experts} experts ({time.time()-t0:.0f}s)", flush=True)
 
         elif any(p in key for p in SKIP) or not key.endswith(".weight"):
             t = read_tensor_direct(sf_path, meta)
@@ -167,6 +203,33 @@ def main():
             shard_idx += 1
             total_bf16 += 1
             del t
+
+        elif "shared_expert.gate_proj" in key or "shared_expert.up_proj" in key:
+            gate_key = key.replace("up_proj", "gate_proj")
+            up_key = key.replace("gate_proj", "up_proj")
+            if "gate_proj" not in key:
+                continue
+            gate_sf = src_wm[gate_key]
+            up_sf = src_wm[up_key]
+            gate_meta = sf_headers[gate_sf].get(gate_key)
+            up_meta = sf_headers[up_sf].get(up_key)
+            gate_t = read_tensor_direct(f"{SNAP}/{gate_sf}", gate_meta)
+            up_t = read_tensor_direct(f"{SNAP}/{up_sf}", up_meta)
+            shared_gs = compute_shared_global_scale(gate_t, up_t)
+            for proj_name, proj_t in [("gate_proj", gate_t), ("up_proj", up_t)]:
+                proj_key = new_key.replace("gate_proj", proj_name).replace("up_proj", proj_name)
+                q = quantize_single(proj_t, global_scale=shared_gs)
+                base = proj_key.replace(".weight", "")
+                d = {f"{base}.{suffix}": v for suffix, v in q.items()}
+                sn = f"model-{shard_idx:05d}-of-PLACEHOLDER.safetensors"
+                save_file(d, f"{CKPT}/{sn}")
+                for k in d:
+                    weight_map[k] = sn
+                shard_idx += 1
+                total_q += 1
+                del q, d
+            del gate_t, up_t, shared_gs
+            gc.collect()
 
         else:
             t = read_tensor_direct(sf_path, meta)
@@ -204,9 +267,16 @@ def main():
             tc[k] = orig_cfg[k]
     json.dump(tc, open(f"{CKPT}/config.json", "w"), indent=2)
 
+    bf16_bases = set()
+    for k in weight_map:
+        if k.endswith(".weight") and not any(k.endswith(s) for s in [".weight_scale", ".weight_scale_2", ".input_scale"]):
+            base = k[:-7]
+            if f"{base}.weight_scale" not in weight_map:
+                bf16_bases.add(base)
+    exclude_list = sorted(b for b in bf16_bases if not any(x in b for x in ["layernorm", "norm", "embed_tokens"]))
     hf_qc = {"producer": {"name": "modelopt", "version": "0.37.0"},
               "quantization": {"quant_algo": "NVFP4", "group_size": 16,
-                               "exclude_modules": [f"model.layers.{i}.mlp.gate" for i in range(tc["num_hidden_layers"])] + ["lm_head"]}}
+                               "exclude_modules": exclude_list}}
     json.dump(hf_qc, open(f"{CKPT}/hf_quant_config.json", "w"), indent=2)
 
     for fn in ["tokenizer.json", "tokenizer_config.json", "vocab.json", "generation_config.json"]:

@@ -119,6 +119,12 @@ SCHEMES: dict[str, dict[str, object]] = {
         "fixed_codes": [0],
         "loss_mode": "freq_sq",
     },
+    "3bit_8entry_zero_fixed_exact": {
+        "description": "3-bit index, 8-entry codebook per block, 0 fixed, 7 free FP4 codes",
+        "bits_per_index": 3,
+        "storage_mode": "per_block_codebook",
+        "fixed_codes": [0],
+    },
     "3b1b_4free_exact": {
         "description": "Exact per-block MSE search with 4 free FP4 codes (no fixed zero), 3.0 bits/elem",
         "bits_per_index": 2,
@@ -242,7 +248,9 @@ def build_scheme_tables(scheme_name: str) -> dict[str, object]:
         fixed_codes_list = cast(list[int], scheme["fixed_codes"])
         fixed_codes = torch.tensor(fixed_codes_list, dtype=torch.uint8)
         n_fixed = len(fixed_codes_list)
-        n_free = 4 - n_fixed  # total codebook size is always 4
+        bits_per_index = int(cast(int, scheme["bits_per_index"]))
+        codebook_size = 1 << bits_per_index
+        n_free = codebook_size - n_fixed
         all_candidate_codes = [c for c in range(16) if c not in fixed_codes_list]
         candidate_extra_codes = torch.tensor(
             list(itertools.combinations(all_candidate_codes, n_free)),

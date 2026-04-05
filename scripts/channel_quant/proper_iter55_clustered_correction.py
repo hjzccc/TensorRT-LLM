@@ -70,6 +70,8 @@ from proper_iter26_maca_calibration import (
     should_log_chunk,
 )
 from proper_iter28_maca_plus_correction import (
+    forward_attention_to_mlp_input,
+    prepare_quantized_layer_tensors,
     AffineCorrection,
     ScalarFitMoments,
     init_scalar_fit_moments,

@@ -320,6 +320,7 @@ class NVFP4LM(TemplateLM):
         batch_size: int = 128,
         max_batch_total_tokens: int = DEFAULT_MAX_BATCH_TOTAL_TOKENS,
         cpu_offload: bool = False,
+        streaming_layers: bool = False,
     ) -> None:
         super().__init__()
         if not torch.cuda.is_available():
@@ -333,6 +334,7 @@ class NVFP4LM(TemplateLM):
         if self._torch_device.type != "cuda":
             raise ValueError(f"NVFP4LM requires a CUDA device, got {device!r}")
         self._cpu_offload = cpu_offload
+        self._streaming_layers = streaming_layers
 
         self.dtype = getattr(torch, dtype) if isinstance(dtype, str) else dtype
         self._batch_size = int(batch_size)
@@ -369,12 +371,16 @@ class NVFP4LM(TemplateLM):
         t0 = time.time()
         print(f"Loading NVFP4 checkpoint from {self.ckpt_dir} to {self.device}...", flush=True)
         self.embed_weight, self.final_norm, self.lm_head = self._load_root_tensors()
-        self.layers = self._load_all_layers()
-        elapsed = time.time() - t0
-        print(
-            f"Loaded full NVFP4 model to GPU in {elapsed:.1f}s",
-            flush=True,
-        )
+        if self._streaming_layers:
+            self.layers = []  # Will be loaded on-demand during forward pass
+            print(f"Streaming mode: layers will be loaded from disk during forward pass", flush=True)
+        else:
+            self.layers = self._load_all_layers()
+            elapsed = time.time() - t0
+            print(
+                f"Loaded full NVFP4 model to GPU in {elapsed:.1f}s",
+                flush=True,
+            )
 
     @property
     def eot_token_id(self) -> int:
@@ -950,10 +956,25 @@ class NVFP4LM(TemplateLM):
         attention_mask = self._get_causal_mask(seq_len)
         position_embeddings = self._get_position_embeddings(seq_len)
 
-        for layer in self.layers:
-            if self._cpu_offload:
+        layer_iter: Any
+        if self._streaming_layers:
+            layer_iter = range(self.model_config.num_hidden_layers)
+        else:
+            layer_iter = self.layers
+
+        for layer_ref in layer_iter:
+            if self._streaming_layers:
+                layer = self._load_layer(int(layer_ref))
+                if self._cpu_offload:
+                    self._move_layer_to_device(layer, self._torch_device)
+                    torch.cuda.synchronize()
+            elif self._cpu_offload:
+                layer = layer_ref
                 self._move_layer_to_device(layer, self._torch_device)
                 torch.cuda.synchronize()
+            else:
+                layer = layer_ref
+
             residual = hidden_states
             hidden_states = rms_norm_qwen3_next(
                 hidden_states,
@@ -978,7 +999,11 @@ class NVFP4LM(TemplateLM):
                 self.model_config.rms_norm_eps,
             )
             hidden_states = residual + self._moe_forward(hidden_states, layer)
-            if self._cpu_offload:
+
+            if self._streaming_layers:
+                self._unload_layer(layer)
+                torch.cuda.empty_cache()
+            elif self._cpu_offload:
                 self._move_layer_to_device(layer, torch.device("cpu"))
                 torch.cuda.empty_cache()
 

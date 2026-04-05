@@ -655,86 +655,83 @@ class PerBlockGLVQ(PerBlockCodebookBase):
         """
         Learn transformation matrix A for lattice via gradient descent.
         
+        A is (block_size, block_size) and is applied row-wise: each row of the
+        block is treated as a vector of length block_size, and A transforms it.
+        This keeps A tractable (block_size^2 params) regardless of block shape.
+        
         Args:
-            block: Weight block (block_size,) or (block_size, block_size)
+            block: Weight block of shape (block_size, block_size)
             
         Returns:
-            Learned transformation matrix A (d, d)
+            Learned transformation matrix A of shape (block_size, block_size)
         """
-        # Flatten block to 1D if needed
-        if block.dim() > 1:
-            block = block.flatten()
+        if block.dim() == 1:
+            block = block.unsqueeze(0)
         
-        d = block.shape[0]
-        
-        # Initialize A as identity matrix
-        A = torch.eye(d, dtype=self.dtype, device=block.device)
+        n_rows, n_cols = block.shape
+        # A is n_cols x n_cols (applied to each row vector of length n_cols)
+        A = torch.eye(n_cols, dtype=self.dtype, device=block.device)
         A.requires_grad = True
         
-        # Optimizer for learning A
         optimizer = torch.optim.Adam([A], lr=self.learning_rate)
         
-        # Gradient descent to minimize reconstruction error
         for _ in range(self.max_iters):
             optimizer.zero_grad()
             
-            # Babai rounding: find nearest lattice point
+            # Apply A to each row: z = block @ A^{-T}
+            # (solve A^T z^T = block^T for each row)
             try:
-                z = torch.linalg.solve(A, block)
+                z = torch.linalg.solve(A.T, block.T).T  # (n_rows, n_cols)
             except RuntimeError:
-                # If A is singular, use pseudo-inverse
-                z = torch.linalg.pinv(A) @ block
+                z = block @ torch.linalg.pinv(A).T
             
-            # Scale by num_levels before rounding (same as _babai_round)
+            # Scale by num_levels before rounding
             z_scaled = z * self.num_levels
             z_rounded = torch.round(z_scaled) / self.num_levels
-            block_quant = A @ z_rounded
             
-            # MSE loss
+            # Reconstruct: block_quant = z_rounded @ A^T
+            block_quant = z_rounded @ A.T
+            
             loss = F.mse_loss(block, block_quant)
             loss.backward()
             optimizer.step()
         
         return A.detach()
-    
-    def _babai_round(self, block: torch.Tensor, A: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+
+    def _babai_round(self, block: torch.Tensor, A: torch.Tensor) -> tuple:
         """
-        Babai rounding: find nearest lattice point to block.
+        Babai rounding: find nearest lattice point to block (row-wise).
+        
+        A is (block_size, block_size) and is applied to each row of block.
         
         Args:
-            block: Weight block (block_size, block_size)
-            A: Transformation matrix (block_size^2, block_size^2)
+            block: Weight block of shape (block_size, block_size)
+            A: Transformation matrix of shape (block_size, block_size)
             
         Returns:
-            Tuple of (quantized_block, indices)
+            Tuple of (quantized_block, z_rounded)
         """
-        # Store original shape for reshaping later
         original_shape = block.shape
+        if block.dim() == 1:
+            block = block.unsqueeze(0)
         
-        # Flatten block if needed
-        if block.dim() > 1:
-            block = block.flatten()
-        
-        # Solve A @ z ≈ block for z
+        # Row-wise: z = block @ A^{-T}
         try:
-            z = torch.linalg.solve(A, block)
+            z = torch.linalg.solve(A.T, block.T).T  # (n_rows, n_cols)
         except RuntimeError:
-            z = torch.linalg.pinv(A) @ block
+            z = block @ torch.linalg.pinv(A).T
         
-        # Scale by num_levels before rounding to get proper quantization resolution.
-        # Without scaling, normalized values in [-1,1] round to only {-1,0,1} (3 values).
-        # With num_levels=8: values in [-8,8] round to 17 distinct integers.
+        # Scale by num_levels before rounding
         z_scaled = z * self.num_levels
         z_rounded = torch.round(z_scaled) / self.num_levels
         
-        # Reconstruct: block_quant = A @ z_rounded
-        block_quant = A @ z_rounded
-        
-        # Reshape back to original shape
+        # Reconstruct: block_quant = z_rounded @ A^T
+        block_quant = z_rounded @ A.T
         block_quant = block_quant.reshape(original_shape)
         
         return block_quant, z_rounded
-    
+
+
     def quantize(self, weights: torch.Tensor) -> Tuple[torch.Tensor, Dict]:
         """
         Quantize weights using learned lattice codebooks.

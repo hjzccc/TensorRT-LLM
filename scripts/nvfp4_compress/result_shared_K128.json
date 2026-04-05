@@ -1,0 +1,17 @@
+{
+  "config": {
+    "batch_size": 64,
+    "limit": null,
+    "max_batch_total_tokens": 12000,
+    "offline": true
+  },
+  "mmlu_acc": 0.5880052151238592,
+  "subjects": {
+    "professional_law": {
+      "acc": 0.5880052151238592,
+      "correct": 902,
+      "elapsed_sec": 798.5642597675323,
+      "total": 1534
+    }
+  }
+}

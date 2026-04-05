@@ -1,0 +1,140 @@
+{
+  "query_count": 6,
+  "result_count": 9,
+  "results": [
+    {
+      "arxiv_id": "2512.15335v1",
+      "title": "Bits for Privacy: Evaluating Post-Training Quantization via Membership Inference",
+      "authors": [
+        "Chenxiang Zhang",
+        "Tongxi Qu",
+        "Zhong Li",
+        "Tian Zhang",
+        "Jun Pang",
+        "Sjouke Mauw"
+      ],
+      "abstract": "Deep neural networks are widely deployed with quantization techniques to reduce memory and computational costs by lowering the numerical precision of their parameters. While quantization alters model parameters and their outputs, existing privacy analyses primarily focus on full-precision models, leaving a gap in understanding how bit-width reduction can affect privacy leakage. We present the first systematic study of the privacy-utility relationship in post-training quantization (PTQ), a versatile family of methods that can be applied to pretrained models without further training. Using membership inference attacks as our evaluation framework, we analyze three popular PTQ algorithms-AdaRound, BRECQ, and OBC-across multiple precision levels (4-bit, 2-bit, and 1.58-bit) on CIFAR-10, CIFAR-100, and TinyImageNet datasets. Our findings consistently show that low-precision PTQs can reduce privacy leakage. In particular, lower-precision models demonstrate up to an order of magnitude reduction in membership inference vulnerability compared to their full-precision counterparts, albeit at the cost of decreased utility. Additional ablation studies on the 1.58-bit quantization level show that quantizing only the last layer at higher precision enables fine-grained control over the privacy-utility trade-off. These results offer actionable insights for practitioners to balance efficiency, utility, and privacy protection in real-world deployments.",
+      "published": "2025-12-17T11:28:58Z",
+      "url": "https://arxiv.org/abs/2512.15335v1"
+    },
+    {
+      "arxiv_id": "2511.18689v2",
+      "title": "QuantKAN: A Unified Quantization Framework for Kolmogorov Arnold Networks",
+      "authors": [
+        "Kazi Ahmed Asif Fuad",
+        "Lizhong Chen"
+      ],
+      "abstract": "Kolmogorov Arnold Networks (KANs) represent a new class of neural architectures that replace conventional linear transformations and node-based nonlinearities with spline-based function approximations distributed along network edges. Although KANs offer strong expressivity and interpretability, their heterogeneous spline and base branch parameters hinder efficient quantization, which remains unexamined compared to CNNs and Transformers. In this paper, we present QuantKAN, a unified framework for quantizing KANs across both quantization aware training (QAT) and post-training quantization (PTQ) regimes. QuantKAN extends modern quantization algorithms, such as LSQ, LSQ+, PACT, DoReFa, QIL, GPTQ, BRECQ, AdaRound, AWQ, and HAWQ-V2, to spline based layers with branch-specific quantizers for base, spline, and activation components. Through extensive experiments on MNIST, CIFAR 10, and CIFAR 100 across multiple KAN variants (EfficientKAN, FastKAN, PyKAN, and KAGN), we establish the first systematic benchmarks for low-bit spline networks. Our results show that KANs, particularly deeper KAGN variants, are compatible with low-bit quantization but exhibit strong method architecture interactions: LSQ, LSQ+, and PACT preserve near full precision accuracy at 4 bit for shallow KAN MLP and ConvNet models, while DoReFa provides the most stable behavior for deeper KAGN under aggressive low-bit settings. For PTQ, GPTQ and Uniform consistently deliver the strongest overall performance across datasets, with BRECQ highly competitive on simpler regimes such as MNIST. Our proposed QuantKAN framework thus unifies spline learning and quantization, and provides practical tools and guidelines for efficiently deploying KANs in real-world, resource-constrained environments.",
+      "published": "2025-11-24T02:05:16Z",
+      "url": "https://arxiv.org/abs/2511.18689v2"
+    },
+    {
+      "arxiv_id": "2510.16075v1",
+      "title": "Optimization of the quantization of dense neural networks from an exact QUBO formulation",
+      "authors": [
+        "Sergio Mu\u00f1iz Subi\u00f1as",
+        "Manuel L. Gonz\u00e1lez",
+        "Jorge Ruiz G\u00f3mez",
+        "Alejandro Mata Ali",
+        "Jorge Mart\u00ednez Mart\u00edn",
+        "Miguel Franco Hernando",
+        "\u00c1ngel Miguel Garc\u00eda-Vico"
+      ],
+      "abstract": "This work introduces a post-training quantization (PTQ) method for dense neural networks via a novel ADAROUND-based QUBO formulation. Using the Frobenius distance between the theoretical output and the dequantized output (before the activation function) as the objective, an explicit QUBO whose binary variables represent the rounding choice for each weight and bias is obtained. Additionally, by exploiting the structure of the coefficient QUBO matrix, the global problem can be exactly decomposed into $n$ independent subproblems of size $f+1$, which can be efficiently solved using some heuristics such as simulated annealing. The approach is evaluated on MNIST, Fashion-MNIST, EMNIST, and CIFAR-10 across integer precisions from int8 to int1 and compared with a round-to-nearest traditional quantization methodology.",
+      "published": "2025-10-17T09:57:28Z",
+      "url": "https://arxiv.org/abs/2510.16075v1"
+    },
+    {
+      "arxiv_id": "2408.00923v1",
+      "title": "Reclaiming Residual Knowledge: A Novel Paradigm to Low-Bit Quantization",
+      "authors": [
+        "R\u00f3is\u00edn Luo",
+        "Alexandru Drimbarean",
+        "James McDermott",
+        "Colm O'Riordan"
+      ],
+      "abstract": "This paper explores a novel paradigm in low-bit (i.e. 4-bits or lower) quantization, differing from existing state-of-the-art methods, by framing optimal quantization as an architecture search problem within convolutional neural networks (ConvNets). Our framework, dubbed \\textbf{CoRa} (Optimal Quantization Residual \\textbf{Co}nvolutional Operator Low-\\textbf{Ra}nk Adaptation), is motivated by two key aspects. Firstly, quantization residual knowledge, i.e. the lost information between floating-point weights and quantized weights, has long been neglected by the research community. Reclaiming the critical residual knowledge, with an infinitesimal extra parameter cost, can reverse performance degradation without training. Secondly, state-of-the-art quantization frameworks search for optimal quantized weights to address the performance degradation. Yet, the vast search spaces in weight optimization pose a challenge for the efficient optimization in large models. For example, state-of-the-art BRECQ necessitates $2 \\times 10^4$ iterations to quantize models. Fundamentally differing from existing methods, \\textbf{CoRa} searches for the optimal architectures of low-rank adapters, reclaiming critical quantization residual knowledge, within the search spaces smaller compared to the weight spaces, by many orders of magnitude. The low-rank adapters approximate the quantization residual weights, discarded in previous methods. We evaluate our approach over multiple pre-trained ConvNets on ImageNet. \\textbf{CoRa} achieves comparable performance against both state-of-the-art quantization-aware training and post-training quantization baselines, in $4$-bit and $3$-bit quantization, by using less than $250$ iterations on a small calibration set with $1600$ images. Thus, \\textbf{CoRa} establishes a new state-of-the-art in terms of the optimization efficiency in low-bit quantization.",
+      "published": "2024-08-01T21:27:31Z",
+      "url": "https://arxiv.org/abs/2408.00923v1"
+    },
+    {
+      "arxiv_id": "2309.17341v1",
+      "title": "MixQuant: Mixed Precision Quantization with a Bit-width Optimization Search",
+      "authors": [
+        "Eliska Kloberdanz",
+        "Wei Le"
+      ],
+      "abstract": "Quantization is a technique for creating efficient Deep Neural Networks (DNNs), which involves performing computations and storing tensors at lower bit-widths than f32 floating point precision. Quantization reduces model size and inference latency, and therefore allows for DNNs to be deployed on platforms with constrained computational resources and real-time systems. However, quantization can lead to numerical instability caused by roundoff error which leads to inaccurate computations and therefore, a decrease in quantized model accuracy. Similarly to prior works, which have shown that both biases and activations are more sensitive to quantization and are best kept in full precision or quantized with higher bit-widths, we show that some weights are more sensitive than others which should be reflected on their quantization bit-width. To that end we propose MixQuant, a search algorithm that finds the optimal custom quantization bit-width for each layer weight based on roundoff error and can be combined with any quantization method as a form of pre-processing optimization. We show that combining MixQuant with BRECQ, a state-of-the-art quantization method, yields better quantized model accuracy than BRECQ alone. Additionally, we combine MixQuant with vanilla asymmetric quantization to show that MixQuant has the potential to optimize the performance of any quantization technique.",
+      "published": "2023-09-29T15:49:54Z",
+      "url": "https://arxiv.org/abs/2309.17341v1"
+    },
+    {
+      "arxiv_id": "2303.11906v2",
+      "title": "Solving Oscillation Problem in Post-Training Quantization Through a Theoretical Perspective",
+      "authors": [
+        "Yuexiao Ma",
+        "Huixia Li",
+        "Xiawu Zheng",
+        "Xuefeng Xiao",
+        "Rui Wang",
+        "Shilei Wen",
+        "Xin Pan",
+        "Fei Chao",
+        "Rongrong Ji"
+      ],
+      "abstract": "Post-training quantization (PTQ) is widely regarded as one of the most efficient compression methods practically, benefitting from its data privacy and low computation costs. We argue that an overlooked problem of oscillation is in the PTQ methods. In this paper, we take the initiative to explore and present a theoretical proof to explain why such a problem is essential in PTQ. And then, we try to solve this problem by introducing a principled and generalized framework theoretically. In particular, we first formulate the oscillation in PTQ and prove the problem is caused by the difference in module capacity. To this end, we define the module capacity (ModCap) under data-dependent and data-free scenarios, where the differentials between adjacent modules are used to measure the degree of oscillation. The problem is then solved by selecting top-k differentials, in which the corresponding modules are jointly optimized and quantized. Extensive experiments demonstrate that our method successfully reduces the performance drop and is generalized to different neural networks and PTQ methods. For example, with 2/4 bit ResNet-50 quantization, our method surpasses the previous state-of-the-art method by 1.9%. It becomes more significant on small model quantization, e.g. surpasses BRECQ method by 6.61% on MobileNetV2*0.5.",
+      "published": "2023-03-21T14:52:52Z",
+      "url": "https://arxiv.org/abs/2303.11906v2"
+    },
+    {
+      "arxiv_id": "2103.01049v3",
+      "title": "Diversifying Sample Generation for Accurate Data-Free Quantization",
+      "authors": [
+        "Xiangguo Zhang",
+        "Haotong Qin",
+        "Yifu Ding",
+        "Ruihao Gong",
+        "Qinghua Yan",
+        "Renshuai Tao",
+        "Yuhang Li",
+        "Fengwei Yu",
+        "Xianglong Liu"
+      ],
+      "abstract": "Quantization has emerged as one of the most prevalent approaches to compress and accelerate neural networks. Recently, data-free quantization has been widely studied as a practical and promising solution. It synthesizes data for calibrating the quantized model according to the batch normalization (BN) statistics of FP32 ones and significantly relieves the heavy dependency on real training data in traditional quantization methods. Unfortunately, we find that in practice, the synthetic data identically constrained by BN statistics suffers serious homogenization at both distribution level and sample level and further causes a significant performance drop of the quantized model. We propose Diverse Sample Generation (DSG) scheme to mitigate the adverse effects caused by homogenization. Specifically, we slack the alignment of feature statistics in the BN layer to relax the constraint at the distribution level and design a layerwise enhancement to reinforce specific layers for different data samples. Our DSG scheme is versatile and even able to be applied to the state-of-the-art post-training quantization method like AdaRound. We evaluate the DSG scheme on the large-scale image classification task and consistently obtain significant improvements over various network architectures and quantization methods, especially when quantized to lower bits (e.g., up to 22% improvement on W4A4). Moreover, benefiting from the enhanced diversity, models calibrated by synthetic data perform close to those calibrated by real data and even outperform them on W4A4.",
+      "published": "2021-03-01T14:46:02Z",
+      "url": "https://arxiv.org/abs/2103.01049v3"
+    },
+    {
+      "arxiv_id": "2102.05426v2",
+      "title": "BRECQ: Pushing the Limit of Post-Training Quantization by Block Reconstruction",
+      "authors": [
+        "Yuhang Li",
+        "Ruihao Gong",
+        "Xu Tan",
+        "Yang Yang",
+        "Peng Hu",
+        "Qi Zhang",
+        "Fengwei Yu",
+        "Wei Wang",
+        "Shi Gu"
+      ],
+      "abstract": "We study the challenging task of neural network quantization without end-to-end retraining, called Post-training Quantization (PTQ). PTQ usually requires a small subset of training data but produces less powerful quantized models than Quantization-Aware Training (QAT). In this work, we propose a novel PTQ framework, dubbed BRECQ, which pushes the limits of bitwidth in PTQ down to INT2 for the first time. BRECQ leverages the basic building blocks in neural networks and reconstructs them one-by-one. In a comprehensive theoretical study of the second-order error, we show that BRECQ achieves a good balance between cross-layer dependency and generalization error. To further employ the power of quantization, the mixed precision technique is incorporated in our framework by approximating the inter-layer and intra-layer sensitivity. Extensive experiments on various handcrafted and searched neural architectures are conducted for both image classification and object detection tasks. And for the first time we prove that, without bells and whistles, PTQ can attain 4-bit ResNet and MobileNetV2 comparable with QAT and enjoy 240 times faster production of quantized models. Codes are available at https://github.com/yhhhli/BRECQ.",
+      "published": "2021-02-10T13:46:16Z",
+      "url": "https://arxiv.org/abs/2102.05426v2"
+    },
+    {
+      "arxiv_id": "2004.10568v2",
+      "title": "Up or Down? Adaptive Rounding for Post-Training Quantization",
+      "authors": [
+        "Markus Nagel",
+        "Rana Ali Amjad",
+        "Mart van Baalen",
+        "Christos Louizos",
+        "Tijmen Blankevoort"
+      ],
+      "abstract": "When quantizing neural networks, assigning each floating-point weight to its nearest fixed-point value is the predominant approach. We find that, perhaps surprisingly, this is not the best we can do. In this paper, we propose AdaRound, a better weight-rounding mechanism for post-training quantization that adapts to the data and the task loss. AdaRound is fast, does not require fine-tuning of the network, and only uses a small amount of unlabelled data. We start by theoretically analyzing the rounding problem for a pre-trained neural network. By approximating the task loss with a Taylor series expansion, the rounding task is posed as a quadratic unconstrained binary optimization problem. We simplify this to a layer-wise local loss and propose to optimize this loss with a soft relaxation. AdaRound not only outperforms rounding-to-nearest by a significant margin but also establishes a new state-of-the-art for post-training quantization on several networks and tasks. Without fine-tuning, we can quantize the weights of Resnet18 and Resnet50 to 4 bits while staying within an accuracy loss of 1%.",
+      "published": "2020-04-22T13:44:28Z",
+      "url": "https://arxiv.org/abs/2004.10568v2"
+    }
+  ]
+}

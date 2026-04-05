@@ -79,11 +79,16 @@ def main() -> None:
 
     storage_mode = str(manifest.get("storage_mode", "global_id"))
     bits_per_index = int(manifest["bits_per_index"])
-    codebook_id_bits = int(manifest["codebook_id_bits"])
-    codebooks_raw = cast(list[list[int]], manifest["codebooks"])
+    codebook_id_bits = int(manifest.get("codebook_id_bits", 0))
+    codebooks_raw = cast(list[list[int]], manifest.get("codebooks", []))
     codebooks = [torch.tensor(cb, dtype=torch.uint8) for cb in codebooks_raw]
     fixed_codes = torch.tensor(cast(list[int], manifest.get("fixed_codes", [])), dtype=torch.uint8)
     stored_codebook_codes_per_block = int(manifest.get("stored_codebook_codes_per_block", 0))
+
+    library_table: torch.Tensor | None = None
+    if storage_mode == "shared_library":
+        library_raw = cast(list[list[int]], manifest["library"])
+        library_table = torch.tensor(library_raw, dtype=torch.uint8)
     compressed_weights = cast(dict[str, dict[str, object]], manifest["compressed_weights"])
     input_weight_map = cast(dict[str, str], input_index["weight_map"])
     shard_files = sorted(set(input_weight_map.values()))
@@ -123,7 +128,13 @@ def main() -> None:
                 flat_indices = unpack_bits(indices_packed, bits_per_index, num_values)
                 indices = flat_indices.view(shape)
 
-                if storage_mode == "per_block_codebook":
+                if storage_mode == "shared_library":
+                    assert library_table is not None
+                    lib_ids = sf.get_tensor(f"{base}.weight_library_id")
+                    block_codebooks = library_table[lib_ids.long()]
+                    flat_indices = indices.view(num_blocks, -1).long()
+                    recon_blocks = torch.gather(block_codebooks, 1, flat_indices)
+                elif storage_mode == "per_block_codebook":
                     codebook_entries_packed = sf.get_tensor(f"{base}.weight_codebook_entries")
                     extra_codes = unpack_bits(
                         codebook_entries_packed,
@@ -161,6 +172,7 @@ def main() -> None:
                 skip_keys.add(f"{base}.weight_indices")
                 skip_keys.add(f"{base}.weight_codebook_ids")
                 skip_keys.add(f"{base}.weight_codebook_entries")
+                skip_keys.add(f"{base}.weight_library_id")
 
             for key in shard_keys:
                 if key in skip_keys:

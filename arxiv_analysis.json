@@ -1,0 +1,92 @@
+[
+  {
+    "arxiv_id": "2512.15335v1",
+    "title": "Bits for Privacy: Evaluating Post-Training Quantization via Membership Inference",
+    "published": "2025-12-17",
+    "optimization_type": "Post-Quantization",
+    "post_quantization": true,
+    "joint_optimization": false,
+    "uses_hessian": false,
+    "url": "https://arxiv.org/abs/2512.15335v1"
+  },
+  {
+    "arxiv_id": "2511.18689v2",
+    "title": "QuantKAN: A Unified Quantization Framework for Kolmogorov Arnold Networks",
+    "published": "2025-11-24",
+    "optimization_type": "Post-Quantization",
+    "post_quantization": true,
+    "joint_optimization": false,
+    "uses_hessian": false,
+    "url": "https://arxiv.org/abs/2511.18689v2"
+  },
+  {
+    "arxiv_id": "2510.16075v1",
+    "title": "Optimization of the quantization of dense neural networks from an exact QUBO formulation",
+    "published": "2025-10-17",
+    "optimization_type": "Post-Quantization",
+    "post_quantization": true,
+    "joint_optimization": false,
+    "uses_hessian": false,
+    "url": "https://arxiv.org/abs/2510.16075v1"
+  },
+  {
+    "arxiv_id": "2408.00923v1",
+    "title": "Reclaiming Residual Knowledge: A Novel Paradigm to Low-Bit Quantization",
+    "published": "2024-08-01",
+    "optimization_type": "Post-Quantization",
+    "post_quantization": true,
+    "joint_optimization": false,
+    "uses_hessian": false,
+    "url": "https://arxiv.org/abs/2408.00923v1"
+  },
+  {
+    "arxiv_id": "2309.17341v1",
+    "title": "MixQuant: Mixed Precision Quantization with a Bit-width Optimization Search",
+    "published": "2023-09-29",
+    "optimization_type": "Unknown",
+    "post_quantization": false,
+    "joint_optimization": false,
+    "uses_hessian": false,
+    "url": "https://arxiv.org/abs/2309.17341v1"
+  },
+  {
+    "arxiv_id": "2303.11906v2",
+    "title": "Solving Oscillation Problem in Post-Training Quantization Through a Theoretical Perspective",
+    "published": "2023-03-21",
+    "optimization_type": "Joint/Alternating",
+    "post_quantization": true,
+    "joint_optimization": true,
+    "uses_hessian": false,
+    "url": "https://arxiv.org/abs/2303.11906v2"
+  },
+  {
+    "arxiv_id": "2103.01049v3",
+    "title": "Diversifying Sample Generation for Accurate Data-Free Quantization",
+    "published": "2021-03-01",
+    "optimization_type": "Post-Quantization",
+    "post_quantization": true,
+    "joint_optimization": false,
+    "uses_hessian": false,
+    "url": "https://arxiv.org/abs/2103.01049v3"
+  },
+  {
+    "arxiv_id": "2102.05426v2",
+    "title": "BRECQ: Pushing the Limit of Post-Training Quantization by Block Reconstruction",
+    "published": "2021-02-10",
+    "optimization_type": "Joint/Alternating",
+    "post_quantization": true,
+    "joint_optimization": true,
+    "uses_hessian": true,
+    "url": "https://arxiv.org/abs/2102.05426v2"
+  },
+  {
+    "arxiv_id": "2004.10568v2",
+    "title": "Up or Down? Adaptive Rounding for Post-Training Quantization",
+    "published": "2020-04-22",
+    "optimization_type": "Post-Quantization",
+    "post_quantization": true,
+    "joint_optimization": false,
+    "uses_hessian": false,
+    "url": "https://arxiv.org/abs/2004.10568v2"
+  }
+]
