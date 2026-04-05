@@ -102,4 +102,11 @@ enroot/tensorrt_llm.devel.sqsh
 
 # MacOSX Files
 .DS_Store
-*.sqlite
+*.sqlite*.pt
+*.ncu-rep
+*.png
+scripts/nvfp4_compress/nvfp4_checkpoint/
+scripts/nvfp4_compress/compressed_*/
+scripts/nvfp4_compress/decompressed_*/
+scripts/nvfp4_compress/nvfp4_checkpoint_batch*/
+scripts/nvfp4_compress/nvfp4_kmeans_checkpoint/
