@@ -1,8 +1,0 @@
-{
-  "phase4_compression": 1.9248,
-  "phase4_bits_per_elem": 16.62510390689942,
-  "phase7c_compression": 2.0433,
-  "phase7c_bits_per_elem": 15.660940635246906,
-  "bits_loss": 0.964163271652513,
-  "estimated_ppl_degradation_percent": 4.820816358262565
-}

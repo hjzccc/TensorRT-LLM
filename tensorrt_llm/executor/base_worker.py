@@ -2,6 +2,7 @@ import copy
 import datetime
 import enum
 import json
+import math
 import os
 import weakref
 from pathlib import Path
@@ -179,6 +180,79 @@ class BaseWorker(GenerationExecutor):
         self._configure_affinity(device_id)
 
         return comm_ranks, device_ids
+
+    def install_hadamard_activation_wrappers(self, layer_names: List[str],
+                                             group_size: int) -> dict:
+        """Install block-local Hadamard activation rotation on selected modules."""
+        if self.engine is None or not hasattr(self.engine, "model_engine"):
+            raise RuntimeError("Engine/model_engine is not initialized")
+
+        from fast_hadamard_transform import hadamard_transform
+
+        model = self.engine.model_engine.model
+        module_map = dict(model.named_modules())
+        scale = 1.0 / math.sqrt(group_size)
+
+        def rotate_activation(x: torch.Tensor) -> torch.Tensor:
+            if x.shape[-1] % group_size != 0:
+                raise ValueError(
+                    f"Activation last dim {x.shape[-1]} is not divisible by group_size {group_size}"
+                )
+            return hadamard_transform(x.reshape(-1, group_size),
+                                      scale=scale).reshape(x.shape)
+
+        patched: List[str] = []
+        missing: List[str] = []
+        for name in sorted(set(layer_names)):
+            module = module_map.get(name)
+            if module is None:
+                missing.append(name)
+                continue
+            if getattr(module, "_nvfp4_hadamard_wrapped", False):
+                patched.append(name)
+                continue
+
+            original_forward = module.forward
+
+            def wrapped_forward(*args,
+                                _orig_forward=original_forward,
+                                **kwargs):
+                if args and isinstance(args[0], torch.Tensor):
+                    rotated = rotate_activation(args[0])
+                    args = (rotated, *args[1:])
+                elif isinstance(kwargs.get("hidden_states"), torch.Tensor):
+                    kwargs = dict(kwargs)
+                    kwargs["hidden_states"] = rotate_activation(
+                        kwargs["hidden_states"])
+                return _orig_forward(*args, **kwargs)
+
+            module._nvfp4_original_forward = original_forward
+            module.forward = wrapped_forward
+            module._nvfp4_hadamard_wrapped = True
+            module._nvfp4_hadamard_group_size = group_size
+            patched.append(name)
+
+        return {
+            "patched": patched,
+            "missing": missing,
+            "group_size": group_size,
+        }
+
+    def remove_hadamard_activation_wrappers(self) -> int:
+        """Remove any Hadamard activation wrappers installed earlier."""
+        if self.engine is None or not hasattr(self.engine, "model_engine"):
+            return 0
+
+        restored = 0
+        for module in self.engine.model_engine.model.modules():
+            if getattr(module, "_nvfp4_hadamard_wrapped", False):
+                module.forward = module._nvfp4_original_forward
+                del module._nvfp4_original_forward
+                del module._nvfp4_hadamard_wrapped
+                if hasattr(module, "_nvfp4_hadamard_group_size"):
+                    del module._nvfp4_hadamard_group_size
+                restored += 1
+        return restored
 
     def setup_engine(self):
         """

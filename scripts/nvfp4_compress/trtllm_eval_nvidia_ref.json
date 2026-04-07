@@ -1,8 +1,0 @@
-{
-  "nvidia/Qwen3-30B-A3B-NVFP4": {
-    "mmlu": {
-      "score": 63.98661159379005,
-      "display_name": "MMLU"
-    }
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "block_size_distribution": {
-    "64": 1
-  },
-  "avg_block_size": 64.0,
-  "estimated_improvement": 0.05,
-  "phase5_compression": 1.9735,
-  "phase6_compression": 2.072175
-}

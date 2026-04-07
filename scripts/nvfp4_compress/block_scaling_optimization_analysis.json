@@ -1,9 +1,0 @@
-{
-  "analysis": "block_wise_scaling_optimization",
-  "fixed_scales_mse": 0.11210744082927704,
-  "optimized_scales_mse": 0.07718346449136292,
-  "improvement_percent": 31.152237603120515,
-  "num_blocks_changed": 88,
-  "constraint_violation": "Block scales must be preserved from original NVFP4",
-  "recommendation": "skip (constraint violation)"
-}

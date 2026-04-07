@@ -1,6 +1,0 @@
-{
-  "approach": "Residual Codebook + Adaptive Scaling",
-  "tested_weights": 5,
-  "avg_improvement_percent": 99.4165771484375,
-  "elapsed_seconds": 54.9163601398468
-}
